@@ -1,3 +1,11 @@
+"""基于 gpt-oss:20b 的快递/邮政相关性二分类过滤。
+
+这个模块的目标是：
+1. 对每条完整对话判断是否和快递 / 邮政主题相关
+2. 只接受 true / false 两种返回
+3. 支持从已有 JSON 结果断点续跑，避免重复调用模型
+"""
+
 import json
 import os
 import time
@@ -25,12 +33,14 @@ SYSTEM_PROMPT = (
 
 
 def ensure_output_dir(base_dir):
+    """确保 LLM 过滤结果目录存在。"""
     output_dir = base_dir / "outputs" / OUTPUT_DIRNAME
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 
 
 def post_json(url, payload):
+    """用标准库向 Ollama chat 接口发请求。"""
     data = json.dumps(payload).encode("utf-8")
     req = request.Request(
         url,
@@ -48,6 +58,12 @@ def post_json(url, payload):
 
 
 def classify_dialogue(text):
+    """对一条完整对话做 true / false 二分类。
+
+    这里保持非常严格的输出约束：
+    - system prompt 只允许模型输出 true / false
+    - user prompt 只放对话内容本身
+    """
     payload = {
         "model": FILTER_MODEL,
         "stream": False,
@@ -58,6 +74,8 @@ def classify_dialogue(text):
         "options": {"temperature": 0},
     }
 
+    # 这里做最多 3 次重试，主要是为了缓解本地服务的偶发波动，
+    # 但不改变分类任务本身的严格输出约束。
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -82,11 +100,13 @@ def classify_dialogue(text):
 
 
 def save_results(results, output_path):
+    """把当前累计的过滤结果写回 JSON。"""
     with output_path.open("w", encoding="utf-8") as file:
         json.dump(results, file, ensure_ascii=False, indent=2)
 
 
 def load_existing_results(output_path):
+    """读取已有 JSON 结果，用于断点续跑。"""
     if not output_path.exists():
         return {}
 
@@ -95,11 +115,13 @@ def load_existing_results(output_path):
 
 
 def run_llm_filter(datasets, output_base_dir):
+    """执行 LLM 过滤主流程。"""
     output_dir = ensure_output_dir(output_base_dir)
     output_path = output_dir / OUTPUT_FILENAME
     results = load_existing_results(output_path)
 
     for split_name, dataset in datasets.items():
+        # 断点续跑的关键就是：先看这个 split 已经完成了多少条。
         split_results = results.get(split_name, [])
         completed = len(split_results)
         positive_count = sum(
@@ -131,6 +153,7 @@ def run_llm_filter(datasets, output_base_dir):
             )
             progress_bar.update(1)
 
+            # 周期性保存，尽量减少中断后需要重算的样本数量。
             if len(split_results) % SAVE_EVERY == 0:
                 results[split_name] = split_results
                 save_results(results, output_path)
@@ -147,6 +170,7 @@ def run_llm_filter(datasets, output_base_dir):
 
 
 def main():
+    """允许单独运行 llm_filter。"""
     from dataloader import load_datasets
 
     current_dir = Path(__file__).resolve().parent

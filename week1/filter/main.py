@@ -1,3 +1,11 @@
+"""filter 总入口。
+
+顺序固定为：
+1. 生成 / 续跑对话 embedding
+2. 执行 LLM 二分类过滤
+3. 基于 embedding + 过滤结果做降维可视化
+"""
+
 from pathlib import Path
 
 from dataloader import load_datasets
@@ -7,6 +15,7 @@ from vis import generate_visualizations
 
 
 def main():
+    """执行 filter 目录下的完整主流程。"""
     current_dir = Path(__file__).resolve().parent
     data_dir = current_dir.parent.parent / "CSDS"
     datasets = load_datasets(data_dir)

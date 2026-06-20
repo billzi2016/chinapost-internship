@@ -1,3 +1,9 @@
+"""TF-IDF 关键词分析。
+
+这里保留一个传统、可解释、可控的统计基线。
+相比词频法，TF-IDF 至少能把“在所有对话里都很常见”的词压下去。
+"""
+
 import json
 import math
 from collections import Counter
@@ -16,6 +22,7 @@ OUTPUT_DIRNAME = "tfidf"
 
 
 def compute_tfidf(documents, top_k=TOP_K):
+    """按“单条对话 = 一个 document”计算 TF-IDF 关键词。"""
     filtered_documents = [filter_document(document) for document in documents]
     filtered_documents = [document for document in filtered_documents if document]
     if not filtered_documents:
@@ -30,6 +37,8 @@ def compute_tfidf(documents, top_k=TOP_K):
 
     document_count = len(filtered_documents)
     aggregate_scores = Counter()
+    # 过于常见的词即使合法，也通常不是“能区分主题”的关键词，
+    # 所以这里继续做一个上限过滤。
     max_doc_freq = max(int(document_count * MAX_DOC_FREQ_RATIO), 1)
 
     for counter in term_frequencies:
@@ -54,6 +63,7 @@ def compute_tfidf(documents, top_k=TOP_K):
 
 
 def save_keywords(results, output_dir):
+    """同时保存 JSON 和 TXT，方便后续程序读取和人工浏览。"""
     json_path = output_dir / "tfidf_keywords.json"
     txt_path = output_dir / "tfidf_keywords.txt"
     with json_path.open("w", encoding="utf-8") as file:
@@ -69,6 +79,7 @@ def save_keywords(results, output_dir):
 
 
 def print_keywords(results):
+    """在终端打印每个 split 的前若干个关键词。"""
     for split_name, keywords in results.items():
         print(f"\n===== {split_name} TF-IDF =====")
         for item in keywords[:15]:
@@ -76,6 +87,7 @@ def print_keywords(results):
 
 
 def run_advanced_analysis(basic_results, output_base_dir):
+    """执行 TF-IDF 分析主流程。"""
     output_dir = ensure_output_dir(output_base_dir, OUTPUT_DIRNAME)
     results = {}
     for split_name, metrics in basic_results.items():
@@ -87,6 +99,7 @@ def run_advanced_analysis(basic_results, output_base_dir):
 
 
 def main():
+    """允许单独运行 TF-IDF 分析。"""
     from basic_analysis import run_basic_analysis
     from dataloader import load_datasets
 

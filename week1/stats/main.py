@@ -1,3 +1,13 @@
+"""stats 总入口。
+
+这个脚本只负责串联流程，不在这里堆复杂逻辑：
+1. 读取数据
+2. 展示基本维度
+3. 跑基础统计
+4. 跑 TF-IDF / TextRank / KeyBERT
+5. 统一出图
+"""
+
 from pathlib import Path
 
 from basic_analysis import run_basic_analysis
@@ -9,6 +19,7 @@ from vis import generate_visualizations
 
 
 def describe_dataset(name, dataset):
+    """打印单个 split 的最基础结构信息。"""
     sample_count = len(dataset)
     print(f"{name} 数据集:")
     print(f"  样本数: {sample_count}")
@@ -25,6 +36,7 @@ def describe_dataset(name, dataset):
 
 
 def main():
+    """执行 stats 目录下的完整主流程。"""
     current_dir = Path(__file__).resolve().parent
     data_dir = current_dir.parent.parent / "CSDS"
     datasets = load_datasets(data_dir)

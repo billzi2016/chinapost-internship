@@ -1,3 +1,10 @@
+"""stats 模块的统一可视化输出。
+
+这里会同时生成两大类图片：
+1. 基础统计图：轮数分布、token 分布、词数分布、词频图、普通词云
+2. 关键词方法图：TF-IDF / TextRank / KeyBERT 的 Top20 图和词云
+"""
+
 from collections import Counter
 from pathlib import Path
 
@@ -19,6 +26,7 @@ FONT_CANDIDATES = (
 
 
 def get_font_path():
+    """自动寻找本机可用的中文字体，避免词云乱码。"""
     for font_path in FONT_CANDIDATES:
         if Path(font_path).exists():
             return font_path
@@ -26,18 +34,21 @@ def get_font_path():
 
 
 def ensure_output_dir(base_dir):
+    """确保可视化输出目录存在。"""
     output_dir = base_dir / "outputs" / OUTPUT_DIRNAME
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 
 
 def configure_matplotlib(font_path):
+    """统一设置 matplotlib 的中文字体和负号显示。"""
     plt.rcParams["axes.unicode_minus"] = False
     if font_path:
         plt.rcParams["font.sans-serif"] = ["Arial Unicode MS", "Heiti SC", "Songti SC"]
 
 
 def save_histogram(values, title, xlabel, output_path):
+    """保存直方图。"""
     plt.figure(figsize=(10, 6))
     plt.hist(values, bins=30, color="#2F6B7C", edgecolor="white")
     plt.title(title, fontsize=TITLE_SIZE)
@@ -51,6 +62,7 @@ def save_histogram(values, title, xlabel, output_path):
 
 
 def save_bar(labels, values, title, xlabel, ylabel, output_path):
+    """保存柱状图。"""
     if not labels:
         return
     plt.figure(figsize=(12, 7))
@@ -66,6 +78,7 @@ def save_bar(labels, values, title, xlabel, ylabel, output_path):
 
 
 def save_wordcloud(words, title, output_path, font_path):
+    """基于原始词频生成普通词云。"""
     if not words or not font_path:
         return
     cloud = WordCloud(
@@ -86,6 +99,11 @@ def save_wordcloud(words, title, output_path, font_path):
 
 
 def save_keyword_wordcloud(keywords, title, output_path, font_path):
+    """基于关键词得分生成“方法词云”。
+
+    这里和普通词云不同，不是直接看出现次数，
+    而是把 TF-IDF / TextRank / KeyBERT 的得分当作词云权重。
+    """
     if not keywords or not font_path:
         return
     frequencies = {item["token"]: float(item.get("score", item.get("count", 0))) for item in keywords}
@@ -109,6 +127,7 @@ def save_keyword_wordcloud(keywords, title, output_path, font_path):
 
 
 def save_method_visuals(split_name, method_name, keywords, output_dir, font_path):
+    """为某一种关键词方法生成 Top20 图和词云。"""
     if not keywords:
         return
     labels = [item["token"] for item in keywords[:20]]
@@ -132,12 +151,14 @@ def save_method_visuals(split_name, method_name, keywords, output_dir, font_path
 
 
 def generate_visualizations(basic_results, keyword_results, output_base_dir):
+    """执行 stats 全量可视化主流程。"""
     output_dir = ensure_output_dir(output_base_dir)
     font_path = get_font_path()
     configure_matplotlib(font_path)
     all_words = []
 
     for split_name, metrics in basic_results.items():
+        # 基础统计图依赖原始词序列，不依赖某一种关键词算法。
         all_words.extend(metrics["words"])
         counter = Counter(metrics["words"])
         top_words = counter.most_common(20)
@@ -146,6 +167,7 @@ def generate_visualizations(basic_results, keyword_results, output_base_dir):
         save_histogram(metrics["dialogue_word_counts"], f"{split_name} 对话总词数分布", "词数", output_dir / f"{split_name}_dialogue_word_hist.png")
         save_bar([item[0] for item in top_words], [item[1] for item in top_words], f"{split_name} 高频词 Top20", "词语", "出现次数", output_dir / f"{split_name}_top_words.png")
         save_wordcloud(metrics["words"], f"{split_name} 词云", output_dir / f"{split_name}_wordcloud.png", font_path)
+        # 三种关键词方法都走同一套绘图入口，避免重复写样板代码。
         for method_name, method_results in keyword_results.items():
             save_method_visuals(split_name, method_name, method_results.get(split_name, []), output_dir, font_path)
 
@@ -160,6 +182,7 @@ def generate_visualizations(basic_results, keyword_results, output_base_dir):
 
 
 def main():
+    """允许单独运行 stats 可视化。"""
     from basic_analysis import run_basic_analysis
     from dataloader import load_datasets
     from keybert_analysis import run_keybert_analysis

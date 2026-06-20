@@ -1,3 +1,9 @@
+"""TextRank 关键词分析。
+
+TextRank 的思路不是数词频，而是看词与词之间的共现关系，
+再用 PageRank 风格的图算法去找“在共现网络中最核心的词”。
+"""
+
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -11,10 +17,12 @@ ITERATIONS = 30
 
 
 def build_graph(documents):
+    """把文档集合构造成词共现图。"""
     graph = defaultdict(set)
     for document in documents:
         tokens = filter_document(document)
         for index, token in enumerate(tokens):
+            # 共现窗口越小，越偏向局部搭配；这里取 4 是一个折中值。
             for other in tokens[index + 1 : index + WINDOW_SIZE]:
                 if token == other:
                     continue
@@ -24,6 +32,7 @@ def build_graph(documents):
 
 
 def run_pagerank(graph):
+    """在词共现图上迭代求 PageRank 分数。"""
     scores = {node: 1.0 for node in graph}
     for _ in range(ITERATIONS):
         new_scores = {}
@@ -37,6 +46,7 @@ def run_pagerank(graph):
 
 
 def compute_textrank(documents, top_k=TOP_K):
+    """计算单个 split 或全量语料的 TextRank 关键词。"""
     graph = build_graph(documents)
     if not graph:
         return []
@@ -52,6 +62,7 @@ def compute_textrank(documents, top_k=TOP_K):
 
 
 def save_keywords(results, output_dir):
+    """保存 TextRank 结果。"""
     json_path = output_dir / "textrank_keywords.json"
     txt_path = output_dir / "textrank_keywords.txt"
     with json_path.open("w", encoding="utf-8") as file:
@@ -65,6 +76,7 @@ def save_keywords(results, output_dir):
 
 
 def print_keywords(results):
+    """打印 TextRank 结果，便于快速人工比较。"""
     for split_name, keywords in results.items():
         print(f"\n===== {split_name} TextRank =====")
         for item in keywords[:15]:
@@ -72,6 +84,7 @@ def print_keywords(results):
 
 
 def run_textrank_analysis(basic_results, output_base_dir):
+    """执行 TextRank 分析主流程。"""
     output_dir = ensure_output_dir(output_base_dir, OUTPUT_DIRNAME)
     results = {}
     for split_name, metrics in basic_results.items():
@@ -83,6 +96,7 @@ def run_textrank_analysis(basic_results, output_base_dir):
 
 
 def main():
+    """允许单独运行 TextRank 分析。"""
     from basic_analysis import run_basic_analysis
     from dataloader import load_datasets
 

@@ -1,11 +1,22 @@
+"""对话级 embedding 生成与 HDF5 分块续写。
+
+这个模块最关键的目标有两个：
+1. 把每条完整对话编码成向量
+2. 尽量稳地写盘，支持中断后从断点继续
+
+这里故意不用“算完全部 embedding 再一次性写文件”的方式，
+而是按 batch 切片写入固定 shape 的 HDF5 dataset，
+避免重复重写前面已经完成的数据。
+"""
+
 import json
 import os
 import time
 from pathlib import Path
-from urllib import error, request
 
 import h5py
 import numpy as np
+import ollama
 from tqdm import tqdm
 
 import config
@@ -26,20 +37,25 @@ OUTPUT_DIRNAME = "embeddings"
 OUTPUT_FILENAME = "dialogue_embeddings.h5"
 METADATA_FILENAME = "dialogue_metadata.json"
 SLEEP_SECONDS = 0.5
+OLLAMA_CLIENT = ollama.Client(host=OLLAMA_URL)
 
 
 def ensure_output_dir(base_dir):
+    """确保 embedding 输出目录存在。"""
     output_dir = base_dir / "outputs" / OUTPUT_DIRNAME
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 
 
 def build_texts(dataset):
+    """把一个 split 的样本整理成待编码文本和元信息。"""
     texts = []
     metadata = []
 
     for index, sample in enumerate(dataset):
         text = dialogue_to_text(sample)
+        # 这里的 instruction 前缀是“存储侧 embedding”语义，
+        # 用于让向量更偏向主题筛选、聚类和语义表示。
         if EMBED_PREFIX:
             text = f"{EMBED_PREFIX}{text}"
         texts.append(text)
@@ -55,36 +71,28 @@ def build_texts(dataset):
     return texts, metadata
 
 
-def post_json(url, payload):
-    data = json.dumps(payload).encode("utf-8")
-    req = request.Request(
-        url,
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
+def embed_batch(texts):
+    """用官方 ollama Python 库对一个 batch 做 embedding。"""
     try:
-        with request.urlopen(req) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except error.URLError as exc:
+        response = OLLAMA_CLIENT.embed(model=EMBED_MODEL, input=texts)
+    except Exception as exc:
         raise RuntimeError(
-            f"请求 Ollama 失败: {exc}. 请确认 `ollama serve` 正在运行。"
+            f"请求 Ollama embed 失败: {exc}. 请确认 `ollama serve` 正在运行，"
+            f"并检查模型 `{EMBED_MODEL}` 是否可用。"
         ) from exc
 
-
-def embed_batch(texts):
-    payload = {
-        "model": EMBED_MODEL,
-        "input": texts,
-    }
-    response = post_json(f"{OLLAMA_URL}/api/embed", payload)
     embeddings = response.get("embeddings")
     if not embeddings:
-        raise RuntimeError("Ollama `/api/embed` 没有返回 embeddings。")
+        raise RuntimeError("ollama.Client.embed(...) 没有返回 embeddings。")
     return np.asarray(embeddings, dtype=np.float32)
 
 
 def ensure_split_dataset(h5_file, split_name, total_count, embedding_dim):
+    """确保某个 split 对应的 HDF5 dataset 已经存在且 shape 正确。
+
+    `completed` 属性用于记录这个 split 已经写到第几条，
+    这是断点续跑的关键状态。
+    """
     if split_name not in h5_file:
         dataset = h5_file.create_dataset(
             split_name,
@@ -108,11 +116,13 @@ def ensure_split_dataset(h5_file, split_name, total_count, embedding_dim):
 
 
 def save_metadata(metadata_by_split, output_path):
+    """保存对话索引、session_id 等元信息，方便后续追溯。"""
     with output_path.open("w", encoding="utf-8") as file:
         json.dump(metadata_by_split, file, ensure_ascii=False, indent=2)
 
 
 def encode_split_to_h5(split_name, dataset, h5_file):
+    """把单个 split 编码后分块写入 HDF5。"""
     texts, metadata = build_texts(dataset)
     total_count = len(texts)
 
@@ -128,12 +138,15 @@ def encode_split_to_h5(split_name, dataset, h5_file):
             empty_dataset.attrs["completed"] = 0
         return (0, 0), metadata
 
+    # 如果这个 split 之前已经写过一部分，就直接从断点继续。
     probe_dataset = h5_file.get(split_name)
     if probe_dataset is not None and probe_dataset.attrs.get("completed", 0) > 0:
         completed = int(probe_dataset.attrs["completed"])
         embedding_dim = probe_dataset.shape[1]
         split_dataset = ensure_split_dataset(h5_file, split_name, total_count, embedding_dim)
     else:
+        # 第一次运行时先用首个 batch 探测 embedding 维度，
+        # 这样后面才能安全地创建固定 shape 的 dataset。
         first_end = min(EMBED_BATCH_SIZE, total_count)
         first_embeddings = embed_batch(texts[:first_end])
         embedding_dim = first_embeddings.shape[1]
@@ -143,6 +156,7 @@ def encode_split_to_h5(split_name, dataset, h5_file):
         if completed == 0:
             split_dataset[0:first_end] = first_embeddings
             split_dataset.attrs["completed"] = first_end
+            # 每次写完立刻 flush，尽量减少中断时的丢失窗口。
             h5_file.flush()
             completed = first_end
             time.sleep(SLEEP_SECONDS)
@@ -172,6 +186,7 @@ def encode_split_to_h5(split_name, dataset, h5_file):
                     f"expected={split_dataset.shape[1]}, got={batch_embeddings.shape[1]}"
                 )
 
+            # 关键点：这里是“按切片原地写入”，不是把旧数据整块重写一遍。
             split_dataset[start:end] = batch_embeddings
             split_dataset.attrs["completed"] = end
             h5_file.flush()
@@ -183,6 +198,7 @@ def encode_split_to_h5(split_name, dataset, h5_file):
 
 
 def run_embedding_store(datasets, output_base_dir):
+    """执行 embedding 主流程，并对三个 split 逐个续跑。"""
     output_dir = ensure_output_dir(output_base_dir)
     h5_path = output_dir / OUTPUT_FILENAME
     metadata_by_split = {}
@@ -199,6 +215,7 @@ def run_embedding_store(datasets, output_base_dir):
 
 
 def main():
+    """允许单独运行 embedding_store。"""
     from dataloader import load_datasets
 
     current_dir = Path(__file__).resolve().parent

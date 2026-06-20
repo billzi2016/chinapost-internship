@@ -1,3 +1,14 @@
+"""关键词分析共用工具。
+
+这里集中维护：
+1. 停用词
+2. token 规范化逻辑
+3. “单条完整对话 = 一个 document”的共用清洗方法
+4. 不同分析模块的输出目录创建
+
+这样 TF-IDF / TextRank / KeyBERT 三种方案在清洗口径上保持一致。
+"""
+
 TOP_K = 30
 MIN_DOC_FREQ = 5
 MAX_DOC_FREQ_RATIO = 0.45
@@ -21,6 +32,7 @@ SINGLE_CHAR_STOPWORDS = {
 
 
 def normalize_token(token):
+    """把原始 token 规范化成更适合关键词分析的形式。"""
     token = token.strip().lower()
     if not token:
         return ""
@@ -40,10 +52,12 @@ def normalize_token(token):
 
 
 def filter_document(tokens):
+    """清洗一条 document 的 token 列表。"""
     return [normalized for token in tokens if (normalized := normalize_token(token))]
 
 
 def get_all_documents(basic_results):
+    """把 train / val / test 三个 split 的 documents 合并成全量列表。"""
     documents = []
     for metrics in basic_results.values():
         documents.extend(metrics.get("documents", []))
@@ -51,6 +65,7 @@ def get_all_documents(basic_results):
 
 
 def ensure_output_dir(base_dir, dirname):
+    """创建某一种关键词方法自己的输出目录。"""
     output_dir = base_dir / "outputs" / dirname
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir

@@ -1,3 +1,10 @@
+"""filter 模块的降维可视化。
+
+这里的图主要用来回答两个问题：
+1. 全量对话在 embedding 空间里大致怎么分布
+2. 被 LLM 判定为快递/邮政相关的对话，是否形成可见的聚类区域
+"""
+
 import json
 import os
 from pathlib import Path
@@ -23,12 +30,14 @@ N_JOBS = max((os.cpu_count() or 1) - 2, 1)
 
 
 def ensure_output_dir(base_dir):
+    """确保降维图输出目录存在。"""
     output_dir = base_dir / "outputs" / OUTPUT_DIRNAME
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 
 
 def load_embeddings(h5_path):
+    """读取 HDF5 中三个 split 的 embedding。"""
     embeddings = {}
     with h5py.File(h5_path, "r") as h5_file:
         for split_name in ("train", "val", "test"):
@@ -37,11 +46,13 @@ def load_embeddings(h5_path):
 
 
 def load_filter_results(json_path):
+    """读取 LLM 过滤结果。"""
     with json_path.open("r", encoding="utf-8") as file:
         return json.load(file)
 
 
 def get_selected_mask(split_results):
+    """把过滤结果转成布尔 mask，方便绘图时区分两类点。"""
     return np.asarray(
         [item["is_postal_related"] for item in split_results],
         dtype=bool,
@@ -49,6 +60,12 @@ def get_selected_mask(split_results):
 
 
 def save_scatter(points, mask, title, output_path):
+    """保存二维散点图。
+
+    颜色约定：
+    - 灰色：其他对话
+    - 红色：被筛出的快递/邮政相关对话
+    """
     plt.figure(figsize=(10, 8))
     plt.scatter(
         points[~mask, 0],
@@ -78,11 +95,17 @@ def save_scatter(points, mask, title, output_path):
 
 
 def run_pca(embeddings):
+    """执行 PCA，作为线性降维基线。"""
     reducer = PCA(n_components=2, random_state=42)
     return reducer.fit_transform(embeddings)
 
 
 def run_tsne(embeddings):
+    """执行 t-SNE。
+
+    这里的 n_jobs 设置为 CPU 核数减 2，
+    尽量减少把整机资源吃满的风险。
+    """
     reducer = TSNE(
         n_components=2,
         random_state=42,
@@ -94,6 +117,7 @@ def run_tsne(embeddings):
 
 
 def run_umap(embeddings):
+    """执行 UMAP；如果没装依赖则直接跳过。"""
     if umap is None:
         return None
     reducer = umap.UMAP(n_components=2, random_state=42, n_jobs=N_JOBS)
@@ -101,6 +125,7 @@ def run_umap(embeddings):
 
 
 def combine_splits(embeddings_by_split, filter_results):
+    """把 train / val / test 合并成一套全量 embedding 与 mask。"""
     arrays = []
     masks = []
 
@@ -112,12 +137,14 @@ def combine_splits(embeddings_by_split, filter_results):
 
 
 def generate_visualizations(output_base_dir):
+    """执行 filter 模块的完整降维可视化流程。"""
     output_dir = ensure_output_dir(output_base_dir)
     embeddings_dir = output_base_dir / "outputs" / "embeddings"
     filter_dir = output_base_dir / "outputs" / "llm_filter"
     embeddings_by_split = load_embeddings(embeddings_dir / EMBED_FILENAME)
     filter_results = load_filter_results(filter_dir / FILTER_FILENAME)
 
+    # 先分别画 train / val / test，再画 all，方便既看局部也看全局。
     for split_name in ("train", "val", "test"):
         embeddings = embeddings_by_split[split_name]
         mask = get_selected_mask(filter_results[split_name])
@@ -169,6 +196,7 @@ def generate_visualizations(output_base_dir):
 
 
 def main():
+    """允许单独运行降维可视化。"""
     current_dir = Path(__file__).resolve().parent
     generate_visualizations(current_dir)
 

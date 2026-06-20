@@ -1,5 +1,6 @@
 h5py
 numpy
+ollama
 tqdm
 scikit-learn
 umap-learn
