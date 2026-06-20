@@ -1,0 +1,610 @@
+{
+  "train": [
+    {
+      "token": "商品",
+      "score": 226.438868,
+      "document_frequency": 3926
+    },
+    {
+      "token": "取消",
+      "score": 219.539596,
+      "document_frequency": 1545
+    },
+    {
+      "token": "发票",
+      "score": 188.840405,
+      "document_frequency": 937
+    },
+    {
+      "token": "退款",
+      "score": 178.139554,
+      "document_frequency": 1624
+    },
+    {
+      "token": "配送",
+      "score": 171.229238,
+      "document_frequency": 1870
+    },
+    {
+      "token": "支持",
+      "score": 159.577956,
+      "document_frequency": 3747
+    },
+    {
+      "token": "解决",
+      "score": 157.939255,
+      "document_frequency": 3793
+    },
+    {
+      "token": "地址",
+      "score": 157.100879,
+      "document_frequency": 1417
+    },
+    {
+      "token": "提供",
+      "score": 143.965142,
+      "document_frequency": 2724
+    },
+    {
+      "token": "祝您",
+      "score": 143.220786,
+      "document_frequency": 3584
+    },
+    {
+      "token": "感谢您",
+      "score": 142.250649,
+      "document_frequency": 3418
+    },
+    {
+      "token": "怎么",
+      "score": 141.666321,
+      "document_frequency": 2607
+    },
+    {
+      "token": "妹子",
+      "score": 136.24638,
+      "document_frequency": 1746
+    },
+    {
+      "token": "商家",
+      "score": 136.050822,
+      "document_frequency": 1169
+    },
+    {
+      "token": "客气",
+      "score": 134.309832,
+      "document_frequency": 2767
+    },
+    {
+      "token": "退货",
+      "score": 134.159838,
+      "document_frequency": 1445
+    },
+    {
+      "token": "修改",
+      "score": 133.393559,
+      "document_frequency": 1051
+    },
+    {
+      "token": "愉快",
+      "score": 129.597454,
+      "document_frequency": 3178
+    },
+    {
+      "token": "电话",
+      "score": 129.007379,
+      "document_frequency": 1705
+    },
+    {
+      "token": "售后",
+      "score": 126.802525,
+      "document_frequency": 1296
+    },
+    {
+      "token": "快递",
+      "score": 126.725239,
+      "document_frequency": 1326
+    },
+    {
+      "token": "之前",
+      "score": 126.482172,
+      "document_frequency": 2024
+    },
+    {
+      "token": "生活",
+      "score": 125.893622,
+      "document_frequency": 3053
+    },
+    {
+      "token": "点击",
+      "score": 125.040458,
+      "document_frequency": 2381
+    },
+    {
+      "token": "等待",
+      "score": 121.790064,
+      "document_frequency": 2210
+    },
+    {
+      "token": "再见",
+      "score": 121.710277,
+      "document_frequency": 2611
+    },
+    {
+      "token": "下单",
+      "score": 118.909819,
+      "document_frequency": 1614
+    },
+    {
+      "token": "评价",
+      "score": 118.105567,
+      "document_frequency": 2364
+    },
+    {
+      "token": "发货",
+      "score": 115.768624,
+      "document_frequency": 1264
+    },
+    {
+      "token": "提交",
+      "score": 114.141535,
+      "document_frequency": 1385
+    }
+  ],
+  "val": [
+    {
+      "token": "商品",
+      "score": 19.384007,
+      "document_frequency": 351
+    },
+    {
+      "token": "取消",
+      "score": 18.551961,
+      "document_frequency": 138
+    },
+    {
+      "token": "售后",
+      "score": 16.314333,
+      "document_frequency": 127
+    },
+    {
+      "token": "退款",
+      "score": 16.257933,
+      "document_frequency": 140
+    },
+    {
+      "token": "发票",
+      "score": 15.479118,
+      "document_frequency": 87
+    },
+    {
+      "token": "地址",
+      "score": 13.730183,
+      "document_frequency": 126
+    },
+    {
+      "token": "支持",
+      "score": 13.626874,
+      "document_frequency": 309
+    },
+    {
+      "token": "解决",
+      "score": 13.464418,
+      "document_frequency": 320
+    },
+    {
+      "token": "配送",
+      "score": 13.016015,
+      "document_frequency": 150
+    },
+    {
+      "token": "退货",
+      "score": 12.828779,
+      "document_frequency": 146
+    },
+    {
+      "token": "感谢您",
+      "score": 12.701948,
+      "document_frequency": 287
+    },
+    {
+      "token": "怎么",
+      "score": 12.395297,
+      "document_frequency": 222
+    },
+    {
+      "token": "提供",
+      "score": 12.289255,
+      "document_frequency": 215
+    },
+    {
+      "token": "祝您",
+      "score": 12.072438,
+      "document_frequency": 307
+    },
+    {
+      "token": "之前",
+      "score": 11.9332,
+      "document_frequency": 171
+    },
+    {
+      "token": "快递",
+      "score": 11.428012,
+      "document_frequency": 117
+    },
+    {
+      "token": "下单",
+      "score": 11.369439,
+      "document_frequency": 161
+    },
+    {
+      "token": "妹子",
+      "score": 11.276204,
+      "document_frequency": 141
+    },
+    {
+      "token": "愉快",
+      "score": 11.185036,
+      "document_frequency": 276
+    },
+    {
+      "token": "安装",
+      "score": 11.169363,
+      "document_frequency": 36
+    },
+    {
+      "token": "商家",
+      "score": 11.098331,
+      "document_frequency": 96
+    },
+    {
+      "token": "客气",
+      "score": 11.068715,
+      "document_frequency": 225
+    },
+    {
+      "token": "生活",
+      "score": 10.776635,
+      "document_frequency": 258
+    },
+    {
+      "token": "点击",
+      "score": 10.679229,
+      "document_frequency": 203
+    },
+    {
+      "token": "等待",
+      "score": 10.672361,
+      "document_frequency": 171
+    },
+    {
+      "token": "评价",
+      "score": 10.542313,
+      "document_frequency": 199
+    },
+    {
+      "token": "服务",
+      "score": 10.431401,
+      "document_frequency": 172
+    },
+    {
+      "token": "再见",
+      "score": 10.341488,
+      "document_frequency": 224
+    },
+    {
+      "token": "时间",
+      "score": 10.093712,
+      "document_frequency": 149
+    },
+    {
+      "token": "时候",
+      "score": 9.869507,
+      "document_frequency": 164
+    }
+  ],
+  "test": [
+    {
+      "token": "取消",
+      "score": 20.987932,
+      "document_frequency": 144
+    },
+    {
+      "token": "商品",
+      "score": 20.068332,
+      "document_frequency": 348
+    },
+    {
+      "token": "发票",
+      "score": 17.59254,
+      "document_frequency": 94
+    },
+    {
+      "token": "配送",
+      "score": 17.528689,
+      "document_frequency": 145
+    },
+    {
+      "token": "退款",
+      "score": 15.069233,
+      "document_frequency": 133
+    },
+    {
+      "token": "支持",
+      "score": 14.758524,
+      "document_frequency": 329
+    },
+    {
+      "token": "修改",
+      "score": 14.432345,
+      "document_frequency": 106
+    },
+    {
+      "token": "解决",
+      "score": 14.078792,
+      "document_frequency": 344
+    },
+    {
+      "token": "祝您",
+      "score": 13.695995,
+      "document_frequency": 328
+    },
+    {
+      "token": "地址",
+      "score": 13.601992,
+      "document_frequency": 112
+    },
+    {
+      "token": "感谢您",
+      "score": 13.159092,
+      "document_frequency": 309
+    },
+    {
+      "token": "售后",
+      "score": 13.0413,
+      "document_frequency": 111
+    },
+    {
+      "token": "提供",
+      "score": 12.888203,
+      "document_frequency": 228
+    },
+    {
+      "token": "客气",
+      "score": 12.883577,
+      "document_frequency": 257
+    },
+    {
+      "token": "快递",
+      "score": 12.809169,
+      "document_frequency": 129
+    },
+    {
+      "token": "之前",
+      "score": 12.633169,
+      "document_frequency": 203
+    },
+    {
+      "token": "妹子",
+      "score": 12.604673,
+      "document_frequency": 149
+    },
+    {
+      "token": "愉快",
+      "score": 12.429673,
+      "document_frequency": 290
+    },
+    {
+      "token": "退货",
+      "score": 12.383626,
+      "document_frequency": 116
+    },
+    {
+      "token": "电话",
+      "score": 11.969328,
+      "document_frequency": 141
+    },
+    {
+      "token": "生活",
+      "score": 11.94737,
+      "document_frequency": 277
+    },
+    {
+      "token": "怎么",
+      "score": 11.746835,
+      "document_frequency": 198
+    },
+    {
+      "token": "再见",
+      "score": 11.584423,
+      "document_frequency": 235
+    },
+    {
+      "token": "点击",
+      "score": 11.311724,
+      "document_frequency": 229
+    },
+    {
+      "token": "等待",
+      "score": 11.117566,
+      "document_frequency": 189
+    },
+    {
+      "token": "审核",
+      "score": 10.988548,
+      "document_frequency": 107
+    },
+    {
+      "token": "下单",
+      "score": 10.871809,
+      "document_frequency": 139
+    },
+    {
+      "token": "商家",
+      "score": 10.576331,
+      "document_frequency": 99
+    },
+    {
+      "token": "评价",
+      "score": 10.072113,
+      "document_frequency": 200
+    },
+    {
+      "token": "站点",
+      "score": 9.98289,
+      "document_frequency": 83
+    }
+  ],
+  "all": [
+    {
+      "token": "商品",
+      "score": 265.922625,
+      "document_frequency": 4625
+    },
+    {
+      "token": "取消",
+      "score": 259.191553,
+      "document_frequency": 1827
+    },
+    {
+      "token": "发票",
+      "score": 222.021569,
+      "document_frequency": 1118
+    },
+    {
+      "token": "退款",
+      "score": 209.541366,
+      "document_frequency": 1897
+    },
+    {
+      "token": "配送",
+      "score": 201.777998,
+      "document_frequency": 2165
+    },
+    {
+      "token": "支持",
+      "score": 188.004873,
+      "document_frequency": 4385
+    },
+    {
+      "token": "解决",
+      "score": 185.521051,
+      "document_frequency": 4457
+    },
+    {
+      "token": "地址",
+      "score": 184.498136,
+      "document_frequency": 1655
+    },
+    {
+      "token": "提供",
+      "score": 169.185147,
+      "document_frequency": 3167
+    },
+    {
+      "token": "祝您",
+      "score": 169.044978,
+      "document_frequency": 4219
+    },
+    {
+      "token": "感谢您",
+      "score": 168.144407,
+      "document_frequency": 4014
+    },
+    {
+      "token": "怎么",
+      "score": 165.876622,
+      "document_frequency": 3027
+    },
+    {
+      "token": "妹子",
+      "score": 160.186627,
+      "document_frequency": 2036
+    },
+    {
+      "token": "退货",
+      "score": 159.445212,
+      "document_frequency": 1707
+    },
+    {
+      "token": "客气",
+      "score": 158.344616,
+      "document_frequency": 3249
+    },
+    {
+      "token": "商家",
+      "score": 157.814047,
+      "document_frequency": 1364
+    },
+    {
+      "token": "修改",
+      "score": 157.120735,
+      "document_frequency": 1236
+    },
+    {
+      "token": "售后",
+      "score": 156.387148,
+      "document_frequency": 1534
+    },
+    {
+      "token": "愉快",
+      "score": 153.258224,
+      "document_frequency": 3744
+    },
+    {
+      "token": "之前",
+      "score": 151.146147,
+      "document_frequency": 2398
+    },
+    {
+      "token": "快递",
+      "score": 151.069761,
+      "document_frequency": 1572
+    },
+    {
+      "token": "电话",
+      "score": 150.867462,
+      "document_frequency": 1981
+    },
+    {
+      "token": "生活",
+      "score": 148.663189,
+      "document_frequency": 3588
+    },
+    {
+      "token": "点击",
+      "score": 147.077823,
+      "document_frequency": 2813
+    },
+    {
+      "token": "再见",
+      "score": 143.679293,
+      "document_frequency": 3070
+    },
+    {
+      "token": "等待",
+      "score": 143.609312,
+      "document_frequency": 2570
+    },
+    {
+      "token": "下单",
+      "score": 141.22575,
+      "document_frequency": 1914
+    },
+    {
+      "token": "评价",
+      "score": 138.752645,
+      "document_frequency": 2763
+    },
+    {
+      "token": "审核",
+      "score": 134.023642,
+      "document_frequency": 1469
+    },
+    {
+      "token": "发货",
+      "score": 133.52465,
+      "document_frequency": 1482
+    }
+  ]
+}

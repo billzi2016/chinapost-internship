@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# datasets
+CSDS/
+
+# external / large project directories
+Whisper-main/
+
+# model artifacts
+*.h5
+
+# Python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
