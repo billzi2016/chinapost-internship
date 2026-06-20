@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from pathlib import Path
 from urllib import error, request
 
@@ -11,6 +12,8 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 FILTER_MODEL = os.environ.get("FILTER_MODEL", "gpt-oss:20b")
 OUTPUT_DIRNAME = "llm_filter"
 OUTPUT_FILENAME = "postal_filter_results.json"
+MAX_RETRIES = 3
+RETRY_SLEEP_SECONDS = 1
 SYSTEM_PROMPT = (
     "你是一个严格的中文客服数据分类器。"
     "判断给定对话是否和快递、物流、配送、邮政、EMS、运费、签收、揽收、退费、地址修改等相关。"
@@ -53,15 +56,28 @@ def classify_dialogue(text):
         ],
         "options": {"temperature": 0},
     }
-    response = post_json(f"{OLLAMA_URL}/api/chat", payload)
-    message = response.get("message", {})
-    content = message.get("content", "").strip().lower()
-    normalized = content.replace(" ", "")
-    if normalized == "true":
-        return True, content
-    if normalized == "false":
-        return False, content
-    raise RuntimeError(f"模型返回不是 true/false: {content}")
+
+    last_error = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = post_json(f"{OLLAMA_URL}/api/chat", payload)
+            message = response.get("message", {})
+            content = message.get("content", "").strip().lower()
+            normalized = content.replace(" ", "")
+            if normalized == "true":
+                return True, content
+            if normalized == "false":
+                return False, content
+            last_error = RuntimeError(f"模型返回不是 true/false: {content}")
+        except RuntimeError as exc:
+            last_error = exc
+
+        if attempt < MAX_RETRIES:
+            time.sleep(RETRY_SLEEP_SECONDS)
+
+    raise RuntimeError(
+        f"分类失败，已重试 {MAX_RETRIES} 次。最后一次错误: {last_error}"
+    )
 
 
 def save_results(results, output_path):
