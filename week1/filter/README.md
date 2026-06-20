@@ -5,7 +5,7 @@
 ## 文件说明
 
 - `dataloader.py`：读取数据并把一条完整对话拼成文本
-- `embedding_store.py`：调用 `qwen3-embedding:8b`，按 batch=`128` 编码，保存到 `h5`
+- `embedding_store.py`：调用 `qwen3-embedding:8b`，按 batch=`32` 编码，分块写入 `h5`
 - `llm_filter.py`：调用 `gpt-oss:20b`，判断一条对话是否和快递/邮政相关，只接受 `true/false`
 - `vis.py`：读取 embedding 和过滤结果，生成 `PCA / t-SNE / UMAP` 图
 - `main.py`：统一入口，顺序调用三个阶段
@@ -22,7 +22,9 @@
 - embedding 粒度：单条完整对话
 - `h5` 数据集：`train`、`val`、`test`
 - 压缩：`compression="gzip"`，`compression_opts=1`
+- HDF5 写入方式：固定 shape 的 dataset 按切片分块写入，并记录 `completed` 断点，可续跑且不重复重写前面已完成部分
 - LLM 过滤粒度：单条完整对话
+- LLM 过滤保存方式：读取已有 `postal_filter_results.json` 后从断点继续，每处理 `32` 条保存一次，避免中断后重复调用前面已完成的样本
 - 可视化颜色：
   - 灰色：全部数据中的其他对话
   - 红色：被 LLM 判定为快递/邮政相关的对话
@@ -41,8 +43,16 @@
 
 - `OLLAMA_URL`
 - `EMBED_MODEL`
+- `EMBED_BATCH_SIZE`
 - `FILTER_MODEL`
 - `EMBED_PREFIX`
+
+## 安装方式
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week1/filter
+pip install -r requirements.txt
+```
 
 ## 关于 embedding 前缀
 

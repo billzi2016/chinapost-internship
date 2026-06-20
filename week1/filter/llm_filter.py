@@ -12,6 +12,7 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 FILTER_MODEL = os.environ.get("FILTER_MODEL", "gpt-oss:20b")
 OUTPUT_DIRNAME = "llm_filter"
 OUTPUT_FILENAME = "postal_filter_results.json"
+SAVE_EVERY = 32
 MAX_RETRIES = 3
 RETRY_SLEEP_SECONDS = 1
 SYSTEM_PROMPT = (
@@ -85,17 +86,35 @@ def save_results(results, output_path):
         json.dump(results, file, ensure_ascii=False, indent=2)
 
 
+def load_existing_results(output_path):
+    if not output_path.exists():
+        return {}
+
+    with output_path.open("r", encoding="utf-8") as file:
+        return json.load(file)
+
+
 def run_llm_filter(datasets, output_base_dir):
     output_dir = ensure_output_dir(output_base_dir)
-    results = {}
+    output_path = output_dir / OUTPUT_FILENAME
+    results = load_existing_results(output_path)
 
     for split_name, dataset in datasets.items():
-        split_results = []
-        positive_count = 0
+        split_results = results.get(split_name, [])
+        completed = len(split_results)
+        positive_count = sum(
+            1 for item in split_results if item.get("is_postal_related", False)
+        )
 
-        for index, sample in enumerate(
-            tqdm(dataset, desc=f"{split_name} llm filter", unit="dialogue")
-        ):
+        progress_bar = tqdm(
+            total=len(dataset),
+            initial=completed,
+            desc=f"{split_name} llm filter",
+            unit="dialogue",
+        )
+
+        for index in range(completed, len(dataset)):
+            sample = dataset[index]
             text = dialogue_to_text(sample)
             is_related, raw_response = classify_dialogue(text)
             if is_related:
@@ -110,13 +129,20 @@ def run_llm_filter(datasets, output_base_dir):
                     "raw_response": raw_response,
                 }
             )
+            progress_bar.update(1)
+
+            if len(split_results) % SAVE_EVERY == 0:
+                results[split_name] = split_results
+                save_results(results, output_path)
+
+        progress_bar.close()
 
         results[split_name] = split_results
         print(
             f"{split_name} 过滤完成: {positive_count}/{len(split_results)} 条被判定为快递/邮政相关"
         )
 
-    save_results(results, output_dir / OUTPUT_FILENAME)
+    save_results(results, output_path)
     return results
 
 
