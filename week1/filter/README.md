@@ -5,7 +5,7 @@
 ## 文件说明
 
 - `dataloader.py`：读取数据并把一条完整对话拼成文本
-- `embedding_store.py`：调用 `qwen3-embedding:8b`，按 batch=`32` 编码，分块写入 `h5`
+- `embedding_store.py`：调用 `qwen3-embedding:8b`，按 request batch=`8` 编码，在内存中攒够 `32` 条后分块写入 `h5`
 - `llm_filter.py`：调用 `gpt-oss:20b`，判断一条对话是否和快递/邮政相关，只接受 `true/false`
 - `vis.py`：读取 embedding 和过滤结果，生成 `PCA / t-SNE / UMAP` 图
 - `main.py`：统一入口，顺序调用三个阶段
@@ -44,6 +44,7 @@
 - `OLLAMA_URL`
 - `EMBED_MODEL`
 - `EMBED_BATCH_SIZE`
+- `WRITE_BATCH_SIZE`
 - `FILTER_MODEL`
 - `EMBED_PREFIX`
 

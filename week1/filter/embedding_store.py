@@ -24,7 +24,8 @@ from dataloader import dialogue_to_text
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "qwen3-embedding:8b")
-EMBED_BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "32"))
+EMBED_BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "8"))
+WRITE_BATCH_SIZE = int(os.environ.get("WRITE_BATCH_SIZE", "32"))
 EMBED_PREFIX = os.environ.get(
     "EMBED_PREFIX",
     (
@@ -85,6 +86,19 @@ def embed_batch(texts):
     if not embeddings:
         raise RuntimeError("ollama.Client.embed(...) 没有返回 embeddings。")
     return np.asarray(embeddings, dtype=np.float32)
+
+
+def flush_embedding_buffer(split_dataset, start_index, buffer_arrays, h5_file):
+    """把内存里暂存的一批 embedding 一次性切片写入 HDF5。"""
+    if not buffer_arrays:
+        return start_index
+
+    merged = np.concatenate(buffer_arrays, axis=0)
+    end_index = start_index + merged.shape[0]
+    split_dataset[start_index:end_index] = merged
+    split_dataset.attrs["completed"] = end_index
+    h5_file.flush()
+    return end_index
 
 
 def ensure_split_dataset(h5_file, split_name, total_count, embedding_dim):
@@ -171,6 +185,9 @@ def encode_split_to_h5(split_name, dataset, h5_file):
         unit="batch",
     ) as progress_bar:
         start = completed
+        buffer_arrays = []
+        pending_count = 0
+
         while start < total_count:
             end = min(start + EMBED_BATCH_SIZE, total_count)
             batch_embeddings = embed_batch(texts[start:end])
@@ -186,13 +203,27 @@ def encode_split_to_h5(split_name, dataset, h5_file):
                     f"expected={split_dataset.shape[1]}, got={batch_embeddings.shape[1]}"
                 )
 
-            # 关键点：这里是“按切片原地写入”，不是把旧数据整块重写一遍。
-            split_dataset[start:end] = batch_embeddings
-            split_dataset.attrs["completed"] = end
-            h5_file.flush()
+            # 这里把“请求批次”和“写盘批次”拆开：
+            # - 请求 Ollama 时尽量小，降低服务端崩溃概率
+            # - 写 HDF5 时尽量按较大的块落盘，减少 flush 频率
+            buffer_arrays.append(batch_embeddings)
+            pending_count += batch_embeddings.shape[0]
+
+            if pending_count >= WRITE_BATCH_SIZE:
+                completed = flush_embedding_buffer(
+                    split_dataset, completed, buffer_arrays, h5_file
+                )
+                buffer_arrays = []
+                pending_count = 0
+
             start = end
             progress_bar.update(1)
             time.sleep(SLEEP_SECONDS)
+
+        if buffer_arrays:
+            completed = flush_embedding_buffer(
+                split_dataset, completed, buffer_arrays, h5_file
+            )
 
     return split_dataset.shape, metadata
 
