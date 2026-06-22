@@ -19,3 +19,9 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# moved filter outputs
+week1/filter/outputs/embeddings/
+week1/filter/outputs/llm_filter/
+week2/data/embeddings/
+week2/data/llm_filter/
