@@ -30,6 +30,29 @@ OUTPUT_DIRNAME = "vis"
 EMBED_FILENAME = "dialogue_embeddings.h5"
 FILTER_FILENAME = "postal_filter_results.json"
 N_JOBS = max((os.cpu_count() or 1) - 2, 1)
+FONT_CANDIDATES = (
+    "/System/Library/Fonts/STHeiti Medium.ttc",
+    "/System/Library/AssetsV2/com_apple_MobileAsset_Font8/86ba2c91f017a3749571a82f2c6d890ac7ffb2fb.asset/AssetData/PingFang.ttc",
+    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+    "/System/Library/Fonts/Supplemental/Songti.ttc",
+    "/Library/Fonts/Arial Unicode.ttf",
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+)
+
+
+def get_font_path():
+    """自动寻找本机可用的中文字体。"""
+    for font_path in FONT_CANDIDATES:
+        if Path(font_path).exists():
+            return font_path
+    return None
+
+
+def configure_matplotlib(font_path):
+    """统一配置 matplotlib 的中文字体和负号显示。"""
+    plt.rcParams["axes.unicode_minus"] = False
+    if font_path:
+        plt.rcParams["font.sans-serif"] = ["Arial Unicode MS", "Heiti SC", "Songti SC"]
 
 
 def ensure_output_dir(base_dir):
@@ -198,6 +221,8 @@ def combine_splits(embeddings_by_split, filter_results):
 def generate_visualizations(output_base_dir):
     """执行 filter 模块的完整降维可视化流程。"""
     output_dir = ensure_output_dir(output_base_dir)
+    font_path = get_font_path()
+    configure_matplotlib(font_path)
     embeddings_dir = output_base_dir / "outputs" / "embeddings"
     filter_dir = output_base_dir / "outputs" / "llm_filter"
     data_dir = output_base_dir.parent.parent / "CSDS"
