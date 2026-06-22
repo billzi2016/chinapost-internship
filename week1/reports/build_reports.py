@@ -26,6 +26,7 @@ from __future__ import annotations
 import html
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 from markdown import markdown
@@ -293,11 +294,22 @@ def convert_one_report(browser, source: Path, output: Path, title: str) -> None:
     html_content = render_markdown_to_html(source, title)
     output.parent.mkdir(parents=True, exist_ok=True)
 
+    # 这里不再直接用 set_content 渲染 HTML 字符串，
+    # 而是先把 HTML 落成临时文件，再让 Chromium 以 file:// 方式打开。
+    # 这样浏览器会按真实文件系统路径解析相对图片资源，
+    # 对 report.md 里大量 `vis/*.png` 的本地图片更稳。
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        suffix=".html",
+        delete=False,
+    ) as temp_file:
+        temp_file.write(html_content)
+        temp_html_path = Path(temp_file.name)
+
     page = browser.new_page()
     try:
-        # HTML 头部已经通过 <base href="..."> 指定了相对资源解析目录，
-        # 因此像 `vis/train_pca.png` 这类图片路径能被浏览器直接正确加载。
-        page.set_content(html_content, wait_until="networkidle")
+        page.goto(temp_html_path.resolve().as_uri(), wait_until="networkidle")
 
         page.pdf(
             path=str(output),
@@ -313,6 +325,7 @@ def convert_one_report(browser, source: Path, output: Path, title: str) -> None:
         )
     finally:
         page.close()
+        temp_html_path.unlink(missing_ok=True)
 
 
 def main() -> int:
