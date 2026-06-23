@@ -83,9 +83,9 @@ FinalSumm
 - `QRole`：提问角色，当前样例中为“用户”。
 - `Dialogue`：完整多轮对话。
 - `QA`：对话中抽取出的问答摘要和 intent。
-- `UserSumm`：用户侧总结。
-- `AgentSumm`：客服侧总结。
-- `FinalSumm`：整段对话总结。
+- `UserSumm`：用户侧总结，实际格式为字符串列表。
+- `AgentSumm`：客服侧总结，实际格式为字符串列表。
+- `FinalSumm`：整段对话总结，实际格式为字符串列表。
 
 ### 2.2 Dialogue 格式
 
@@ -159,7 +159,7 @@ intent
 - `AnsSummShortUttIDs`：短回答对应的 `Dialogue.turn` 列表。
 - `AnsSummLongUttIDs`：长回答对应的 `Dialogue.turn` 列表。
 - `QASumm`：问答合并摘要。
-- `intent`：业务意图。
+- `intent`：业务意图，可能为 `null`。
 
 实现要求：
 

@@ -1,0 +1,61 @@
+from post_ai.retrieval import FaissPostalIndex
+from post_ai.schemas import PostalDocument
+from post_ai.config import AppConfig
+from post_ai.pipeline import load_postal_documents
+
+
+def _fake_vector(text: str) -> list[float]:
+    delivery_words = ["配送", "派送", "包裹", "站点", "快递"]
+    refund_words = ["退款", "优惠券", "退回"]
+    delivery = sum(word in text for word in delivery_words)
+    refund = sum(word in text for word in refund_words)
+    return [float(delivery), float(refund), 0.1]
+
+
+def test_pipeline_shape_with_mock_embeddings() -> None:
+    docs = [
+        PostalDocument(
+            split="train",
+            index=0,
+            session_id="s0",
+            dialogue_id=0,
+            source_path="train.json",
+            content="用户咨询包裹派送到哪个站点，客服说明等待配送。",
+            metadata={"intents": ["联系配送"]},
+        ),
+        PostalDocument(
+            split="train",
+            index=1,
+            session_id="s1",
+            dialogue_id=1,
+            source_path="train.json",
+            content="用户咨询优惠券取消订单后是否退回。",
+            metadata={"intents": ["优惠券退回"]},
+        ),
+    ]
+    index = FaissPostalIndex.build(
+        documents=docs,
+        vectors=[_fake_vector(doc.content) for doc in docs],
+        embedding_model="mock",
+        provider="mock",
+    )
+
+    hits = index.search(_fake_vector("我的包裹什么时候派送"), top_k=1)
+
+    assert hits[0].document.session_id == "s0"
+
+
+def test_real_data_to_faiss_pipeline_with_mock_embeddings() -> None:
+    config = AppConfig.from_env()
+    docs = load_postal_documents(config)[:50]
+    index = FaissPostalIndex.build(
+        documents=docs,
+        vectors=[_fake_vector(doc.content) for doc in docs],
+        embedding_model="mock",
+        provider="mock",
+    )
+
+    hits = index.search(_fake_vector("包裹站点配送咨询"), top_k=3)
+
+    assert len(hits) == 3
+    assert all(hit.document.metadata["raw_filter_response"] == "true" for hit in hits)

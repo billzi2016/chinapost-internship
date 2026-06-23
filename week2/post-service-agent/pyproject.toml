@@ -1,0 +1,15 @@
+[project]
+name = "post-service-agent"
+version = "0.1.0"
+description = "Postal customer-service RAG assistant."
+requires-python = ">=3.11"
+dependencies = [
+  "faiss-cpu",
+  "pydantic>=2",
+  "pytest",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["post_ai/tests"]
+pythonpath = ["."]
+addopts = "-q"

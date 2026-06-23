@@ -31,7 +31,14 @@
 │   ├── retrieval.py
 │   ├── prompts.py
 │   ├── tickets.py
-│   └── schemas.py
+│   ├── schemas.py
+│   └── tests/
+│       ├── unit/
+│       │   ├── test_ai_embeddings.py
+│       │   ├── test_ai_filter_mapping.py
+│       │   └── test_ai_ticket_schema.py
+│       └── integration/
+│           └── test_ai_pipeline.py
 ├── apps/
 │   ├── __init__.py
 │   ├── web/
@@ -112,9 +119,6 @@
 │           └── README.md
 ├── tests/
 │   ├── __init__.py
-│   ├── test_ai_embeddings.py
-│   ├── test_ai_filter_mapping.py
-│   ├── test_ai_ticket_schema.py
 │   ├── test_rag_ingest.py
 │   ├── test_retrieval.py
 │   ├── test_ticket_json.py
@@ -135,6 +139,8 @@ PRD 目录额外包含数据库迁移设计：
 ### `post_ai`
 
 AI 工具包。先独立实现并测试通过，再被 Django apps 调用。
+
+`post_ai/` 是一个可整体迁入 Django 项目的独立文件夹。AI 工具包自己的测试放在 `post_ai/tests/`，Django 项目测试放在项目级 `tests/`，两者分离。
 
 职责：
 
