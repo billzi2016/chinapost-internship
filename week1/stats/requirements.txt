@@ -1,6 +1,0 @@
-tiktoken
-matplotlib
-wordcloud
-keybert
-scikit-learn
-umap-learn
