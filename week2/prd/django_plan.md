@@ -266,12 +266,15 @@ Django ORM 核心数据层。
 - 当前没有 SFT 模型时返回前端可展示错误状态，并停止本轮生成。
 - `use_sft=true` 时不允许静默回退到 `gpt-oss:20b`。
 - 只有 `use_sft=false` 时，才通过默认 chat provider 使用 `gpt-oss:20b` 流式生成回答。
-- SSE 事件中逐步返回 token、引用、结束状态、工单 JSON。
+- SSE 事件中逐步返回 token、引用和结束状态。
+- 工单 JSON 不随每轮聊天自动生成，改由用户在会话级别手动生成。
 
 ### 7.4 工单 API
 
 - `GET /api/conversations/{conversation_id}/ticket`
-- `POST /api/conversations/{conversation_id}/ticket/regenerate`
+- `POST /api/conversations/{conversation_id}/ticket/generate`
+- 同一会话工单首次生成后锁定，后续重复请求返回已有工单，不覆盖、不新增。
+- `GET /api/provider/health`
 
 ## 8. SSE 事件格式
 
@@ -280,7 +283,6 @@ Django ORM 核心数据层。
 - `meta`
 - `citation`
 - `delta`
-- `ticket`
 - `error`
 - `done`
 
@@ -294,11 +296,6 @@ data: {"content": "您好，"}
 ```text
 event: citation
 data: {"document_id": 12, "score": 0.82, "quoted_text": "..."}
-```
-
-```text
-event: ticket
-data: {"payload": {"user_id": "...", "service_type": "..."}}
 ```
 
 ## 9. 静态资源版本策略

@@ -227,7 +227,8 @@ python manage.py ingest_postal_rag
 4. 取 Top K 邮政相关对话。
 5. 将引用对话拼入 prompt。
 6. 通过 chat provider 使用 `gpt-oss:20b` 生成回答。
-7. SSE 返回引用、token、最终工单 JSON。
+7. SSE 返回引用和 token。
+8. 用户手动生成工单时，再根据会话内容生成会话级工单 JSON。
 
 ## 7. RAG Prompt 要求
 
@@ -237,7 +238,7 @@ python manage.py ingest_postal_rag
 - 优先依据引用对话回答。
 - 不要使用非邮政客服泛化内容。
 - 不确定时说明缺少依据。
-- 回答后生成工单 JSON。
+- 工单 JSON 由会话级工单接口生成，不混在普通回答流里。
 - 引用内容只作为依据，不要逐字大段复述。
 
 ## 8. 引用展示
@@ -312,11 +313,12 @@ python manage.py ingest_postal_rag
 
 优先方案：
 
-1. 使用 `gpt-oss:20b` 根据完整对话和引用依据生成严格 JSON。
+1. 用户点击“生成工单”后，使用完整会话和引用依据生成严格 JSON。
 2. 后端解析 JSON。
 3. 使用 schema 校验字段完整性。
 4. 合法则保存。
 5. 不合法则触发一次修复 prompt。
+6. 同一会话首次生成后锁定，后续请求返回已有工单，不覆盖。
 
 备用方案：
 
