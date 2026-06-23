@@ -1,0 +1,18 @@
+.git
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+db.sqlite3
+
+# Large/generated local artifacts
+artifacts/faiss/
+
+# Source datasets live outside the image by default.
+../data/
+data/
+
+# Local-only files
+.env
+.env.*

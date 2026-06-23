@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Postal customer-service RAG assistant."
 requires-python = ">=3.11"
 dependencies = [
+  "Django>=5",
   "faiss-cpu",
+  "django-ninja>=1",
   "pydantic>=2",
   "PyYAML>=6",
   "pytest",

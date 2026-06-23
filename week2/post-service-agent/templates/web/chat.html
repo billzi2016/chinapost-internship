@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>邮政智能助手</h1>
+      <button class="btn btn-sm btn-success" type="button" id="new-chat">新建会话</button>
+    </div>
+
+    <nav class="conversation-list" aria-label="历史会话">
+      {% for conversation in conversations %}
+        <a href="#" class="conversation-item" data-id="{{ conversation.id }}">
+          {{ conversation.title|default:"未命名会话" }}
+        </a>
+      {% empty %}
+        <span class="empty-list">暂无会话</span>
+      {% endfor %}
+    </nav>
+
+    <section class="mode-panel" aria-label="模式设置">
+      <label class="form-check">
+        <input class="form-check-input" type="checkbox" id="use-rag" checked>
+        <span class="form-check-label">检索增强生成（RAG）</span>
+      </label>
+      <label class="form-check">
+        <input class="form-check-input" type="checkbox" id="use-sft">
+        <span class="form-check-label">监督微调模型（SFT）</span>
+      </label>
+      <p class="sft-warning" id="sft-warning" hidden>当前不存在 SFT 模型</p>
+    </section>
+  </aside>
+
+  <section class="chat-panel">
+    <div class="messages" id="messages" aria-live="polite"></div>
+    <form class="composer" id="chat-form">
+      <textarea class="form-control" id="message-input" rows="2" placeholder="输入邮政客服问题"></textarea>
+      <button class="btn btn-success" type="submit">发送</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

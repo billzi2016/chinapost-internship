@@ -16,6 +16,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .mypy_cache/
+db.sqlite3
 
 # Jupyter
 .ipynb_checkpoints/

@@ -1,0 +1,17 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>邮政智能助手</title>
+  <link href="{% static 'web/vendor/bootstrap.min.css' %}?v={{ static_version }}" rel="stylesheet">
+  <link href="{% static 'web/css/chat.css' %}?v={{ static_version }}" rel="stylesheet">
+</head>
+<body>
+  {% block content %}{% endblock %}
+  <script src="{% static 'web/vendor/marked.min.js' %}?v={{ static_version }}" defer></script>
+  <script src="{% static 'web/vendor/purify.min.js' %}?v={{ static_version }}" defer></script>
+  <script src="{% static 'web/js/chat.js' %}?v={{ static_version }}" defer></script>
+</body>
+</html>

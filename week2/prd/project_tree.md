@@ -46,68 +46,25 @@
 │           └── test_ai_pipeline.py
 ├── apps/
 │   ├── __init__.py
-│   ├── web/
+│   ├── core/
 │   │   ├── __init__.py
 │   │   ├── apps.py
-│   │   ├── urls.py
-│   │   ├── views.py
-│   │   ├── context_processors.py
-│   │   └── templatetags/
+│   │   ├── models.py
+│   │   └── migrations/
 │   │       ├── __init__.py
-│   │       └── static_version.py
+│   │       └── 0001_initial.py
 │   ├── api/
 │   │   ├── __init__.py
 │   │   ├── apps.py
-│   │   ├── urls.py
 │   │   ├── schemas.py
-│   │   └── routers/
-│   │       ├── __init__.py
-│   │       ├── chat.py
-│   │       ├── conversations.py
-│   │       └── tickets.py
-│   ├── conversations/
-│   │   ├── __init__.py
-│   │   ├── apps.py
-│   │   ├── admin.py
-│   │   ├── models.py
 │   │   ├── services.py
-│   │   └── migrations/
-│   │       └── __init__.py
-│   ├── rag/
-│   │   ├── __init__.py
-│   │   ├── apps.py
-│   │   ├── admin.py
-│   │   ├── models.py
-│   │   ├── services/
-│   │   │   ├── __init__.py
-│   │   │   ├── ingest.py
-│   │   │   ├── retrieval.py
-│   │   │   └── source_mapping.py
-│   │   ├── management/
-│   │   │   └── commands/
-│   │   │       ├── __init__.py
-│   │   │       └── ingest_postal_rag.py
-│   │   └── migrations/
-│   │       └── __init__.py
-│   ├── llm/
-│   │   ├── __init__.py
-│   │   ├── apps.py
-│   │   └── services/
-│   │       ├── __init__.py
-│   │       ├── providers.py
-│   │       ├── embedding.py
-│   │       ├── chat.py
-│   │       ├── titles.py
-│   │       └── tickets.py
-│   └── tickets/
+│   │   └── urls.py
+│   └── web/
 │       ├── __init__.py
 │       ├── apps.py
-│       ├── admin.py
-│       ├── models.py
-│       ├── schemas.py
-│       ├── services.py
-│       └── migrations/
-│           └── __init__.py
+│       ├── urls.py
+│       ├── views.py
+│       └── context_processors.py
 ├── templates/
 │   ├── base.html
 │   └── web/
@@ -117,9 +74,7 @@
 │       ├── css/
 │       │   └── chat.css
 │       ├── js/
-│       │   ├── chat.js
-│       │   ├── markdown.js
-│       │   └── sse.js
+│       │   └── chat.js
 │       └── vendor/
 │           └── README.md
 ├── tests/
@@ -164,25 +119,17 @@ Django 不在 view 里直接写这些 AI 细节。
 
 FAISS 只作为临时 vector store 层存在。后续切换 pgvector 时，不改 provider、数据映射、prompt、ticket 等上层逻辑，只替换 `post_ai/vectorstores` 对应实现。
 
-### `apps/web`
+### `apps/core`
 
-只负责 Web 页面，不写 RAG 业务逻辑。
+Django ORM 层。当前 KISS 结构下，会话、消息、邮政文档、引用和工单都放在这里。
 
 ### `apps/api`
 
-只负责 django-ninja API 组织和 schema，不直接访问具体模型 provider 细节。
+django-ninja API 和 SSE 层。只做 HTTP 编排，调用 `post_ai` 和 `apps/core`，不重新实现 AI provider。
 
-### `apps/rag`
+### `apps/web`
 
-负责数据导入、映射、向量存储、pgvector 检索。
-
-### `apps/llm`
-
-负责模型 provider 适配。所有模型名、prompt、stream 调用统一从这里走。
-
-### `apps/tickets`
-
-负责工单 JSON 的生成、校验和存储。
+Django templates 页面层。只负责页面渲染和静态资源入口，不写 RAG 业务逻辑。
 
 ### `templates`
 
