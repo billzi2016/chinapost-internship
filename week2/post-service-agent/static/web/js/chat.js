@@ -76,9 +76,11 @@ function stopThinkingAnimation(node) {
 
 function renderMarkdown(text) {
   if (!window.marked || !window.DOMPurify) {
-    return text;
+    return escapeHtml(text);
   }
-  return DOMPurify.sanitize(marked.parse(text));
+  return DOMPurify.sanitize(marked.parse(text), {
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+  });
 }
 
 function escapeHtml(value) {
@@ -90,11 +92,42 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function titleCaseProvider(value) {
+function titleCaseWords(value) {
   return String(value || "")
     .split(/([/_-])/)
     .map((part) => /^[a-zA-Z0-9]/.test(part) ? part.charAt(0).toUpperCase() + part.slice(1) : part)
     .join("");
+}
+
+function formatProviderName(value) {
+  const key = String(value || "").toLowerCase();
+  if (key === "faiss") return "FAISS";
+  if (key === "pgvector") return "PostgreSQL-Pgvector";
+  return titleCaseWords(value);
+}
+
+function formatModelName(value) {
+  const key = String(value || "").toLowerCase();
+  if (key === "gpt-oss:20b") return "GPT-OSS:20B";
+  return titleCaseWords(value);
+}
+
+function getCookie(name) {
+  return document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${name}=`))
+    ?.slice(name.length + 1) || "";
+}
+
+function csrfFetch(url, options = {}) {
+  const headers = new Headers(options.headers || {});
+  headers.set("X-CSRFToken", decodeURIComponent(getCookie("csrftoken")));
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: "same-origin"
+  });
 }
 
 function renderConversationTitle(conversation) {
@@ -238,11 +271,11 @@ async function loadProviderHealth() {
     providerHealth.innerHTML = `
       <span class="health-item">
         <span class="health-dot ok" aria-hidden="true"></span>
-        Chat Provider: ${escapeHtml(titleCaseProvider(health.chat_provider))}/${escapeHtml(titleCaseProvider(health.chat_model))}
+        Chat Provider: ${escapeHtml(formatProviderName(health.chat_provider))}/${escapeHtml(formatModelName(health.chat_model))}
       </span>
       <span class="health-item">
         <span class="health-dot ok" aria-hidden="true"></span>
-        Vector Provider: ${escapeHtml(titleCaseProvider(health.vector_provider))}
+        Vector Provider: ${escapeHtml(formatProviderName(health.vector_provider))}
       </span>
     `;
   } catch {
@@ -363,7 +396,7 @@ async function consumeSse(response, assistantNode) {
       if (parsed.event === "error") {
         stopThinkingAnimation(assistantNode);
         const body = assistantNode.querySelector(".message-body");
-        if (body) body.innerHTML = `<p class="text-danger">${parsed.data.message}</p>`;
+        if (body) body.innerHTML = `<p class="text-danger">${escapeHtml(parsed.data.message)}</p>`;
       }
 
       if (parsed.event === "citation") {
@@ -413,7 +446,7 @@ form?.addEventListener("submit", async (event) => {
 
   const loading = appendMessage("assistant", '<span class="typing"><span class="typing-label">Thinking</span><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>');
   startThinkingAnimation(loading);
-  const response = await fetch("/api/chat/stream", {
+  const response = await csrfFetch("/api/chat/stream", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
@@ -434,7 +467,7 @@ generateTicketButton?.addEventListener("click", async () => {
     ticketPanel.innerHTML = '<p class="text-danger">请先选择或发送一个会话。</p>';
     return;
   }
-  const response = await fetch(`/api/conversations/${conversationId}/ticket/generate`, {
+  const response = await csrfFetch(`/api/conversations/${conversationId}/ticket/generate`, {
     method: "POST"
   });
   if (!response.ok) {
@@ -461,7 +494,7 @@ conversationList?.addEventListener("click", async (event) => {
   const conversationId = Number(row.dataset.id);
 
   if (event.target.classList.contains("delete-conversation")) {
-    await fetch(`/api/conversations/${conversationId}`, {method: "DELETE"});
+    await csrfFetch(`/api/conversations/${conversationId}`, {method: "DELETE"});
     if (conversationIdInput.value === String(conversationId)) {
       conversationIdInput.value = "";
       messages.innerHTML = "";
@@ -472,7 +505,7 @@ conversationList?.addEventListener("click", async (event) => {
   }
 
   if (event.target.classList.contains("pin-conversation")) {
-    await fetch(`/api/conversations/${conversationId}/pin`, {method: "PATCH"});
+    await csrfFetch(`/api/conversations/${conversationId}/pin`, {method: "PATCH"});
     await refreshConversations(conversationId);
     return;
   }

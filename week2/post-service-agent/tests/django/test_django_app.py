@@ -29,6 +29,40 @@ class DjangoSmokeTests(TestCase):
         self.assertContains(response, "检索增强生成（RAG）")
         self.assertContains(response, "监督微调模型（SFT）")
 
+    def test_chat_page_escapes_conversation_title(self) -> None:
+        Conversation.objects.create(title="<script>alert(1)</script>")
+
+        response = Client().get(reverse("chat"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "<script>alert(1)</script>", html=False)
+        self.assertContains(response, "&lt;script&gt;alert(1)&lt;/script&gt;", html=False)
+
+    def test_state_changing_api_requires_csrf(self) -> None:
+        client = Client(enforce_csrf_checks=True)
+
+        response = client.post(
+            "/api/conversations",
+            data=json.dumps({"title": "csrf"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_state_changing_api_accepts_valid_csrf(self) -> None:
+        client = Client(enforce_csrf_checks=True)
+        client.get(reverse("chat"))
+        token = client.cookies["csrftoken"].value
+
+        response = client.post(
+            "/api/conversations",
+            data=json.dumps({"title": "csrf"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+
+        self.assertEqual(response.status_code, 200)
+
     def test_conversation_api_create_and_list(self) -> None:
         client = Client()
         created = client.post(

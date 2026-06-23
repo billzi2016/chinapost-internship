@@ -42,6 +42,7 @@
     <div class="messages" id="messages" aria-live="polite"></div>
     <aside class="ticket-panel" id="ticket-panel" hidden></aside>
     <form class="composer" id="chat-form">
+      {% csrf_token %}
       <div class="composer-resize-handle" id="composer-resize-handle" aria-hidden="true"></div>
       <input type="hidden" id="conversation-id">
       <textarea class="form-control" id="message-input" rows="2" placeholder="输入邮政客服问题"></textarea>
