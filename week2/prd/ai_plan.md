@@ -7,30 +7,71 @@
 - 从 `llm_filter` 中读取邮政相关筛选结果。
 - 根据筛选结果映射原始 CSDS 对话。
 - 丢弃非邮政系统相关的客服泛化信息。
-- 使用 `qwen3-embedding:8b` 生成向量。
+- 通过标准 provider 接口调用 embedding 模型生成向量。
 - 将邮政相关内容写入 PostgreSQL + pgvector。
 - 查询时使用向量检索召回引用对话。
-- 使用 `gpt-oss:20b` 生成回答、会话标题和工单信息。
+- 通过标准 provider 接口调用生成模型，生成回答、会话标题和工单信息。
 
-## 2. 本地模型
+## 2. 模型与 Provider
 
-### 2.1 生成模型
+模型调用必须抽象成 provider，不允许业务逻辑直接写死 Ollama、vLLM、OpenRouter 或自建 FastAPI 服务。
+
+### 2.1 标准 Provider 接口
+
+所有 provider 必须遵守同一套内部标准 API：
+
+- `chat(messages, model, options) -> ChatResult`
+- `stream_chat(messages, model, options) -> Iterator[ChatDelta]`
+- `embed(texts, model, options) -> EmbeddingResult`
+- `is_available(model) -> bool`
+
+统一约束：
+
+- 上层 RAG、SFT、标题生成、工单生成只调用标准接口。
+- provider 负责适配具体后端协议。
+- 对外部兼容服务优先采用 OpenAI-compatible API 形态，但项目内部只依赖上面的统一接口。
+- provider 返回统一错误类型。
+- provider 不直接操作 Django model。
+- provider 配置来自 `.env` 或 settings，不写死在业务代码里。
+
+### 2.2 Provider 列表
+
+当前默认 provider：
+
+- `ollama`
+
+占位 provider：
+
+- `vllm`
+- `openrouter`
+- `fastapi`
+
+说明：
+
+- `ollama`：当前本地可用，先实现。
+- `vllm`：后续可接 OpenAI-compatible API。
+- `openrouter`：后续可接 OpenRouter OpenAI-compatible API。
+- `fastapi`：后续可接用户自己启动的模型服务，用于服务化 SFT 模型。
+
+### 2.3 默认生成模型
 
 - 模型名：`gpt-oss:20b`
+- 默认 provider：`ollama`
 - 用途：
   - 主聊天回复
   - 会话标题总结
   - 工单自然语言总结
   - 工单 JSON 初稿生成
 
-### 2.2 Embedding 模型
+### 2.4 默认 Embedding 模型
 
 - 模型名：`qwen3-embedding:8b`
+- 默认 provider：`ollama`
 - 用途：
   - 入库阶段生成邮政相关对话向量
   - 查询阶段生成用户问题向量
 
-### 2.3 Embedding 前缀
+### 2.5 Embedding 前缀
 
 Qwen3-Embedding 官方模型卡说明：query 侧建议使用 instruction，document 侧不需要加 instruction。
 
@@ -65,7 +106,9 @@ def build_document_embedding_input(text: str) -> str:
     return text
 ```
 
-Ollama 调用 `qwen3-embedding:8b` 时，把上述最终字符串传给 `/api/embed` 或 Python SDK 的 `ollama.embed(input=...)`。
+调用 `qwen3-embedding:8b` 时，把上述最终字符串传给 provider 的 `embed(...)` 标准接口。
+
+当前 Ollama provider 内部再转换为 `/api/embed` 或 Python SDK 的 `ollama.embed(input=...)`。
 
 参考依据：
 
@@ -176,11 +219,11 @@ python manage.py ingest_postal_rag
 用户发送消息后：
 
 1. 保存用户消息。
-2. 如果启用 RAG，使用 `qwen3-embedding:8b` 生成查询向量。
+2. 如果启用 RAG，通过 embedding provider 使用 `qwen3-embedding:8b` 生成查询向量。
 3. 在 pgvector 中做相似度搜索。
 4. 取 Top K 邮政相关对话。
 5. 将引用对话拼入 prompt。
-6. 使用 `gpt-oss:20b` 生成回答。
+6. 通过 chat provider 使用 `gpt-oss:20b` 生成回答。
 7. SSE 返回引用、token、最终工单 JSON。
 
 ## 7. RAG Prompt 要求
@@ -218,12 +261,15 @@ python manage.py ingest_postal_rag
 当前状态：
 
 - 没有可用 SFT 模型。
+- SFT 未来可能来自 `ollama`、`vllm`、`openrouter` 或用户自建 `fastapi` provider。
+- 不在 Django 进程内直接用 Transformers 加载 SFT 权重。
+- 如果 SFT 权重需要本地运行，由用户单独启动 FastAPI 模型服务，本项目通过 `fastapi` provider 调用。
 
 行为：
 
 - 用户勾选 SFT 后，前端状态切换到 SFT 模式。
 - 当前没有可用 SFT 模型，所以前端在勾选项下方显示红色提示：“当前不存在 SFT 模型”。
-- 后端收到 `use_sft=true` 时必须按 SFT 模型路径处理，检查 SFT 模型是否存在。
+- 后端收到 `use_sft=true` 时必须按 SFT provider 配置处理，检查 `SFT_PROVIDER` 和 `SFT_MODEL` 是否存在且可用。
 - 如果 SFT 模型不存在，本轮请求直接返回明确错误或 SSE `error` 事件。
 - 不允许静默回退到 `gpt-oss:20b`，否则用户以为正在使用 SFT，实际没有使用。
 - 用户取消 SFT 勾选后，才回到普通 `gpt-oss:20b` 模式。
@@ -313,7 +359,14 @@ python manage.py ingest_postal_rag
 post_ai/
 ├── __init__.py
 ├── config.py
-├── ollama_client.py
+├── providers/
+│   ├── __init__.py
+│   ├── base.py
+│   ├── registry.py
+│   ├── ollama.py
+│   ├── vllm.py
+│   ├── openrouter.py
+│   └── fastapi_provider.py
 ├── embeddings.py
 ├── source_loader.py
 ├── filter_mapping.py
@@ -325,7 +378,12 @@ post_ai/
 
 工具包职责：
 
-- `ollama_client.py`：封装 Ollama `/api/generate`、`/api/chat`、`/api/embed`。
+- `providers/base.py`：定义标准 provider 抽象接口和统一返回结构。
+- `providers/registry.py`：根据配置选择 provider。
+- `providers/ollama.py`：实现 Ollama `/api/generate`、`/api/chat`、`/api/embed` 适配。
+- `providers/vllm.py`：vLLM OpenAI-compatible API 占位。
+- `providers/openrouter.py`：OpenRouter OpenAI-compatible API 占位。
+- `providers/fastapi_provider.py`：用户自建 FastAPI 模型服务占位，主要用于 SFT 模型服务化调用。
 - `embeddings.py`：封装 `qwen3-embedding:8b`，包含 query 前缀和 document 输入规则。
 - `source_loader.py`：读取 CSDS 原始数据。
 - `filter_mapping.py`：读取 `llm_filter` 并映射回 CSDS。
@@ -336,7 +394,7 @@ post_ai/
 
 工具包测试通过后，再包进 Django：
 
-- Django `apps/llm` 调用 `post_ai.ollama_client`、`post_ai.embeddings`。
+- Django `apps/llm` 调用 `post_ai.providers`、`post_ai.embeddings`。
 - Django `apps/rag` 调用 `post_ai.source_loader`、`post_ai.filter_mapping`。
 - Django `apps/tickets` 调用 `post_ai.tickets` 和 `post_ai.schemas`。
 - SSE 层只消费工具包返回的流式 token 和结构化结果。
@@ -348,4 +406,4 @@ AI 工具包测试重点：
 - `llm_filter` 邮政相关判断必须可测试。
 - CSDS 映射失败必须返回明确错误。
 - 工单 JSON schema 必须能校验合法和非法样例。
-- Ollama client 可以用 mock 测试，不依赖每次真实模型运行。
+- provider 可以用 mock 测试，不依赖每次真实模型运行。

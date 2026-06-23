@@ -17,7 +17,14 @@
 ├── post_ai/
 │   ├── __init__.py
 │   ├── config.py
-│   ├── ollama_client.py
+│   ├── providers/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── registry.py
+│   │   ├── ollama.py
+│   │   ├── vllm.py
+│   │   ├── openrouter.py
+│   │   └── fastapi_provider.py
 │   ├── embeddings.py
 │   ├── source_loader.py
 │   ├── filter_mapping.py
@@ -75,7 +82,7 @@
 │   │   ├── apps.py
 │   │   └── services/
 │   │       ├── __init__.py
-│   │       ├── ollama.py
+│   │       ├── providers.py
 │   │       ├── embedding.py
 │   │       ├── chat.py
 │   │       ├── titles.py
@@ -117,6 +124,12 @@
     └── data_ingest.md
 ```
 
+PRD 目录额外包含数据库迁移设计：
+
+```text
+/Users/bizi/Desktop/邮政实习/week2/prd/database_migration.md
+```
+
 ## 目录说明
 
 ### `post_ai`
@@ -126,6 +139,8 @@ AI 工具包。先独立实现并测试通过，再被 Django apps 调用。
 职责：
 
 - Ollama 调用。
+- vLLM / OpenRouter / FastAPI provider 占位。
+- SFT 如需本地权重，由独立 FastAPI 模型服务承载，本项目不直接用 Transformers 加载。
 - embedding 前缀。
 - CSDS 读取。
 - `llm_filter` 映射。
@@ -140,7 +155,7 @@ Django 不在 view 里直接写这些 AI 细节。
 
 ### `apps/api`
 
-只负责 django-ninja API 组织和 schema，不直接访问 Ollama 细节。
+只负责 django-ninja API 组织和 schema，不直接访问具体模型 provider 细节。
 
 ### `apps/rag`
 
@@ -148,7 +163,7 @@ Django 不在 view 里直接写这些 AI 细节。
 
 ### `apps/llm`
 
-负责 Ollama 适配。所有模型名、prompt、stream 调用统一从这里走。
+负责模型 provider 适配。所有模型名、prompt、stream 调用统一从这里走。
 
 ### `apps/tickets`
 

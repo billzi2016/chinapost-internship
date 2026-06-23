@@ -12,9 +12,11 @@
 - 使用 PostgreSQL 存储业务数据。
 - 使用 pgvector 存储和检索邮政相关对话向量。
 - 使用 Django templates、HTML、CSS、JavaScript 实现正式 Web 界面。
-- 使用 Ollama 本地模型：
+- 模型调用通过标准 provider 接口，当前默认使用 Ollama 本地模型：
   - 主模型：`gpt-oss:20b`
   - 向量模型：`qwen3-embedding:8b`
+- vLLM、OpenRouter、自建 FastAPI 模型服务作为 provider 占位。
+- SFT 不在 Django 进程内直接加载 Transformers 权重；如需本地 SFT，由用户单独启动 FastAPI 模型服务。
 - 根据 RAG 引用结果生成回答，并展示引用了哪些原始对话。
 - 最终生成稳定合法的工单 JSON。
 
@@ -34,7 +36,10 @@
 - HTML
 - CSS
 - JavaScript
-- Ollama
+- Ollama provider
+- vLLM provider 占位
+- OpenRouter provider 占位
+- FastAPI provider 占位
 
 ### 2.2 明确不做
 
@@ -45,6 +50,8 @@
 - 不做 sharding。
 - 不做微服务拆分。
 - 不做前后端完全分离 SPA。
+- 不引入 React / Vue / Next.js 等前端架构。
+- 不引入独立前端构建链。
 
 ## 3. Django 项目原则
 
@@ -52,9 +59,18 @@
 
 - AI 核心能力先做成独立 `post_ai` 工具包，测试通过后再接入 Django。
 - templates 相关页面单独放在 `apps/web`，不塞进 RAG 或聊天业务 app。
+- 前端页面使用 Django templates 做骨架。
+- 页面布局可以参考 Chatbot UI / Open WebUI 的信息架构，但不能直接引入完整前端项目。
+- UI 实现使用 Bootstrap 或少量自写 CSS。
+- UI 固定使用亮色主题，不做黑暗背景。
+- 交互使用原生 JavaScript。
+- Markdown 渲染使用成熟 JS 库。
+- SSE 只写必要连接和事件处理逻辑，不造前端框架。
+- 左侧栏拖拽宽度、Markdown 清洗、代码高亮等基础能力使用成熟小库或 Bootstrap 现成组件，不手写脆弱实现。
+- 如果某个交互没有合适轻量依赖，优先降级为简单稳定方案。
 - API 层放在 `apps/api`，统一挂载 django-ninja router。
 - 聊天、RAG、工单分别放在独立业务 app，避免一个 app 过大。
-- Ollama 调用、embedding 前缀、数据映射、prompt、工单 JSON 生成优先放在 `post_ai`，Django service 层只做业务编排。
+- 模型 provider、embedding 前缀、数据映射、prompt、工单 JSON 生成优先放在 `post_ai`，Django service 层只做业务编排。
 - 数据导入使用 Django management command。
 - 配置使用 `.env`，不要把模型名、数据库连接写死在业务代码里。
 - 遵循 DRY、KISS、SOLID，但不为了模式而抽象。
@@ -117,16 +133,17 @@ RAG 和向量检索。
 
 ### 4.6 `apps/llm`
 
-Ollama 模型调用封装。
+模型 provider 调用封装。
 
 职责：
 
-- 调用 `gpt-oss:20b`。
-- 调用 `qwen3-embedding:8b`。
+- 通过 provider 调用 `gpt-oss:20b`。
+- 通过 provider 调用 `qwen3-embedding:8b`。
 - 处理 qwen3 embedding 查询前缀。
 - 提供流式生成接口。
 - 提供标题生成接口。
 - 提供工单 JSON 生成接口。
+- 校验 SFT provider 和模型是否存在。
 
 ### 4.7 `apps/tickets`
 
@@ -266,10 +283,10 @@ Ollama 模型调用封装。
 
 - 写入用户消息。
 - 如果 `use_rag=true`，执行 pgvector 检索。
-- 如果 `use_sft=true`，检查 SFT 模型配置。
+- 如果 `use_sft=true`，检查 SFT provider 和模型配置。
 - 当前没有 SFT 模型时返回前端可展示错误状态，并停止本轮生成。
 - `use_sft=true` 时不允许静默回退到 `gpt-oss:20b`。
-- 只有 `use_sft=false` 时，才使用 `gpt-oss:20b` 流式生成回答。
+- 只有 `use_sft=false` 时，才通过默认 chat provider 使用 `gpt-oss:20b` 流式生成回答。
 - SSE 事件中逐步返回 token、引用、结束状态、工单 JSON。
 
 ### 7.4 工单 API

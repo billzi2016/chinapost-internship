@@ -8,13 +8,22 @@
 - [ ] 安装并配置 django-ninja。
 - [ ] 配置 PostgreSQL。
 - [ ] 启用 pgvector 扩展。
-- [ ] 配置 Ollama 模型名。
+- [ ] 配置模型 provider。
+- [ ] 配置默认 chat provider 为 Ollama。
+- [ ] 配置默认 embedding provider 为 Ollama。
+- [ ] 配置 vLLM、OpenRouter、FastAPI provider 占位。
 - [ ] 配置 `STATIC_VERSION`。
 
 ## 2. AI 工具包
 
 - [ ] 实现 `post_ai.config`。
-- [ ] 实现 Ollama client。
+- [ ] 定义标准 provider 接口。
+- [ ] 实现 provider registry。
+- [ ] 实现 Ollama provider。
+- [ ] 添加 vLLM provider 占位。
+- [ ] 添加 OpenRouter provider 占位。
+- [ ] 添加 FastAPI provider 占位。
+- [ ] 明确 SFT 本地权重通过独立 FastAPI 服务接入，不在 Django 内直接加载。
 - [ ] 实现 `qwen3-embedding:8b` query 前缀。
 - [ ] 实现 document embedding 无 instruction 输入。
 - [ ] 实现 CSDS 原始数据读取。
@@ -38,6 +47,9 @@
 
 ## 4. 数据库模型
 
+- [ ] 按 `/Users/bizi/Desktop/邮政实习/week2/prd/database_migration.md` 设计 migration。
+- [ ] 在同一个 PostgreSQL 数据库内启用 pgvector。
+- [ ] 不拆业务库和向量库。
 - [ ] 创建 Conversation 模型。
 - [ ] 创建 Message 模型。
 - [ ] 创建 PostalDocument 模型。
@@ -69,10 +81,10 @@
 
 ## 7. LLM 服务
 
-- [ ] 封装 Ollama 普通生成。
-- [ ] 封装 Ollama 流式生成。
-- [ ] 实现 `gpt-oss:20b` 聊天回复。
-- [ ] 实现 `gpt-oss:20b` 会话标题总结。
+- [ ] 封装 provider 普通生成。
+- [ ] 封装 provider 流式生成。
+- [ ] 通过默认 provider 实现 `gpt-oss:20b` 聊天回复。
+- [ ] 通过默认 provider 实现 `gpt-oss:20b` 会话标题总结。
 - [ ] 实现 SFT 模型不存在时的统一状态返回。
 
 ## 8. API 和 SSE
@@ -90,6 +102,15 @@
 
 - [ ] 实现 `base.html`。
 - [ ] 实现聊天页面 `chat.html`。
+- [ ] 使用 Django templates 作为页面骨架。
+- [ ] 使用 Bootstrap 或少量自写 CSS 实现布局。
+- [ ] 固定亮色主题，不使用黑暗背景。
+- [ ] 不引入 React / Vue / Next.js。
+- [ ] 不引入独立前端构建链。
+- [ ] 引入固定版本的 Markdown 渲染库。
+- [ ] 引入固定版本的 Markdown sanitizer。
+- [ ] 如需左侧栏拖拽宽度，使用成熟 resizable pane 小库，不手写。
+- [ ] 如需代码高亮，使用成熟代码高亮库，不手写。
 - [ ] 左侧显示历史会话。
 - [ ] 左侧显示“检索增强生成（RAG）”勾选项。
 - [ ] 左侧显示“监督微调模型（SFT）”勾选项。
