@@ -11,13 +11,15 @@ mlx_lm.lora 本身会按 steps_per_eval 报验证 loss，但 loss 不能完全�
 1. 每个 chunk 调用一次 mlx_lm.lora。
 2. chunk 结束后调用 evaluate_model.py。
 3. 把每轮自动评估摘要写入 logs/train_monitor_*.jsonl。
-4. 一旦触发 collapse gate，脚本直接停止，避免继续烧时间。
+4. 每轮评估后只保留一个 best adapter；更好就覆盖，不保留历史堆积。
+5. 一旦触发 collapse gate，脚本直接停止，并提示回到 best adapter。
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -48,6 +50,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--logs-dir", type=Path, default=root / "logs", help="训练监控日志目录。")
     parser.add_argument("--eval-dir", type=Path, default=root / "eval", help="评估集目录。")
     parser.add_argument("--out-dir", type=Path, default=root / "eval_outputs", help="评估输出目录。")
+    parser.add_argument(
+        "--best-dir",
+        type=Path,
+        default=root / "adapters" / "best",
+        help="只保存一个最佳 adapter 的目录根路径。",
+    )
     parser.add_argument("--skip-eval", action="store_true", help="只分段训练，不做自动评估。")
     return parser.parse_args()
 
@@ -147,6 +155,61 @@ def collapse_gate(metrics: dict[str, Any]) -> list[str]:
     return reasons
 
 
+def metric_value(tasks: dict[str, Any], task: str, metric: str, default: float) -> float:
+    """从任务指标中安全读取浮点数。"""
+    value = tasks.get(task, {}).get(metric, default)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def score_metrics(metrics: dict[str, Any]) -> float:
+    """计算用于选择 best adapter 的综合分。
+
+    分数是工程选择准则，不是论文指标：
+    - 奖励 JSON 可解析和字段完整。
+    - 奖励邮政题中出现业务词和下一步处理建议。
+    - 惩罚安全风险和通用任务被邮政客服话术污染。
+    """
+    tasks = metrics.get("tasks", {})
+    format_json = metric_value(tasks, "format", "json_valid_rate", 0.0)
+    format_keys = metric_value(tasks, "format", "json_required_keys_rate", 0.0)
+    postal_terms = metric_value(tasks, "postal", "avg_postal_term_hits", 0.0)
+    postal_steps = metric_value(tasks, "postal", "avg_next_step_hits", 0.0)
+    safety_risk = metric_value(tasks, "safety", "risk_rate", 0.0)
+    pollution_rates = [
+        float(task_metrics.get("postal_pollution_rate", 0.0))
+        for task_metrics in tasks.values()
+        if "postal_pollution_rate" in task_metrics
+    ]
+    pollution = max(pollution_rates) if pollution_rates else 0.0
+    return (
+        2.0 * format_json
+        + 1.5 * format_keys
+        + 0.15 * postal_terms
+        + 0.2 * postal_steps
+        - 3.0 * safety_risk
+        - 2.0 * pollution
+    )
+
+
+def copy_best_adapter(source: Path, target: Path) -> None:
+    """覆盖保存当前 best adapter，只保留一个目录。"""
+    if not source.exists():
+        raise FileNotFoundError(f"当前 adapter 目录不存在，无法保存 best：{source}")
+    if target.exists():
+        shutil.rmtree(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, target)
+
+
+def write_best_metadata(path: Path, metadata: dict[str, Any]) -> None:
+    """写出 best adapter 元数据，方便 gate 后回看。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def main() -> None:
     """脚本入口：按 chunk 训练、评估、写监控日志。"""
     args = parse_args()
@@ -154,6 +217,7 @@ def main() -> None:
     args.config = args.config.resolve()
     args.logs_dir.mkdir(parents=True, exist_ok=True)
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    args.best_dir.mkdir(parents=True, exist_ok=True)
 
     base_config = load_config(args.config)
     total_iters = args.total_iters or int(base_config.get("iters", 0))
@@ -163,6 +227,13 @@ def main() -> None:
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = args.logs_dir / f"{args.label}_{run_id}"
     monitor_path = args.logs_dir / f"train_monitor_{args.label}_{run_id}.jsonl"
+    best_adapter_path = args.best_dir / args.label
+    best_metadata_path = args.logs_dir / f"best_adapter_{args.label}_{run_id}.json"
+    current_adapter_path = Path(base_config["adapter_path"])
+    if not current_adapter_path.is_absolute():
+        current_adapter_path = root / current_adapter_path
+    best_score: float | None = None
+    best_metadata: dict[str, Any] | None = None
 
     completed = 0
     chunk_index = 0
@@ -183,13 +254,35 @@ def main() -> None:
 
         if not args.skip_eval:
             metrics = evaluate(args, base_config["model"], base_config["adapter_path"], completed)
+            score = score_metrics(metrics)
             reasons = collapse_gate(metrics)
             record["metrics"] = metrics
+            record["score"] = score
             record["collapse_reasons"] = reasons
+
+            if not reasons and (best_score is None or score > best_score):
+                copy_best_adapter(current_adapter_path, best_adapter_path)
+                best_score = score
+                best_metadata = {
+                    "label": args.label,
+                    "best_step": completed,
+                    "best_score": best_score,
+                    "best_adapter_path": str(best_adapter_path),
+                    "source_adapter_path": str(current_adapter_path),
+                    "metrics": metrics,
+                }
+                write_best_metadata(best_metadata_path, best_metadata)
+                record["best_updated"] = True
+                record["best_adapter_path"] = str(best_adapter_path)
+            else:
+                record["best_updated"] = False
+                record["best_score"] = best_score
+
             with monitor_path.open("a", encoding="utf-8") as file:
                 file.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
             if reasons:
-                raise RuntimeError("触发训练停止条件：" + "；".join(reasons))
+                best_hint = f"；请使用 best adapter：{best_adapter_path}" if best_metadata else ""
+                raise RuntimeError("触发训练停止条件：" + "；".join(reasons) + best_hint)
         else:
             with monitor_path.open("a", encoding="utf-8") as file:
                 file.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
