@@ -20,14 +20,15 @@
 
 - `build_reports.py`
 
-这个脚本负责批量导出以下四份 Markdown：
+这个脚本负责批量导出以下 Markdown：
 
-1. `docs/模型选型报告.md`
-2. `docs/SFT训练与风险控制.md`
-3. `stats/outputs/report.md`
-4. `filter/outputs/report.md`
+1. `第一版/docs/模型选型报告.md`
+2. `第一版/docs/SFT训练与风险控制.md`
+3. `第一版/stats/outputs/report.md`
+4. `第一版/filter/outputs/report.md`
+5. `第二版/01_分类效果评估与边界case分析/outputs/report.md`
 
-导出后会直接在当前目录生成四份 PDF。
+导出后会直接在当前目录生成 PDF。
 
 ---
 
@@ -134,12 +135,13 @@ python week1/reports/build_reports.py
 
 ## 6. 输出结果
 
-当前会生成以下四份 PDF：
+当前会生成以下 PDF：
 
 - `中文邮政客服任务开源大模型选型研究报告.pdf`
 - `中文邮政客服任务SFT训练方案与风险控制报告.pdf`
 - `CSDS数据集统计分析与关键词提取结果报告.pdf`
 - `邮政相关对话筛选与向量空间可视化结果报告.pdf`
+- `分类效果评估与边界case分析报告.pdf`
 
 这些 PDF 会直接落盘到 `week1/reports/` 目录。
 

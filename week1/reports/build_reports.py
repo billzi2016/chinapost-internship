@@ -12,11 +12,12 @@
 - 最终 PDF 更接近平时在浏览器里看到的文档效果
 - 对 Markdown 风格文档来说，整体观感通常优于 LaTeX 硬排
 
-脚本会自动处理以下四份文档：
-1. docs/模型选型报告.md
-2. docs/SFT训练与风险控制.md
-3. stats/outputs/report.md
-4. filter/outputs/report.md
+脚本会自动处理以下文档：
+1. 第一版/docs/模型选型报告.md
+2. 第一版/docs/SFT训练与风险控制.md
+3. 第一版/stats/outputs/report.md
+4. 第一版/filter/outputs/report.md
+5. 第二版/01_分类效果评估与边界case分析/outputs/report.md
 
 输出 PDF 会统一落盘到 week1/reports 目录。
 """
@@ -42,24 +43,29 @@ WEEK1_DIR = REPORTS_DIR.parent
 # 后面如果要继续增加报告，只需要往这个列表里加一项即可。
 REPORT_SPECS = [
     {
-        "source": WEEK1_DIR / "docs" / "模型选型报告.md",
+        "source": WEEK1_DIR / "第一版" / "docs" / "模型选型报告.md",
         "output": REPORTS_DIR / "中文邮政客服任务开源大模型选型研究报告.pdf",
         "title": "中文邮政客服任务开源大模型选型研究报告",
     },
     {
-        "source": WEEK1_DIR / "docs" / "SFT训练与风险控制.md",
+        "source": WEEK1_DIR / "第一版" / "docs" / "SFT训练与风险控制.md",
         "output": REPORTS_DIR / "中文邮政客服任务SFT训练方案与风险控制报告.pdf",
         "title": "中文邮政客服任务SFT训练方案与风险控制报告",
     },
     {
-        "source": WEEK1_DIR / "stats" / "outputs" / "report.md",
+        "source": WEEK1_DIR / "第一版" / "stats" / "outputs" / "report.md",
         "output": REPORTS_DIR / "CSDS数据集统计分析与关键词提取结果报告.pdf",
         "title": "CSDS数据集统计分析与关键词提取结果报告",
     },
     {
-        "source": WEEK1_DIR / "filter" / "outputs" / "report.md",
+        "source": WEEK1_DIR / "第一版" / "filter" / "outputs" / "report.md",
         "output": REPORTS_DIR / "邮政相关对话筛选与向量空间可视化结果报告.pdf",
         "title": "邮政相关对话筛选与向量空间可视化结果报告",
+    },
+    {
+        "source": WEEK1_DIR / "第二版" / "01_分类效果评估与边界case分析" / "outputs" / "report.md",
+        "output": REPORTS_DIR / "分类效果评估与边界case分析报告.pdf",
+        "title": "分类效果评估与边界 case 分析报告",
     },
 ]
 

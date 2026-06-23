@@ -31,6 +31,7 @@
 
 - `01_04_合并分析方案.md`
 - `run_label_comparison.py`
+- `analyze_and_plot_label_results.py`
 
 当前判断：01 和 04 应合并为“标签质量评估 + 业务主题细分”流程。  
 其中 01 侧重点是 regex 弱标签和二分类效果评估，04 侧重点是 `gpt-oss:120b` 细分业务类，并将分类结果用于可视化标签。
@@ -79,10 +80,10 @@ python run_label_comparison.py --review-policy all --limit 0
 
 默认保存策略：
 
-- `gpt-oss:120b` 复核结果写入 `outputs/120b_review_results.jsonl`
+- `gpt-oss:120b` 宽口径复核结果写入 `outputs/120b_broad_review_results.jsonl`
 - 默认每 `100` 条批量保存一次，减少频繁写 SSD
 - 每条结果以 `split:index` 作为唯一键
-- 脚本重新运行时会读取已有 `outputs/120b_review_results.jsonl`
+- 脚本重新运行时会读取已有 `outputs/120b_broad_review_results.jsonl`
 - 已经完成的样本会自动跳过，继续跑剩余样本
 
 也就是说，如果中途断了，直接重新运行同一条命令即可续跑。
@@ -128,4 +129,58 @@ python run_label_comparison.py --limit 0 --think high
 
 ```bash
 python run_label_comparison.py --review-policy all --limit 0 --think low
+```
+
+## 分析与画图
+
+120B 全量复核结束后，可以直接基于 `outputs/label_comparison_summary.json` 生成报告表格和图表，不会重新调用 Ollama：
+
+```bash
+python analyze_and_plot_label_results.py
+```
+
+默认输出：
+
+- `outputs/analysis_tables.md`：可复制进最终报告的统计表、图表引用和结论段落
+- `outputs/figures/20b_by_split.png`：各 split 标签规模对比
+- `outputs/figures/20b_vs_regex_matrix.png`：20B 与 Regex 弱标签对比
+- `outputs/figures/regex_category_counts.png`：regex 业务类弱标签分布
+- `outputs/figures/120b_broad_related_counts.png`：120B 宽口径二分类分布
+- `outputs/figures/20b_vs_120b_broad_matrix.png`：20B 与 120B 宽口径二分类对比
+- `outputs/figures/regex_vs_120b_broad_matrix.png`：Regex 与 120B 宽口径二分类对比
+- `outputs/figures/120b_category_counts.png`：120B 精细业务类别分布
+- `outputs/figures/120b_parse_quality.png`：120B JSON 解析质量
+
+如果输出目录不是默认的 `outputs`，可以手动指定：
+
+```bash
+python analyze_and_plot_label_results.py --output-dir /path/to/outputs
+```
+
+## 参考源文件与最终报告接入位置
+
+参考第一版报告写法时，主要对照：
+
+- `week1/第一版/docs/模型选型报告.md`
+
+本目录负责产出“分类效果评估与边界 case 分析”的分析结果。当前采用“新文件”方案，单独生成第二版 01 的最终报告源 Markdown，再由 `week1/reports/build_reports.py` 统一抓取后渲染 PDF。
+
+本分析对应的最终报告源文件是：
+
+- `week1/第二版/01_分类效果评估与边界case分析/outputs/report.md`
+
+`week1/reports/build_reports.py` 中已经配置：
+
+- 输入 Markdown：`week1/第二版/01_分类效果评估与边界case分析/outputs/report.md`
+- 输出 PDF：`week1/reports/分类效果评估与边界case分析报告.pdf`
+
+因此本目录生成的：
+
+- `outputs/analysis_tables.md`
+- `outputs/figures/*.png`
+
+后续应整合进 `outputs/report.md`，再通过下面命令统一渲染最终 PDF：
+
+```bash
+python week1/reports/build_reports.py
 ```

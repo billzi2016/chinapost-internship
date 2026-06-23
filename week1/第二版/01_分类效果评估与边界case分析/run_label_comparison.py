@@ -49,8 +49,14 @@ FILTER_RESULTS = DATA_DIR / "llm_filter" / "postal_filter_results.json"
 DEFAULT_OUTPUT_DIR = SCRIPT_DIR / "outputs"
 
 
-STRICT_POSTAL_RE = re.compile(
-    r"邮政|中国邮政|EMS|ems|邮局|邮政快递|邮政包裹|特快专递|挂号信|平邮|邮政编码|邮政网点|邮政营业厅"
+POSTAL_EXPLICIT_RE = re.compile(
+    r"邮政|中国邮政|EMS|ems|邮局|邮政快递|邮政包裹|特快专递|挂号信|平邮|邮政编码|邮政网点|邮政营业厅|商务件"
+)
+
+DELIVERY_CANDIDATE_RE = re.compile(
+    r"快递|物流|配送|派送|配送员|快递员|送货员|站点|分站|网点|自提点|提货点|派件点|配送点|"
+    r"分拣|分拨|分部|揽收|取件|上门取件|上门取货|签收|拒收|收货|收件|寄回|寄出|寄送|"
+    r"邮寄|包裹|运费险|运费|发货|到货|送达|送到|清关|海关|转站点|拦截|代收|货到付款"
 )
 
 BUSINESS_PATTERNS: dict[str, re.Pattern[str]] = {
@@ -72,6 +78,10 @@ ALLOWED_120B_CATEGORIES = [
     "泛物流配送类",
     "非邮政相关",
 ]
+
+BROAD_RELATED_DEFINITION = (
+    "判断给定对话是否和快递、物流、配送、邮政、EMS、运费、签收、揽收、退费、地址修改等相关。"
+)
 
 
 def load_json(path: Path) -> Any:
@@ -144,10 +154,10 @@ def dialogue_preview(row: dict[str, Any], max_chars: int = 260) -> str:
 
 
 def regex_label(text: str) -> dict[str, Any]:
-    strict_postal = bool(STRICT_POSTAL_RE.search(text))
+    regex_related = bool(POSTAL_EXPLICIT_RE.search(text) or DELIVERY_CANDIDATE_RE.search(text))
     categories = [name for name, pattern in BUSINESS_PATTERNS.items() if pattern.search(text)]
     return {
-        "strict_postal_regex": strict_postal,
+        "regex_related": regex_related,
         "regex_categories": categories,
         "regex_category": categories[0] if categories else "未命中",
     }
@@ -171,7 +181,7 @@ def build_records(splits: list[str]) -> list[dict[str, Any]]:
             weak = regex_label(text)
             is_20b_related = bool(filter_item.get("is_postal_related"))
             needs_120b_review = (
-                is_20b_related != weak["strict_postal_regex"]
+                is_20b_related != weak["regex_related"]
                 or (is_20b_related and not weak["regex_categories"])
             )
 
@@ -244,12 +254,15 @@ def parse_json_object(text: str) -> tuple[dict[str, Any] | None, str | None]:
 
 def make_120b_prompt(record: dict[str, Any]) -> str:
     allowed = "、".join(ALLOWED_120B_CATEGORIES)
-    return f"""你是邮政客服数据标注专家。请判断样本是否属于严格的中国邮政/EMS/邮政寄递业务，并细分业务类。
+    return f"""你是一个严格的中文客服数据分类器和业务分类器。请独立判断样本是否相关，并进一步细分业务类。
 
 只输出一个 JSON 对象，不要输出 Markdown，不要输出解释性正文。
 
+二分类定义：
+{BROAD_RELATED_DEFINITION}
+
 字段要求：
-- strict_postal: boolean，是否明确属于中国邮政/EMS/邮政寄递业务。普通电商配送、京东订单、商家退货、泛物流售后不算严格邮政。
+- broad_related: boolean。若样本符合上面的二分类定义，则 broad_related=true；否则 broad_related=false。
 - category: string，只能取这些值之一：{allowed}
 - reason: string，一句话说明判断依据。
 - confidence: number，0 到 1。
@@ -258,9 +271,6 @@ def make_120b_prompt(record: dict[str, Any]) -> str:
 - split: {record["split"]}
 - index: {record["index"]}
 - dialogue_id: {record["dialogue_id"]}
-- gpt_oss_20b_related: {record["gpt_oss_20b_related"]}
-- strict_postal_regex: {record["strict_postal_regex"]}
-- regex_categories: {record["regex_categories"]}
 - summary: {record["summary_text"]}
 - dialogue_preview: {record["dialogue_preview"]}
 """
@@ -333,11 +343,11 @@ def summarize(records: list[dict[str, Any]], reviewed: list[dict[str, Any]] | No
         split = record["split"]
         by_split[split]["total"] += 1
         by_split[split]["gpt_oss_20b_related"] += int(record["gpt_oss_20b_related"])
-        by_split[split]["strict_postal_regex"] += int(record["strict_postal_regex"])
+        by_split[split]["regex_related"] += int(record["regex_related"])
         by_split[split]["needs_120b_review"] += int(record["needs_120b_review"])
         for category in record["regex_categories"] or ["未命中"]:
             regex_category_counts[category] += 1
-        key = f"20b={record['gpt_oss_20b_related']} regex={record['strict_postal_regex']}"
+        key = f"20b={record['gpt_oss_20b_related']} regex={record['regex_related']}"
         disagreement_counts[key] += 1
 
     summary: dict[str, Any] = {
@@ -348,19 +358,31 @@ def summarize(records: list[dict[str, Any]], reviewed: list[dict[str, Any]] | No
 
     if reviewed is not None:
         category_counts: Counter[str] = Counter()
-        strict_counts: Counter[str] = Counter()
+        broad_counts: Counter[str] = Counter()
+        twenty_b_vs_120b_counts: Counter[str] = Counter()
+        regex_vs_120b_counts: Counter[str] = Counter()
         parse_errors = 0
         for item in reviewed:
             label = item.get("gpt_oss_120b_label")
             if isinstance(label, dict):
                 category_counts[str(label.get("category", "未知"))] += 1
-                strict_counts[str(label.get("strict_postal", "未知"))] += 1
+                broad_value = label.get("broad_related")
+                broad_counts[str(broad_value)] += 1
+                if isinstance(broad_value, bool):
+                    twenty_b_vs_120b_counts[
+                        f"20b={item['gpt_oss_20b_related']} 120b={broad_value}"
+                    ] += 1
+                    regex_vs_120b_counts[
+                        f"regex={item['regex_related']} 120b={broad_value}"
+                    ] += 1
             else:
                 parse_errors += 1
         summary["gpt_oss_120b_review"] = {
             "total": len(reviewed),
             "category_counts": dict(category_counts),
-            "strict_postal_counts": dict(strict_counts),
+            "broad_related_counts": dict(broad_counts),
+            "twenty_b_vs_120b_counts": dict(twenty_b_vs_120b_counts),
+            "regex_vs_120b_counts": dict(regex_vs_120b_counts),
             "parse_errors": parse_errors,
         }
 
@@ -387,7 +409,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-ollama", action="store_true", help="Only compute 20B vs regex summary.")
     parser.add_argument(
         "--review-policy",
-        choices=["disagreement", "20b-related", "regex-strict", "all"],
+        choices=["disagreement", "20b-related", "regex-related", "all"],
         default="disagreement",
         help="Which samples should be reviewed by 120B.",
     )
@@ -399,8 +421,8 @@ def select_review_records(records: list[dict[str, Any]], policy: str, limit: int
         selected = [record for record in records if record["needs_120b_review"]]
     elif policy == "20b-related":
         selected = [record for record in records if record["gpt_oss_20b_related"]]
-    elif policy == "regex-strict":
-        selected = [record for record in records if record["strict_postal_regex"]]
+    elif policy == "regex-related":
+        selected = [record for record in records if record["regex_related"]]
     else:
         selected = list(records)
 
@@ -418,9 +440,9 @@ def main() -> None:
     dump_json(args.output_dir / "20b_vs_regex_records.json", records)
 
     review_records = select_review_records(records, args.review_policy, args.limit)
-    dump_json(args.output_dir / "120b_review_candidates.json", review_records)
+    dump_json(args.output_dir / "120b_broad_review_candidates.json", review_records)
 
-    review_jsonl = args.output_dir / "120b_review_results.jsonl"
+    review_jsonl = args.output_dir / "120b_broad_review_results.jsonl"
     existing_reviewed = read_jsonl(review_jsonl)
     completed_keys = {record_key(item) for item in existing_reviewed if "split" in item and "index" in item}
     reviewed: list[dict[str, Any]] | None = existing_reviewed if existing_reviewed else None
@@ -439,7 +461,7 @@ def main() -> None:
             completed_keys=completed_keys,
         )
         reviewed = [*existing_reviewed, *new_reviewed]
-        dump_json(args.output_dir / "120b_review_results.json", reviewed)
+        dump_json(args.output_dir / "120b_broad_review_results.json", reviewed)
 
     summary = summarize(records, reviewed)
     dump_json(args.output_dir / "label_comparison_summary.json", summary)
