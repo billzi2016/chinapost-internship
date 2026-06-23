@@ -43,7 +43,9 @@ def stream_chat_events(
     }
 
     if use_sft:
-        yield {"event": "error", "data": {"message": "当前不存在 SFT 模型"}}
+        error_message = "当前不存在 SFT 模型"
+        _record_conversation_error(conversation, error_message)
+        yield {"event": "error", "data": {"message": error_message}}
         return
 
     hits = []
@@ -51,10 +53,12 @@ def stream_chat_events(
         try:
             hits = query_configured_vector_store(message, top_k=3)
         except (ProviderError, VectorStoreError, ValueError) as exc:
+            error_message = f"RAG 检索失败：{exc}"
+            _record_conversation_error(conversation, error_message)
             yield {
                 "event": "error",
                 "data": {
-                    "message": f"RAG 检索失败：{exc}",
+                    "message": error_message,
                 },
             }
             return
@@ -78,7 +82,9 @@ def stream_chat_events(
             if content:
                 yield {"event": "delta", "data": {"content": content}}
     except ProviderError as exc:
-        yield {"event": "error", "data": {"message": f"模型生成失败：{exc}"}}
+        error_message = f"模型生成失败：{exc}"
+        _record_conversation_error(conversation, error_message)
+        yield {"event": "error", "data": {"message": error_message}}
         return
 
     assistant = Message.objects.create(
@@ -96,21 +102,8 @@ def stream_chat_events(
             metadata=hit.document.metadata,
         )
 
-    ticket = build_rule_based_ticket(
-        user_request=message,
-        summary=answer,
-        issue_type=_first_issue_type(hits),
-        need_follow_up=False,
-    )
-    Ticket.objects.create(
-        conversation=conversation,
-        message=assistant,
-        payload=ticket.model_dump(),
-        is_valid=True,
-    )
     _ensure_conversation_title(conversation, message, answer)
 
-    yield {"event": "ticket", "data": {"payload": ticket.model_dump()}}
     yield {"event": "done", "data": {"conversation_id": conversation.id, "message_id": assistant.id}}
 
 
@@ -131,6 +124,8 @@ def normalize_display_text(text: str) -> str:
     text = re.sub(r"\s+([，。！？；：、“”）])", r"\1", text)
     text = re.sub(r"([，。！？；：、“”])\s+(?=[\u4e00-\u9fff])", r"\1", text)
     text = re.sub(r"([（“])\s+", r"\1", text)
+    text = re.sub(r"(?<!^)(?=(?:用户|客服)\[\d+\]:)", "\n", text)
+    text = re.sub(r"\n{2,}", "\n", text)
     return text
 
 
@@ -170,3 +165,64 @@ def _ensure_conversation_title(conversation: Conversation, user_message: str, an
     title = result.content.strip().strip('"').strip("'")[:20]
     conversation.title = title or "未命名会话"
     conversation.save(update_fields=["title", "updated_at"])
+
+
+def _record_conversation_error(conversation: Conversation, message: str) -> None:
+    Message.objects.create(
+        conversation=conversation,
+        role=Message.ROLE_SYSTEM,
+        content=message,
+        metadata={"kind": "error"},
+    )
+    if not conversation.title:
+        conversation.title = message[:128]
+        conversation.save(update_fields=["title", "updated_at"])
+
+
+def generate_ticket_for_conversation(conversation: Conversation) -> Ticket:
+    existing = conversation.tickets.order_by("created_at", "id").first()
+    if existing:
+        return existing
+
+    messages = list(conversation.messages.order_by("created_at", "id"))
+    user_messages = [message.content for message in messages if message.role == Message.ROLE_USER]
+    assistant_messages = [
+        message.content for message in messages if message.role == Message.ROLE_ASSISTANT
+    ]
+    ticket = build_rule_based_ticket(
+        user_request="\n".join(user_messages).strip(),
+        summary=assistant_messages[-1] if assistant_messages else "",
+        issue_type=_latest_issue_type(conversation),
+        need_follow_up=False,
+    )
+    return Ticket.objects.create(
+        conversation=conversation,
+        message=messages[-1] if messages else None,
+        payload=ticket.model_dump(),
+        is_valid=True,
+    )
+
+
+def provider_health_payload() -> dict:
+    config = AppConfig.from_env()
+    provider_settings = config.provider_settings
+    return {
+        "chat_provider": provider_settings.default_chat_provider,
+        "chat_model": provider_settings.default_chat_model,
+        "embedding_provider": provider_settings.default_embedding_provider,
+        "embedding_model": provider_settings.default_embedding_model,
+        "vector_provider": config.vector_store_settings.provider,
+        "sft_configured": bool(provider_settings.sft_provider and provider_settings.sft_model),
+    }
+
+
+def _latest_issue_type(conversation: Conversation) -> str:
+    citation = (
+        Citation.objects.filter(message__conversation=conversation)
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    if not citation:
+        return ""
+    intents = citation.metadata.get("intents") or []
+    return intents[0] if intents else ""

@@ -10,9 +10,9 @@
 
     <nav class="conversation-list" aria-label="历史会话">
       {% for conversation in conversations %}
-        <div class="conversation-row" data-id="{{ conversation.id }}">
+        <div class="conversation-row{% if conversation.is_pinned %} pinned{% endif %}" data-id="{{ conversation.id }}">
           <button class="conversation-item" type="button">{{ conversation.title|default:"未命名会话" }}</button>
-          <button class="icon-button pin-conversation" type="button" title="置顶">↑</button>
+          <button class="icon-button pin-conversation" type="button" title="置顶" aria-label="置顶">📌</button>
           <button class="icon-button delete-conversation" type="button" title="删除">×</button>
         </div>
       {% empty %}
@@ -30,12 +30,19 @@
         <span class="form-check-label">监督微调模型（SFT）</span>
       </label>
       <p class="sft-warning" id="sft-warning" hidden>当前不存在 SFT 模型</p>
+      <button class="btn btn-sm btn-success ticket-action" type="button" id="generate-ticket">生成工单</button>
+      <button class="btn btn-sm btn-light ticket-action" type="button" id="view-ticket">查看工单</button>
     </section>
   </aside>
 
   <section class="chat-panel">
+    <header class="chat-topbar">
+      <span class="provider-health" id="provider-health">Provider: 检查中</span>
+    </header>
     <div class="messages" id="messages" aria-live="polite"></div>
+    <aside class="ticket-panel" id="ticket-panel" hidden></aside>
     <form class="composer" id="chat-form">
+      <div class="composer-resize-handle" id="composer-resize-handle" aria-hidden="true"></div>
       <input type="hidden" id="conversation-id">
       <textarea class="form-control" id="message-input" rows="2" placeholder="输入邮政客服问题"></textarea>
       <button class="btn btn-success" type="submit">发送</button>

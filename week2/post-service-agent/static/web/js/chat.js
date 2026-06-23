@@ -5,25 +5,73 @@ const input = document.getElementById("message-input");
 const messages = document.getElementById("messages");
 const conversationIdInput = document.getElementById("conversation-id");
 const conversationList = document.querySelector(".conversation-list");
+const ticketPanel = document.getElementById("ticket-panel");
+const generateTicketButton = document.getElementById("generate-ticket");
+const viewTicketButton = document.getElementById("view-ticket");
+const providerHealth = document.getElementById("provider-health");
+const newChatButton = document.getElementById("new-chat");
 
 document.addEventListener("DOMContentLoaded", () => {
   if (window.Split) {
     Split([".sidebar", ".chat-panel"], {minSize: 240});
   }
+  loadProviderHealth();
+  bindTicketPanelResize();
+  bindComposerResize();
 });
 
-function appendMessage(role, html) {
+function formatDateTime(value) {
+  const date = value ? new Date(value) : new Date();
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+}
+
+function appendMessage(role, html, createdAt = null) {
   const node = document.createElement("article");
   node.className = `message ${role}`;
-  node.innerHTML = html;
+  node.innerHTML = `
+    <div class="message-body">${html}</div>
+    <time class="message-time" datetime="${createdAt || new Date().toISOString()}">${formatDateTime(createdAt)}</time>
+  `;
   messages.appendChild(node);
   messages.scrollTop = messages.scrollHeight;
   return node;
 }
 
 function appendToMessage(node, html) {
-  node.innerHTML += html;
+  const body = node.querySelector(".message-body");
+  if (body) {
+    body.innerHTML += html;
+  } else {
+    node.innerHTML += html;
+  }
   messages.scrollTop = messages.scrollHeight;
+}
+
+function startThinkingAnimation(node) {
+  const dots = Array.from(node.querySelectorAll(".typing-dot"));
+  if (!dots.length) return;
+  let index = 0;
+  dots[0].classList.add("active");
+  node.thinkingTimer = window.setInterval(() => {
+    dots.forEach((dot) => dot.classList.remove("active"));
+    dots[index % dots.length].classList.add("active");
+    index += 1;
+  }, 180);
+}
+
+function stopThinkingAnimation(node) {
+  if (node?.thinkingTimer) {
+    window.clearInterval(node.thinkingTimer);
+    node.thinkingTimer = null;
+  }
 }
 
 function renderMarkdown(text) {
@@ -33,33 +81,244 @@ function renderMarkdown(text) {
   return DOMPurify.sanitize(marked.parse(text));
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function renderConversationTitle(conversation) {
+  const title = conversation.title || "未命名会话";
+  const error = conversation.latest_error || "";
+  const titleClass = error && title === error ? "conversation-title error" : "conversation-title";
+  const errorLine = error && title !== error
+    ? `<span class="conversation-error">${escapeHtml(error)}</span>`
+    : "";
+  return `
+    <span class="${titleClass}">${escapeHtml(title)}</span>
+    ${errorLine}
+  `;
+}
+
+function renderCitationText(text) {
+  return String(text || "").split("\n").filter(Boolean).map((line) => {
+    const match = line.match(/^((?:用户|客服)\[\d+\]:)(.*)$/);
+    if (!match) {
+      return `<p class="citation-line">${escapeHtml(line)}</p>`;
+    }
+    const roleClass = match[1].startsWith("用户") ? "user" : "agent";
+    return `
+      <p class="citation-line">
+        <strong class="citation-speaker ${roleClass}">${escapeHtml(match[1])}</strong>
+        <span class="citation-content">${escapeHtml(match[2].trim())}</span>
+      </p>
+    `;
+  }).join("");
+}
+
+function renderCitations(citations) {
+  if (!citations || !citations.length) return "";
+  const items = citations.map((item, index) => {
+    const rank = item.rank || index + 1;
+    return `<details class="citation"><summary>引用 ${rank} · score ${Number(item.score).toFixed(4)}</summary><div class="citation-body">${renderCitationText(item.quoted_text)}</div></details>`;
+  }).join("");
+  return `<section class="citations"><h2>引用对话</h2>${items}</section>`;
+}
+
+function bindTicketPanelResize() {
+  const handle = document.getElementById("ticket-resize-handle");
+  if (!handle || !ticketPanel) return;
+
+  let startY = 0;
+  let startHeight = 0;
+
+  handle.addEventListener("pointerdown", (event) => {
+    startY = event.clientY;
+    startHeight = ticketPanel.getBoundingClientRect().height;
+    handle.setPointerCapture(event.pointerId);
+    document.body.classList.add("is-ticket-resizing");
+  });
+
+  handle.addEventListener("pointermove", (event) => {
+    if (!handle.hasPointerCapture(event.pointerId)) return;
+    const nextHeight = startHeight + startY - event.clientY;
+    ticketPanel.style.height = `${Math.min(Math.max(nextHeight, 160), 520)}px`;
+  });
+
+  handle.addEventListener("pointerup", (event) => {
+    if (handle.hasPointerCapture(event.pointerId)) {
+      handle.releasePointerCapture(event.pointerId);
+    }
+    document.body.classList.remove("is-ticket-resizing");
+  });
+}
+
+function bindComposerResize() {
+  const handle = document.getElementById("composer-resize-handle");
+  if (!handle || !form) return;
+
+  let startY = 0;
+  let startHeight = 0;
+
+  handle.addEventListener("pointerdown", (event) => {
+    startY = event.clientY;
+    startHeight = form.getBoundingClientRect().height;
+    handle.setPointerCapture(event.pointerId);
+    document.body.classList.add("is-composer-resizing");
+  });
+
+  handle.addEventListener("pointermove", (event) => {
+    if (!handle.hasPointerCapture(event.pointerId)) return;
+    const nextHeight = startHeight + startY - event.clientY;
+    form.style.height = `${Math.min(Math.max(nextHeight, 74), 240)}px`;
+  });
+
+  handle.addEventListener("pointerup", (event) => {
+    if (handle.hasPointerCapture(event.pointerId)) {
+      handle.releasePointerCapture(event.pointerId);
+    }
+    document.body.classList.remove("is-composer-resizing");
+  });
+}
+
 async function refreshConversations(activeId) {
   const response = await fetch("/api/conversations");
   const conversations = await response.json();
   conversationList.innerHTML = conversations.length ? "" : '<span class="empty-list">暂无会话</span>';
   for (const conversation of conversations) {
     const row = document.createElement("div");
-    row.className = `conversation-row ${conversation.id === activeId ? "active" : ""}`;
+    row.className = `conversation-row ${conversation.id === activeId ? "active" : ""} ${conversation.is_pinned ? "pinned" : ""}`;
     row.dataset.id = conversation.id;
     row.innerHTML = `
-      <button class="conversation-item" type="button">${conversation.title || "未命名会话"}</button>
-      <button class="icon-button pin-conversation" type="button" title="置顶">↑</button>
+      <button class="conversation-item" type="button">${renderConversationTitle(conversation)}</button>
+      <button class="icon-button pin-conversation" type="button" title="置顶" aria-label="置顶">📌</button>
       <button class="icon-button delete-conversation" type="button" title="删除">×</button>
     `;
     conversationList.appendChild(row);
   }
 }
 
+function resetCurrentConversation() {
+  conversationIdInput.value = "";
+  messages.innerHTML = "";
+  renderTicket(null);
+  document.querySelectorAll(".conversation-row").forEach((row) => row.classList.remove("active"));
+  input.focus();
+}
+
 async function loadConversation(conversationId) {
   conversationIdInput.value = conversationId;
   messages.innerHTML = "";
+  renderTicket(null);
   document.querySelectorAll(".conversation-row").forEach((row) => row.classList.remove("active"));
   document.querySelector(`.conversation-row[data-id="${conversationId}"]`)?.classList.add("active");
   const response = await fetch(`/api/conversations/${conversationId}/messages`);
   const items = await response.json();
   for (const item of items) {
-    appendMessage(item.role, renderMarkdown(item.content));
+    appendMessage(item.role, renderMarkdown(item.content) + renderCitations(item.citations), item.created_at);
   }
+  await loadTicket(conversationId);
+}
+
+async function loadProviderHealth() {
+  try {
+    const response = await fetch("/api/provider/health");
+    if (!response.ok) throw new Error("provider health unavailable");
+    const health = await response.json();
+    providerHealth.innerHTML = `
+      <span class="health-item">
+        <span class="health-dot ok" aria-hidden="true"></span>
+        Chat ${escapeHtml(health.chat_provider)}/${escapeHtml(health.chat_model)}
+      </span>
+      <span class="health-item">
+        <span class="health-dot ok" aria-hidden="true"></span>
+        Vector ${escapeHtml(health.vector_provider)}
+      </span>
+    `;
+  } catch {
+    providerHealth.innerHTML = `
+      <span class="health-item">
+        <span class="health-dot bad" aria-hidden="true"></span>
+        Chat unavailable
+      </span>
+      <span class="health-item">
+        <span class="health-dot bad" aria-hidden="true"></span>
+        Vector unavailable
+      </span>
+    `;
+  }
+}
+
+function renderTicket(ticket) {
+  if (!ticket) {
+    ticketPanel.hidden = true;
+    ticketPanel.innerHTML = "";
+    return;
+  }
+  const payload = ticket.payload;
+  const jsonText = JSON.stringify(payload, null, 2);
+  ticketPanel.hidden = false;
+  ticketPanel.innerHTML = `
+    <div class="ticket-resize-handle" id="ticket-resize-handle" aria-hidden="true"></div>
+    <button class="ticket-close" type="button" id="close-ticket" title="关闭工单">×</button>
+    <section class="ticket-layout">
+      <div class="ticket-readable" aria-label="工单摘要">
+        <h2>工单摘要</h2>
+        <dl>
+          <dt>服务类型</dt>
+          <dd>${escapeHtml(payload.service_type || "未识别")}</dd>
+          <dt>问题类型</dt>
+          <dd>${escapeHtml(payload.issue_type || "未识别")}</dd>
+          <dt>用户请求</dt>
+          <dd>${escapeHtml(payload.user_request || "无")}</dd>
+          <dt>处理摘要</dt>
+          <dd>${escapeHtml(payload.summary || "无")}</dd>
+          <dt>处理结果</dt>
+          <dd>${escapeHtml(payload.resolution || "无")}</dd>
+          <dt>是否需要跟进</dt>
+          <dd>${payload.need_follow_up ? "需要" : "不需要"}</dd>
+        </dl>
+      </div>
+      <div class="ticket-json">
+        <div class="ticket-json-header">
+          <h2>工单 JSON</h2>
+          <p class="ticket-note">首次生成后锁定，重复点击不覆盖。</p>
+        </div>
+        <div class="ticket-codebox">
+          <div class="ticket-json-actions">
+            <button class="btn btn-sm btn-light" type="button" id="copy-ticket-json">复制 JSON</button>
+            <button class="btn btn-sm btn-light" type="button" id="download-ticket">下载 JSON</button>
+          </div>
+          <pre>${escapeHtml(jsonText)}</pre>
+        </div>
+      </div>
+    </section>
+  `;
+  bindTicketPanelResize();
+  document.getElementById("copy-ticket-json")?.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(jsonText);
+  });
+  document.getElementById("download-ticket")?.addEventListener("click", () => {
+    const blob = new Blob([jsonText], {type: "application/json"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ticket-${ticket.id}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById("close-ticket")?.addEventListener("click", () => {
+    renderTicket(null);
+  });
+}
+
+async function loadTicket(conversationId) {
+  const response = await fetch(`/api/conversations/${conversationId}/ticket`);
+  if (!response.ok) return;
+  renderTicket(await response.json());
 }
 
 function parseSseBlock(block) {
@@ -90,8 +349,14 @@ async function consumeSse(response, assistantNode) {
       const parsed = parseSseBlock(block);
       if (!parsed) continue;
 
+      if (parsed.event === "meta") {
+        conversationIdInput.value = parsed.data.conversation_id;
+      }
+
       if (parsed.event === "error") {
-        assistantNode.innerHTML = `<p class="text-danger">${parsed.data.message}</p>`;
+        stopThinkingAnimation(assistantNode);
+        const body = assistantNode.querySelector(".message-body");
+        if (body) body.innerHTML = `<p class="text-danger">${parsed.data.message}</p>`;
       }
 
       if (parsed.event === "citation") {
@@ -99,22 +364,19 @@ async function consumeSse(response, assistantNode) {
       }
 
       if (parsed.event === "delta") {
+        stopThinkingAnimation(assistantNode);
         answer += parsed.data.content;
-        assistantNode.innerHTML = renderMarkdown(answer);
-      }
-
-      if (parsed.event === "ticket") {
-        appendToMessage(
-          assistantNode,
-          `<section class="ticket-json"><h2>工单 JSON</h2><pre>${JSON.stringify(parsed.data.payload, null, 2)}</pre></section>`
-        );
+        const body = assistantNode.querySelector(".message-body");
+        if (body) body.innerHTML = renderMarkdown(answer);
       }
 
       if (parsed.event === "done" && citations.length) {
-        const items = citations.map((item) => (
-          `<details class="citation"><summary>引用 ${item.rank} · score ${item.score.toFixed(4)}</summary><pre>${item.quoted_text}</pre></details>`
-        )).join("");
-        appendToMessage(assistantNode, `<section class="citations"><h2>引用对话</h2>${items}</section>`);
+        stopThinkingAnimation(assistantNode);
+        appendToMessage(assistantNode, renderCitations(citations));
+      }
+
+      if (parsed.event === "done") {
+        stopThinkingAnimation(assistantNode);
       }
     }
   }
@@ -124,6 +386,17 @@ sftToggle?.addEventListener("change", () => {
   sftWarning.hidden = !sftToggle.checked;
 });
 
+newChatButton?.addEventListener("click", () => {
+  resetCurrentConversation();
+});
+
+input?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && event.shiftKey) {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
+
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const content = input.value.trim();
@@ -131,7 +404,8 @@ form?.addEventListener("submit", async (event) => {
   appendMessage("user", renderMarkdown(content));
   input.value = "";
 
-  const loading = appendMessage("assistant", '<span class="typing"><span>●</span><span>●</span><span>●</span></span>');
+  const loading = appendMessage("assistant", '<span class="typing"><span class="typing-label">Thinking</span><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>');
+  startThinkingAnimation(loading);
   const response = await fetch("/api/chat/stream", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
@@ -146,6 +420,34 @@ form?.addEventListener("submit", async (event) => {
   await refreshConversations(Number(conversationIdInput.value) || null);
 });
 
+generateTicketButton?.addEventListener("click", async () => {
+  const conversationId = conversationIdInput.value;
+  if (!conversationId) {
+    ticketPanel.hidden = false;
+    ticketPanel.innerHTML = '<p class="text-danger">请先选择或发送一个会话。</p>';
+    return;
+  }
+  const response = await fetch(`/api/conversations/${conversationId}/ticket/generate`, {
+    method: "POST"
+  });
+  if (!response.ok) {
+    ticketPanel.hidden = false;
+    ticketPanel.innerHTML = '<p class="text-danger">工单生成失败。</p>';
+    return;
+  }
+  renderTicket(await response.json());
+});
+
+viewTicketButton?.addEventListener("click", async () => {
+  const conversationId = conversationIdInput.value;
+  if (!conversationId) {
+    ticketPanel.hidden = false;
+    ticketPanel.innerHTML = '<p class="text-danger">请先选择一个会话。</p>';
+    return;
+  }
+  await loadTicket(conversationId);
+});
+
 conversationList?.addEventListener("click", async (event) => {
   const row = event.target.closest(".conversation-row");
   if (!row) return;
@@ -156,6 +458,7 @@ conversationList?.addEventListener("click", async (event) => {
     if (conversationIdInput.value === String(conversationId)) {
       conversationIdInput.value = "";
       messages.innerHTML = "";
+      renderTicket(null);
     }
     await refreshConversations(null);
     return;

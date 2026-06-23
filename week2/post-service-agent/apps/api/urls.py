@@ -10,8 +10,16 @@ from apps.api.schemas import (
     ConversationOut,
     MessageCreateIn,
     MessageOut,
+    ProviderHealthOut,
+    TicketOut,
 )
-from apps.api.services import create_conversation, encode_sse, stream_chat_events
+from apps.api.services import (
+    create_conversation,
+    encode_sse,
+    generate_ticket_for_conversation,
+    provider_health_payload,
+    stream_chat_events,
+)
 from apps.core.models import Conversation, Message
 
 
@@ -31,7 +39,26 @@ def create_conversation_api(request, payload: ConversationCreateIn):
 @api.get("/conversations/{conversation_id}/messages", response=list[MessageOut])
 def list_messages(request, conversation_id: int):
     conversation = get_object_or_404(Conversation, pk=conversation_id)
-    return list(conversation.messages.all())
+    items = []
+    for message in conversation.messages.prefetch_related("citations").all():
+        items.append(
+            {
+                "id": message.id,
+                "role": message.role,
+                "content": message.content,
+                "metadata": message.metadata,
+                "created_at": message.created_at,
+                "citations": [
+                    {
+                        "score": citation.score,
+                        "quoted_text": citation.quoted_text,
+                        "metadata": citation.metadata,
+                    }
+                    for citation in message.citations.all()
+                ],
+            }
+        )
+    return items
 
 
 @api.patch("/conversations/{conversation_id}/pin", response=ConversationOut)
@@ -72,3 +99,20 @@ def chat_stream(request, payload: ChatPreviewIn):
     )
     response["Cache-Control"] = "no-cache"
     return response
+
+
+@api.get("/provider/health", response=ProviderHealthOut)
+def provider_health(request):
+    return provider_health_payload()
+
+
+@api.get("/conversations/{conversation_id}/ticket", response=TicketOut | None)
+def get_latest_ticket(request, conversation_id: int):
+    conversation = get_object_or_404(Conversation, pk=conversation_id)
+    return conversation.tickets.order_by("created_at", "id").first()
+
+
+@api.post("/conversations/{conversation_id}/ticket/generate", response=TicketOut)
+def generate_ticket(request, conversation_id: int):
+    conversation = get_object_or_404(Conversation, pk=conversation_id)
+    return generate_ticket_for_conversation(conversation)

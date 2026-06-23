@@ -7,7 +7,7 @@ from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from apps.core.models import Conversation, Message, PostalDocument, Ticket
+from apps.core.models import Citation, Conversation, Message, PostalDocument, Ticket
 from apps.api.services import normalize_display_text
 from post_ai.config import AppConfig
 
@@ -65,8 +65,37 @@ class DjangoSmokeTests(TestCase):
         self.assertIn("event: error", body)
         self.assertIn("当前不存在 SFT 模型", body)
         self.assertEqual(Message.objects.filter(role=Message.ROLE_ASSISTANT).count(), 0)
+        conversation = Conversation.objects.get()
+        self.assertEqual(conversation.title, "当前不存在 SFT 模型")
+        self.assertEqual(conversation.latest_error, "当前不存在 SFT 模型")
 
-    def test_non_sft_stream_saves_messages_and_ticket(self) -> None:
+        listed = Client().get("/api/conversations").json()
+        self.assertEqual(listed[0]["title"], "当前不存在 SFT 模型")
+        self.assertEqual(listed[0]["latest_error"], "当前不存在 SFT 模型")
+
+    def test_error_keeps_existing_title_and_adds_error_summary(self) -> None:
+        conversation = Conversation.objects.create(title="已有会话")
+
+        response = Client().post(
+            "/api/chat/stream",
+            data=json.dumps(
+                {
+                    "conversation_id": conversation.id,
+                    "message": "测试",
+                    "use_rag": False,
+                    "use_sft": True,
+                }
+            ),
+            content_type="application/json",
+        )
+
+        body = b"".join(response.streaming_content).decode("utf-8")
+        conversation.refresh_from_db()
+        self.assertIn("当前不存在 SFT 模型", body)
+        self.assertEqual(conversation.title, "已有会话")
+        self.assertEqual(conversation.latest_error, "当前不存在 SFT 模型")
+
+    def test_non_sft_stream_saves_messages_without_auto_ticket(self) -> None:
         response = Client().post(
             "/api/chat/stream",
             data=json.dumps({"message": "包裹什么时候派送", "use_rag": False, "use_sft": False}),
@@ -76,13 +105,69 @@ class DjangoSmokeTests(TestCase):
         body = b"".join(response.streaming_content).decode("utf-8")
         self.assertIn("event: meta", body)
         self.assertIn("event: delta", body)
-        self.assertIn("event: ticket", body)
+        self.assertNotIn("event: ticket", body)
         self.assertEqual(Conversation.objects.count(), 1)
         self.assertEqual(Message.objects.count(), 2)
-        self.assertEqual(Ticket.objects.count(), 1)
+        self.assertEqual(Ticket.objects.count(), 0)
         self.assertEqual(Conversation.objects.first().title, "包裹什么时候派送")
 
-    def test_rag_stream_returns_clear_error_when_provider_unavailable(self) -> None:
+    def test_ticket_is_generated_manually_for_conversation(self) -> None:
+        conversation = Conversation.objects.create(title="测试")
+        Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_USER,
+            content="包裹什么时候派送",
+        )
+        Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_ASSISTANT,
+            content="请等待配送通知。",
+        )
+
+        generated = Client().post(f"/api/conversations/{conversation.id}/ticket/generate")
+        latest = Client().get(f"/api/conversations/{conversation.id}/ticket")
+
+        self.assertEqual(generated.status_code, 200)
+        self.assertEqual(latest.status_code, 200)
+        self.assertEqual(Ticket.objects.count(), 1)
+        self.assertEqual(generated.json()["payload"]["user_request"], "包裹什么时候派送")
+
+    def test_ticket_generation_is_idempotent_after_first_ticket(self) -> None:
+        conversation = Conversation.objects.create(title="测试")
+        Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_USER,
+            content="第一次问题",
+        )
+        Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_ASSISTANT,
+            content="第一次回答",
+        )
+        client = Client()
+
+        first = client.post(f"/api/conversations/{conversation.id}/ticket/generate")
+        Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_USER,
+            content="第二次问题",
+        )
+        second = client.post(f"/api/conversations/{conversation.id}/ticket/generate")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(Ticket.objects.count(), 1)
+        self.assertEqual(first.json()["id"], second.json()["id"])
+        self.assertEqual(second.json()["payload"]["user_request"], "第一次问题")
+
+    def test_provider_health_api(self) -> None:
+        response = Client().get("/api/provider/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["chat_provider"], "ollama")
+        self.assertEqual(response.json()["vector_provider"], "faiss")
+
+    def test_rag_stream_returns_citations_when_faiss_is_available(self) -> None:
         response = Client().post(
             "/api/chat/stream",
             data=json.dumps({"message": "包裹什么时候派送", "use_rag": True, "use_sft": False}),
@@ -91,8 +176,29 @@ class DjangoSmokeTests(TestCase):
 
         body = b"".join(response.streaming_content).decode("utf-8")
         self.assertIn("event: meta", body)
-        self.assertIn("event: error", body)
-        self.assertIn("RAG 检索失败", body)
+        self.assertIn("event: citation", body)
+        self.assertIn("event: delta", body)
+        self.assertIn("event: done", body)
+
+    def test_message_api_returns_saved_citations(self) -> None:
+        conversation = Conversation.objects.create(title="测试")
+        assistant = Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_ASSISTANT,
+            content="回答",
+        )
+        Citation.objects.create(
+            message=assistant,
+            score=0.82,
+            quoted_text="用户[0]: 你好\n客服[1]: 您好",
+            metadata={"intents": ["配送周期"]},
+        )
+
+        response = Client().get(f"/api/conversations/{conversation.id}/messages")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["citations"][0]["score"], 0.82)
+        self.assertIn("用户[0]:", response.json()[0]["citations"][0]["quoted_text"])
 
     def test_ingest_postal_rag_is_idempotent_with_limit(self) -> None:
         output = StringIO()
@@ -107,3 +213,11 @@ class DjangoSmokeTests(TestCase):
         text = "用户 询问 邮寄 的 信息 ， 客服 回复 。"
 
         self.assertEqual(normalize_display_text(text), "用户询问邮寄的信息，客服回复。")
+
+    def test_normalize_display_text_splits_dialogue_turns(self) -> None:
+        text = "用户[0]: 你好客服[1]: 您好用户[2]: 查询一下"
+
+        self.assertEqual(
+            normalize_display_text(text),
+            "用户[0]: 你好\n客服[1]: 您好\n用户[2]: 查询一下",
+        )

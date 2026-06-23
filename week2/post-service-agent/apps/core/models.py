@@ -15,6 +15,15 @@ class Conversation(models.Model):
     def __str__(self) -> str:
         return self.title or f"会话 {self.pk}"
 
+    @property
+    def latest_error(self) -> str:
+        message = (
+            self.messages.filter(role=Message.ROLE_SYSTEM, metadata__kind="error")
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        return message.content if message else ""
+
 
 class Message(models.Model):
     ROLE_USER = "user"
