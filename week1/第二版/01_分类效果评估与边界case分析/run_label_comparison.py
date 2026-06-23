@@ -27,7 +27,22 @@ from tqdm import tqdm
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_DIR = SCRIPT_DIR.parents[3]
+
+
+def find_project_dir(start: Path) -> Path:
+    """Find the project root relative to this script.
+
+    The expected project root contains both week1 and week2. This keeps the
+    script portable if the whole project directory is moved.
+    """
+
+    for current in [start, *start.parents]:
+        if (current / "week1").is_dir() and (current / "week2").is_dir():
+            return current
+    raise FileNotFoundError("Cannot find project root containing both week1 and week2")
+
+
+PROJECT_DIR = find_project_dir(SCRIPT_DIR)
 DATA_DIR = PROJECT_DIR / "week2" / "data"
 CSDS_DIR = DATA_DIR / "CSDS"
 FILTER_RESULTS = DATA_DIR / "llm_filter" / "postal_filter_results.json"
@@ -69,10 +84,35 @@ def dump_json(path: Path, data: Any) -> None:
 
 
 def append_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
+    if not rows:
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
         for row in rows:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+
+    rows: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                value = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, dict):
+                rows.append(value)
+    return rows
+
+
+def record_key(record: dict[str, Any]) -> str:
+    return f"{record['split']}:{record['index']}"
 
 
 def extract_text(row: dict[str, Any]) -> str:
@@ -159,6 +199,7 @@ def ollama_generate(
     host: str,
     timeout: int,
     temperature: float,
+    think: str | bool | None,
 ) -> str:
     payload = {
         "model": model,
@@ -166,6 +207,8 @@ def ollama_generate(
         "stream": False,
         "options": {"temperature": temperature},
     }
+    if think is not None:
+        payload["think"] = think
     request = urllib.request.Request(
         f"{host.rstrip('/')}/api/generate",
         data=json.dumps(payload).encode("utf-8"),
@@ -229,16 +272,29 @@ def review_with_120b(
     host: str,
     timeout: int,
     temperature: float,
+    think: str | bool | None,
     sleep_seconds: float,
+    save_every: int,
     output_jsonl: Path,
+    completed_keys: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     reviewed: list[dict[str, Any]] = []
+    buffer: list[dict[str, Any]] = []
+    completed_keys = completed_keys or set()
+    pending_records = [record for record in records if record_key(record) not in completed_keys]
 
-    for record in tqdm(records, desc=f"120B review ({model})", unit="sample"):
+    for record in tqdm(pending_records, desc=f"120B review ({model})", unit="sample"):
         prompt = make_120b_prompt(record)
         started = time.time()
         try:
-            raw = ollama_generate(prompt, model=model, host=host, timeout=timeout, temperature=temperature)
+            raw = ollama_generate(
+                prompt,
+                model=model,
+                host=host,
+                timeout=timeout,
+                temperature=temperature,
+                think=think,
+            )
             parsed, error = parse_json_object(raw)
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raw = ""
@@ -255,11 +311,16 @@ def review_with_120b(
             "gpt_oss_120b_label": parsed,
         }
         reviewed.append(item)
-        append_jsonl(output_jsonl, [item])
+        buffer.append(item)
+
+        if len(buffer) >= save_every:
+            append_jsonl(output_jsonl, buffer)
+            buffer.clear()
 
         if sleep_seconds > 0:
             time.sleep(sleep_seconds)
 
+    append_jsonl(output_jsonl, buffer)
     return reviewed
 
 
@@ -314,7 +375,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ollama-host", default="http://127.0.0.1:11434")
     parser.add_argument("--timeout", type=int, default=600)
     parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument(
+        "--think",
+        choices=["low", "medium", "high"],
+        default="low",
+        help='Ollama thinking mode for gpt-oss models. Default: "low".',
+    )
     parser.add_argument("--sleep-seconds", type=float, default=0.0)
+    parser.add_argument("--save-every", type=int, default=100, help="Flush 120B JSONL results every N samples.")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--no-ollama", action="store_true", help="Only compute 20B vs regex summary.")
     parser.add_argument(
@@ -352,22 +420,25 @@ def main() -> None:
     review_records = select_review_records(records, args.review_policy, args.limit)
     dump_json(args.output_dir / "120b_review_candidates.json", review_records)
 
-    reviewed = None
     review_jsonl = args.output_dir / "120b_review_results.jsonl"
-    if review_jsonl.exists() and not args.no_ollama:
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        review_jsonl.rename(args.output_dir / f"120b_review_results_{timestamp}.jsonl")
+    existing_reviewed = read_jsonl(review_jsonl)
+    completed_keys = {record_key(item) for item in existing_reviewed if "split" in item and "index" in item}
+    reviewed: list[dict[str, Any]] | None = existing_reviewed if existing_reviewed else None
 
     if not args.no_ollama and review_records:
-        reviewed = review_with_120b(
+        new_reviewed = review_with_120b(
             review_records,
             model=args.model,
             host=args.ollama_host,
             timeout=args.timeout,
             temperature=args.temperature,
+            think=args.think,
             sleep_seconds=args.sleep_seconds,
+            save_every=max(1, args.save_every),
             output_jsonl=review_jsonl,
+            completed_keys=completed_keys,
         )
+        reviewed = [*existing_reviewed, *new_reviewed]
         dump_json(args.output_dir / "120b_review_results.json", reviewed)
 
     summary = summarize(records, reviewed)

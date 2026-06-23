@@ -1,54 +1,64 @@
-# ChinaPost Internship / 邮政实习项目
+# ChinaPost Internship
 
-本仓库按周整理邮政客服数据分析、RAG 智能客服和语音转写相关实验代码。当前主要包含 `week1`、`week2` 和 `Whisper-main` 三部分。
+This repository is a reconstructed and organized internship project for China Post customer-service data analysis, postal RAG assistance, and automated transcription tooling.
 
-说明：这是对历史实习项目的重新整理版本，git commit 时间仅代表本次整理入库时间，不代表原始实习开发时间。由于实习期间使用的远程电脑无法继续获取原文件，本仓库按现有资料和需求重新复现、整理和补全。
+> Note: this is a reconstructed historical internship project. Git commit timestamps represent the time when the files were reorganized into this repository, not the original development timeline. The original remote internship machine is no longer available, so this repository was rebuilt from the available materials and requirements.
+
+Chinese documentation is available in [README_CN.md](README_CN.md).
+
+## Repository Structure
+
+- `week1/`: postal customer-service data filtering, statistical analysis, keyword extraction, visualization, model selection notes, and classification boundary-case analysis.
+- `week2/`: postal intelligent customer-service RAG system, including data organization and the Django application.
+- `Whisper-main/`: a batch transcription tool for public meetings and course recordings.
 
 ## Week 1
 
-`week1` 主要是邮政客服数据的前期筛选、统计分析和可视化验证。
+`week1` focuses on early-stage data processing and analysis for postal customer-service conversations.
 
-- `week1/第一版`：包含早期的数据筛选、关键词统计、词云、聚类可视化、模型选型和风险控制说明。
-- `week1/第二版`：补充分类效果评估、边界 case 分析、模型选型说明、代码仓库管理说明，以及可视化聚类和标签优化记录。
-- 核心目标是把邮政相关对话从客服泛化数据中筛出来，为第二周 RAG 系统准备干净数据。
+- `week1/第一版`: initial filtering pipeline, keyword statistics, word clouds, clustering visualization, model selection notes, and risk-control documentation.
+- `week1/第二版`: additional classification evaluation, boundary-case analysis, model-selection supplements, repository management notes, and visualization/label optimization records.
+- The main goal is to identify postal-service-related conversations from broader customer-service data and prepare cleaner data for the Week 2 RAG system.
 
 ## Week 2
 
-`week2` 主要是邮政智能客服 RAG 系统。
+`week2` contains the postal intelligent customer-service RAG application.
 
-- `week2/data`：存放原始数据、筛选后的邮政相关数据、embedding 数据和 SFT 训练数据占位。
-- `week2/post-service-agent`：正式 Django 项目，集成 Django、Django Ninja、SSE、PostgreSQL、pgvector、Ollama 和独立 `post_ai` 工具包。
-- 当前系统支持左侧会话历史、右侧聊天窗口、RAG 引用展示、工单 JSON 生成、Markdown 渲染、Provider 健康提示，以及 PostgreSQL + pgvector 向量检索。
-- 设计上保留 FAISS/local 和 PostgreSQL-pgvector/microservice 两种模式，便于本地调试和正式服务切换。
+- `week2/data`: raw data, filtered postal data, embedding artifacts, and SFT training-data placeholders.
+- `week2/post-service-agent`: the formal Django project using Django, Django Ninja, SSE, PostgreSQL, pgvector, Ollama, and the standalone `post_ai` toolkit.
+- The application supports conversation history, a ChatGPT-style chat panel, RAG citation display, ticket JSON generation, Markdown rendering, provider health indicators, and PostgreSQL + pgvector retrieval.
+- The AI layer keeps both FAISS/local and PostgreSQL-pgvector/microservice modes for easier local debugging and production-style switching.
 
-配套工具：
+Supporting tools:
 
-- Postman：用于接口请求调试和 API 验证。
-- DBeaver：用于连接 PostgreSQL，查看会话、消息、工单和向量数据表。
+- Postman: API request debugging and validation.
+- DBeaver: PostgreSQL inspection for conversations, messages, tickets, and vector tables.
 
-## Week 2 界面截图
+## Week 2 UI Screenshot
 
-![Django Week 2 界面](django_week2.png)
+![Django Week 2 UI](django_week2.png)
 
 ## Whisper-main
 
-`Whisper-main` 是用于对公开会议和课程内容进行批量自动化精确转录的工具，支持音视频输入、字幕生成和转写结果整理。代码可以纳入版本控制，但运行时产生的大文件不进入 git：
+`Whisper-main` is a tool for batch automated accurate transcription of public meetings and course content. It supports audio/video inputs, subtitle generation, and transcription-result organization.
 
-- `Whisper-main/media/`：音视频输入文件，已忽略。
-- `Whisper-main/subtitles/`：字幕输出文件，已忽略。
+Runtime media outputs are intentionally excluded from git:
 
-## 运行入口
+- `Whisper-main/media/`: audio/video input files.
+- `Whisper-main/subtitles/`: generated subtitle outputs.
 
-邮政智能客服项目的启动、数据库迁移、PostgreSQL、Ollama 和 Django 服务说明在：
+## Running The Project
+
+Detailed startup, database migration, PostgreSQL, Ollama, and Django service instructions are maintained in:
 
 - `week2/post-service-agent/README.md`
 - `week2/post-service-agent/QUICKSTART.md`
 - `week2/post-service-agent/docs/`
 
-Swagger / API 文档入口在 Django 服务启动后的：
+After the Django service starts, Swagger / API documentation is available at:
 
 - `http://127.0.0.1:9999/api/docs`
 
-## Swagger 截图
+## Swagger Screenshot
 
-![Week 2 Swagger API 文档](127.0.0.1_9999_api_docs_week2.png)
+![Week 2 Swagger API Docs](127.0.0.1_9999_api_docs_week2.png)

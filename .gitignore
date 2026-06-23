@@ -33,8 +33,12 @@ db.sqlite3
 # moved filter outputs
 week1/filter/outputs/embeddings/
 week1/filter/outputs/llm_filter/
+week1/filter/outputs/llm_filter/postal_filter_results.json
+week1/第二版/01_分类效果评估与边界case分析/outputs/
 week2/data/embeddings/
 week2/data/llm_filter/
 week2/data/sft_training/
 week2/post-service-agent/artifacts/faiss/
+week2/post-service-agent/artifacts/faiss/postal.faiss
+week2/post-service-agent/artifacts/faiss/postal_metadata.json
 *.faiss
