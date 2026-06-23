@@ -25,7 +25,7 @@
 
 ## Whisper-main
 
-`Whisper-main` 用于语音转写、字幕生成和相关实验代码。代码可以纳入版本控制，但运行时产生的大文件不进入 git：
+`Whisper-main` 是用于对公开会议和课程内容进行批量自动化精确转录的工具，支持音视频输入、字幕生成和转写结果整理。代码可以纳入版本控制，但运行时产生的大文件不进入 git：
 
 - `Whisper-main/media/`：音视频输入文件，已忽略。
 - `Whisper-main/subtitles/`：字幕输出文件，已忽略。
@@ -41,3 +41,7 @@
 Swagger / API 文档入口在 Django 服务启动后的：
 
 - `http://127.0.0.1:9999/api/docs`
+
+## Swagger 截图
+
+![Week 2 Swagger API 文档](127.0.0.1_9999_api_docs_week2.png)
