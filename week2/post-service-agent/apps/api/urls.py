@@ -15,6 +15,7 @@ from apps.api.schemas import (
     MessageCreateIn,
     MessageOut,
     ProviderHealthOut,
+    RetryLastMessageIn,
     TicketOut,
 )
 from apps.api.services import (
@@ -22,6 +23,7 @@ from apps.api.services import (
     encode_sse,
     generate_ticket_for_conversation,
     provider_health_payload,
+    stream_retry_last_user_message_events,
     stream_chat_events,
 )
 from apps.core.models import Conversation, Message
@@ -111,6 +113,24 @@ def chat_stream(request, payload: ChatPreviewIn):
     response = StreamingHttpResponse(
         (encode_sse(event) for event in stream_chat_events(
             conversation_id=payload.conversation_id,
+            message=payload.message,
+            use_rag=payload.use_rag,
+            use_sft=payload.use_sft,
+        )),
+        content_type="text/event-stream",
+    )
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
+@api.post("/conversations/{conversation_id}/last-user-message/retry")
+@csrf_required
+def retry_last_user_message(request, conversation_id: int, payload: RetryLastMessageIn):
+    conversation = get_object_or_404(Conversation, pk=conversation_id)
+    response = StreamingHttpResponse(
+        (encode_sse(event) for event in stream_retry_last_user_message_events(
+            conversation=conversation,
+            message_id=payload.message_id,
             message=payload.message,
             use_rag=payload.use_rag,
             use_sft=payload.use_sft,

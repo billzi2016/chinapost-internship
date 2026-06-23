@@ -259,6 +259,7 @@ body {
   margin-bottom: 10px;
   max-width: 860px;
   padding: 10px 12px;
+  position: relative;
 }
 
 .message p {
@@ -289,8 +290,52 @@ body {
   font-weight: 700;
 }
 
+.message hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 14px 0;
+}
+
 .message.user {
   margin-left: auto;
+  margin-right: 0;
+}
+
+.message.assistant {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.message-actions {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  position: absolute;
+  left: -140px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.message-edit-last,
+.message-retry-last {
+  background: #f2f5f1;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-block;
+  font-size: 12px;
+  line-height: 1;
+  margin: 0;
+  padding: 6px 10px;
+}
+
+.message-edit-last:hover,
+.message-retry-last:hover {
+  background: #e7f0ea;
+  border-color: #b9cbbf;
+  color: var(--postal-green);
 }
 
 .message.system {
@@ -309,8 +354,16 @@ body {
   text-align: right;
 }
 
-.message:not(.user) .message-time {
+.message.assistant .message-time {
   text-align: left;
+}
+
+@media (max-width: 760px) {
+  .message-actions {
+    position: static;
+    transform: none;
+    margin-top: 8px;
+  }
 }
 
 .ticket-layout,

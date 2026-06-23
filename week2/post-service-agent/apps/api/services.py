@@ -5,6 +5,7 @@ import re
 from collections.abc import Iterator
 
 from django.conf import settings
+from django.db import transaction
 
 from apps.core.models import Citation, Conversation, Message, Ticket
 from post_ai.config import AppConfig
@@ -33,6 +34,44 @@ def stream_chat_events(
 ) -> Iterator[dict]:
     conversation = get_or_create_conversation(conversation_id)
     Message.objects.create(conversation=conversation, role=Message.ROLE_USER, content=message)
+    yield from _stream_reply_for_message(conversation, message, use_rag, use_sft)
+
+
+def stream_retry_last_user_message_events(
+    conversation: Conversation,
+    message_id: int,
+    message: str,
+    use_rag: bool,
+    use_sft: bool,
+) -> Iterator[dict]:
+    with transaction.atomic():
+        last_user = _last_user_message(conversation)
+        if last_user is None:
+            yield {"event": "error", "data": {"message": "没有可修改的上一条用户消息"}}
+            return
+        if last_user.id != message_id:
+            yield {"event": "error", "data": {"message": "只能修改或重新回答上一条用户消息"}}
+            return
+        trailing_messages = conversation.messages.filter(
+            created_at__gt=last_user.created_at,
+        ) | conversation.messages.filter(
+            created_at=last_user.created_at,
+            id__gt=last_user.id,
+        )
+        trailing_messages.delete()
+        Ticket.objects.filter(conversation=conversation).delete()
+        last_user.content = message
+        last_user.save(update_fields=["content"])
+
+    yield from _stream_reply_for_message(conversation, message, use_rag, use_sft)
+
+
+def _stream_reply_for_message(
+    conversation: Conversation,
+    message: str,
+    use_rag: bool,
+    use_sft: bool,
+) -> Iterator[dict]:
     yield {
         "event": "meta",
         "data": {
@@ -105,6 +144,14 @@ def stream_chat_events(
     _ensure_conversation_title(conversation, message, answer)
 
     yield {"event": "done", "data": {"conversation_id": conversation.id, "message_id": assistant.id}}
+
+
+def _last_user_message(conversation: Conversation) -> Message | None:
+    return (
+        conversation.messages.filter(role=Message.ROLE_USER)
+        .order_by("-created_at", "-id")
+        .first()
+    )
 
 
 def encode_sse(event: dict) -> str:

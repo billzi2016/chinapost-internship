@@ -44,6 +44,13 @@ class ChatPreviewIn(Schema):
     use_sft: bool = False
 
 
+class RetryLastMessageIn(Schema):
+    message_id: int
+    message: str
+    use_rag: bool = True
+    use_sft: bool = False
+
+
 class TicketOut(Schema):
     id: int
     payload: dict

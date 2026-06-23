@@ -6,8 +6,8 @@
 - [x] 创建独立 AI 工具包 `post_ai`。
 - [x] 配置 Django settings。
 - [x] 安装并配置 django-ninja。
-- [ ] 配置 PostgreSQL。
-- [ ] 启用 pgvector 扩展。
+- [x] 配置 PostgreSQL。
+- [x] 启用 pgvector 扩展。
 - [x] 配置模型 provider。
 - [x] 配置默认 chat provider 为 Ollama。
 - [x] 配置默认 embedding provider 为 Ollama。
@@ -38,7 +38,7 @@
 
 - [x] 检查 `/Users/bizi/Desktop/邮政实习/week2/data/CSDS` 文件结构。
 - [x] 检查 `/Users/bizi/Desktop/邮政实习/week2/data/llm_filter` 文件结构。
-- [x] 按 `/Users/bizi/Desktop/邮政实习/week2/prd/data_format.md` 实现数据读取。
+- [x] 按 `/Users/bizi/Desktop/邮政实习/week2/post-service-agent/docs/prd_v1/data_format.md` 实现数据读取。
 - [x] 跳过 `CSDS/._*.json` AppleDouble 文件。
 - [x] 确认 `llm_filter` 如何标识邮政相关内容。
 - [x] 确认 `llm_filter` 如何映射回 CSDS 原始对话。
@@ -47,34 +47,35 @@
 
 ## 4. 数据库模型
 
-- [ ] 按 `/Users/bizi/Desktop/邮政实习/week2/prd/database_migration.md` 设计 migration。
-- [ ] 在同一个 PostgreSQL 数据库内启用 pgvector。
-- [ ] 不拆业务库和向量库。
+- [x] 按 `/Users/bizi/Desktop/邮政实习/week2/post-service-agent/docs/prd_v1/database_migration.md` 设计 migration。
+- [x] 在同一个 PostgreSQL 数据库内启用 pgvector。
+- [x] 不拆业务库和向量库。
 - [x] 创建 Conversation 模型。
 - [x] 创建 Message 模型。
 - [x] 创建 PostalDocument 模型。
-- [ ] 创建 PostalEmbedding 模型。
+- [x] 创建 PostalEmbedding 模型。
 - [x] 创建 Citation 模型。
 - [x] 创建 Ticket 模型。
 - [x] 创建 migrations。
-- [ ] 验证 pgvector 字段可用。
+- [x] 验证 pgvector 字段可用。
 
 ## 5. RAG 入库
 
 - [x] 实现 `llm_filter` 读取。
 - [x] 实现 CSDS 原始数据映射。
 - [x] 实现 `dialogue_metadata.json` 对齐校验。
-- [x] 明确旧 `dialogue_embeddings.h5` 只作为参考，不和新 embedding 混用。
+- [x] 明确旧 `dialogue_embeddings.h5` 作为当前 pgvector 导入来源，provider 标记为 `old-h5`。
 - [x] 实现邮政相关数据清洗。
 - [x] 封装 `qwen3-embedding:8b` 调用。
 - [x] 实现 embedding 前缀逻辑。
 - [x] 实现 `ingest_postal_rag` management command。
 - [x] 保证导入幂等。
 - [x] 验证非邮政数据不会入库。
+- [x] 全量导入 PostgreSQL/pgvector，当前 `PostalDocument` 和 `PostalEmbedding` 均为 6321 条。
 
 ## 6. 向量检索
 
-- [ ] 实现用户查询 embedding。
+- [x] 实现用户查询 embedding。
 - [x] 实现 pgvector Top K 检索。
 - [x] 返回引用片段、来源、相似度。
 - [x] 为 RAG prompt 组装引用上下文。
@@ -109,8 +110,8 @@
 - [x] 不引入 React / Vue / Next.js。
 - [x] 不引入独立前端构建链。
 - [ ] 引入固定版本的 Markdown 渲染库。
-- [ ] 引入固定版本的 Markdown sanitizer。
-- [ ] 如需左侧栏拖拽宽度，使用成熟 resizable pane 小库，不手写。
+- [x] 引入固定版本的 Markdown sanitizer。
+- [x] 如需左侧栏拖拽宽度，使用成熟 resizable pane 小库，不手写。
 - [ ] 如需代码高亮，使用成熟代码高亮库，不手写。
 - [x] 左侧显示历史会话。
 - [x] 左侧历史会话可点击加载。
@@ -126,7 +127,7 @@
 - [x] 输入框支持上下拖拽调整高度。
 - [x] 等待 AI 时显示三个点跳跃动画。
 - [x] 展示引用对话区域。
-- [ ] 前端渲染 Markdown。
+- [x] 前端渲染 Markdown。
 - [x] CSS 和 JS 引用加版本号。
 
 ## 10. 工单 JSON
@@ -151,9 +152,9 @@
 - [x] 测试 AI 工具包全部通过。
 - [x] 测试数据导入不会重复。
 - [x] 测试只导入邮政相关内容。
-- [ ] 测试 RAG 检索能返回引用。
+- [x] 测试 RAG 检索能返回引用。
 - [x] 测试 SSE 流式输出。
-- [ ] 测试 Markdown 渲染。
+- [x] 测试 Markdown 渲染。
 - [x] 测试 SFT 不存在提示。
 - [x] 测试工单 JSON 合法性。
 - [ ] 进行一次完整用户对话验收。

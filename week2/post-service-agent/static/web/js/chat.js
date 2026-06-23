@@ -10,6 +10,7 @@ const generateTicketButton = document.getElementById("generate-ticket");
 const viewTicketButton = document.getElementById("view-ticket");
 const providerHealth = document.getElementById("provider-health");
 const newChatButton = document.getElementById("new-chat");
+let retryDraft = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   if (window.Split) {
@@ -33,9 +34,10 @@ function formatDateTime(value) {
   });
 }
 
-function appendMessage(role, html, createdAt = null) {
+function appendMessage(role, html, createdAt = null, messageId = null) {
   const node = document.createElement("article");
   node.className = `message ${role}`;
+  if (messageId) node.dataset.messageId = String(messageId);
   node.innerHTML = `
     <div class="message-body">${html}</div>
     <time class="message-time" datetime="${createdAt || new Date().toISOString()}">${formatDateTime(createdAt)}</time>
@@ -43,6 +45,21 @@ function appendMessage(role, html, createdAt = null) {
   messages.appendChild(node);
   messages.scrollTop = messages.scrollHeight;
   return node;
+}
+
+function appendUserMessage(content, createdAt = null, messageId = null, canRetry = false) {
+  const action = canRetry
+    ? `<div class="message-actions">
+        <button class="message-edit-last" type="button" title="修改上一条问题" data-message-id="${escapeHtml(messageId)}" data-content="${escapeHtml(content)}">修改</button>
+        <button class="message-retry-last" type="button" title="基于上一条问题重新回答" data-message-id="${escapeHtml(messageId)}" data-content="${escapeHtml(content)}">重新回答</button>
+      </div>`
+    : "";
+  return appendMessage(
+    "user",
+    `${renderMarkdown(content)}${action}`,
+    createdAt,
+    messageId
+  );
 }
 
 function appendToMessage(node, html) {
@@ -53,6 +70,10 @@ function appendToMessage(node, html) {
     node.innerHTML += html;
   }
   messages.scrollTop = messages.scrollHeight;
+}
+
+function clearRetryButtons() {
+  document.querySelectorAll(".message-edit-last").forEach((button) => button.remove());
 }
 
 function startThinkingAnimation(node) {
@@ -244,6 +265,7 @@ async function refreshConversations(activeId) {
 function resetCurrentConversation() {
   conversationIdInput.value = "";
   messages.innerHTML = "";
+  retryDraft = null;
   renderTicket(null);
   document.querySelectorAll(".conversation-row").forEach((row) => row.classList.remove("active"));
   input.focus();
@@ -257,8 +279,13 @@ async function loadConversation(conversationId) {
   document.querySelector(`.conversation-row[data-id="${conversationId}"]`)?.classList.add("active");
   const response = await fetch(`/api/conversations/${conversationId}/messages`);
   const items = await response.json();
+  const lastUser = [...items].reverse().find((item) => item.role === "user");
   for (const item of items) {
-    appendMessage(item.role, renderMarkdown(item.content) + renderCitations(item.citations), item.created_at);
+    if (item.role === "user") {
+      appendUserMessage(item.content, item.created_at, item.id, lastUser && item.id === lastUser.id);
+    } else {
+      appendMessage(item.role, renderMarkdown(item.content) + renderCitations(item.citations), item.created_at, item.id);
+    }
   }
   await loadTicket(conversationId);
 }
@@ -430,6 +457,27 @@ newChatButton?.addEventListener("click", () => {
   resetCurrentConversation();
 });
 
+messages?.addEventListener("click", (event) => {
+  const button = event.target.closest(".message-edit-last, .message-retry-last");
+  if (!button) return;
+  const node = button.closest(".message.user");
+  if (!node) return;
+  const body = node.querySelector(".message-body");
+  retryDraft = {
+    conversationId: Number(conversationIdInput.value),
+    messageId: Number(button.dataset.messageId),
+    messageNode: node,
+    original: button.dataset.content || body?.innerText.trim() || ""
+  };
+  if (button.classList.contains("message-retry-last")) {
+    input.value = retryDraft.original;
+    form.requestSubmit();
+    return;
+  }
+  input.value = retryDraft.original;
+  input.focus();
+});
+
 input?.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && event.shiftKey) {
     event.preventDefault();
@@ -441,7 +489,41 @@ form?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const content = input.value.trim();
   if (!content) return;
-  appendMessage("user", renderMarkdown(content));
+  if (retryDraft?.conversationId) {
+    const draft = retryDraft;
+    retryDraft = null;
+    draft.messageNode.querySelector(".message-body").innerHTML = `${renderMarkdown(content)}<div class="message-actions">
+      <button class="message-edit-last" type="button" title="修改上一条问题" data-message-id="${escapeHtml(draft.messageId)}" data-content="${escapeHtml(content)}">修改</button>
+      <button class="message-retry-last" type="button" title="基于上一条问题重新回答" data-message-id="${escapeHtml(draft.messageId)}" data-content="${escapeHtml(content)}">重新回答</button>
+    </div>`;
+    let next = draft.messageNode.nextElementSibling;
+    while (next) {
+      const current = next;
+      next = next.nextElementSibling;
+      current.remove();
+    }
+    renderTicket(null);
+    input.value = "";
+    const loading = appendMessage("assistant", '<span class="typing"><span class="typing-label">Thinking</span><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>');
+    startThinkingAnimation(loading);
+    const response = await csrfFetch(`/api/conversations/${draft.conversationId}/last-user-message/retry`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        message_id: draft.messageId,
+        message: content,
+        use_rag: document.getElementById("use-rag").checked,
+        use_sft: sftToggle.checked
+      })
+    });
+    await consumeSse(response, loading);
+    await loadConversation(Number(conversationIdInput.value));
+    await refreshConversations(Number(conversationIdInput.value) || null);
+    return;
+  }
+
+  clearRetryButtons();
+  appendUserMessage(content);
   input.value = "";
 
   const loading = appendMessage("assistant", '<span class="typing"><span class="typing-label">Thinking</span><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>');
@@ -457,6 +539,7 @@ form?.addEventListener("submit", async (event) => {
     })
   });
   await consumeSse(response, loading);
+  await loadConversation(Number(conversationIdInput.value));
   await refreshConversations(Number(conversationIdInput.value) || null);
 });
 

@@ -146,6 +146,130 @@ class DjangoSmokeTests(TestCase):
         self.assertEqual(Ticket.objects.count(), 0)
         self.assertEqual(Conversation.objects.first().title, "包裹什么时候派送")
 
+    def test_retry_last_user_message_replaces_only_last_turn(self) -> None:
+        conversation = Conversation.objects.create(title="测试")
+        first_user = Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_USER,
+            content="第一条",
+        )
+        Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_ASSISTANT,
+            content="第一条回答",
+        )
+        last_user = Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_USER,
+            content="旧问题",
+        )
+        old_assistant = Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_ASSISTANT,
+            content="旧回答",
+        )
+        Citation.objects.create(
+            message=old_assistant,
+            score=0.8,
+            quoted_text="用户[0]: 旧",
+            metadata={},
+        )
+        Ticket.objects.create(
+            conversation=conversation,
+            message=old_assistant,
+            payload={"user_request": "旧问题"},
+            is_valid=True,
+        )
+
+        response = Client().post(
+            f"/api/conversations/{conversation.id}/last-user-message/retry",
+            data=json.dumps(
+                {
+                    "message_id": last_user.id,
+                    "message": "新问题",
+                    "use_rag": False,
+                    "use_sft": False,
+                }
+            ),
+            content_type="application/json",
+        )
+
+        body = b"".join(response.streaming_content).decode("utf-8")
+        last_user.refresh_from_db()
+        self.assertIn("event: done", body)
+        self.assertEqual(first_user.content, "第一条")
+        self.assertEqual(last_user.content, "新问题")
+        self.assertFalse(Message.objects.filter(content="旧回答").exists())
+        self.assertEqual(Citation.objects.count(), 0)
+        self.assertEqual(Ticket.objects.count(), 0)
+        self.assertEqual(Message.objects.filter(role=Message.ROLE_ASSISTANT).count(), 2)
+
+    def test_retry_last_user_message_rejects_stale_message_id(self) -> None:
+        conversation = Conversation.objects.create(title="测试")
+        first_user = Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_USER,
+            content="第一条",
+        )
+        first_assistant = Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_ASSISTANT,
+            content="第一条回答",
+        )
+        last_user = Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_USER,
+            content="最后一条",
+        )
+        last_assistant = Message.objects.create(
+            conversation=conversation,
+            role=Message.ROLE_ASSISTANT,
+            content="最后回答",
+        )
+
+        response = Client().post(
+            f"/api/conversations/{conversation.id}/last-user-message/retry",
+            data=json.dumps(
+                {
+                    "message_id": first_user.id,
+                    "message": "误改第一条",
+                    "use_rag": False,
+                    "use_sft": False,
+                }
+            ),
+            content_type="application/json",
+        )
+
+        body = b"".join(response.streaming_content).decode("utf-8")
+        first_user.refresh_from_db()
+        last_user.refresh_from_db()
+        self.assertIn("event: error", body)
+        self.assertIn("只能修改或重新回答上一条用户消息", body)
+        self.assertEqual(first_user.content, "第一条")
+        self.assertEqual(last_user.content, "最后一条")
+        self.assertTrue(Message.objects.filter(pk=first_assistant.pk).exists())
+        self.assertTrue(Message.objects.filter(pk=last_assistant.pk).exists())
+
+    def test_retry_last_user_message_returns_error_without_user_message(self) -> None:
+        conversation = Conversation.objects.create(title="空")
+
+        response = Client().post(
+            f"/api/conversations/{conversation.id}/last-user-message/retry",
+            data=json.dumps(
+                {
+                    "message_id": 999,
+                    "message": "新问题",
+                    "use_rag": False,
+                    "use_sft": False,
+                }
+            ),
+            content_type="application/json",
+        )
+
+        body = b"".join(response.streaming_content).decode("utf-8")
+        self.assertIn("event: error", body)
+        self.assertIn("没有可修改的上一条用户消息", body)
+
     def test_ticket_is_generated_manually_for_conversation(self) -> None:
         conversation = Conversation.objects.create(title="测试")
         Message.objects.create(
