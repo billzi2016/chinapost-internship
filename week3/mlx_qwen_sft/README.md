@@ -97,6 +97,20 @@ python3 scripts/train_with_eval.py \
 
 训练脚本每个 chunk 后会运行自动评估。如果 JSON 可解析率、安全风险率或通用任务邮政话术污染率触发阈值，脚本会停止，避免继续训练出退化模型。
 
+训练过程中只保留一个 best adapter：
+
+```text
+adapters/best/<label>/
+```
+
+每轮评估会计算一个综合分。只有当前 adapter 没有触发 gate，并且综合分高于历史 best，脚本才会覆盖 `adapters/best/<label>/`。这样不会为每个 chunk 保存一份完整历史，只保留一个当前最好的 adapter。触发 gate 时，最后一轮退化 adapter 不会覆盖 best，直接回到 `adapters/best/<label>/` 使用即可。
+
+best 元数据会写入：
+
+```text
+logs/best_adapter_<label>_<run_id>.json
+```
+
 ## 6. 单独评估模型
 
 评估 base 模型：
@@ -113,7 +127,7 @@ python3 scripts/evaluate_model.py \
 ```bash
 python3 scripts/evaluate_model.py \
   --model Qwen/Qwen2.5-7B-Instruct \
-  --adapter-path adapters/qwen2.5-7b \
+  --adapter-path adapters/best/qwen2.5-7b-lora \
   --label qwen2.5-7b-lora \
   --limit 20
 ```
