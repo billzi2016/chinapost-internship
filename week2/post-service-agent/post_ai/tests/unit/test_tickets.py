@@ -55,6 +55,30 @@ def test_parse_ticket_json_accepts_strict_payload() -> None:
     assert ticket.need_follow_up is False
 
 
+def test_parse_ticket_json_normalizes_english_ticket_fields() -> None:
+    ticket = parse_ticket_json(
+        """
+        {
+          "user_id": "",
+          "timestamp": "2026-06-22T00:00:00Z",
+          "service_type": "shipping",
+          "issue_type": "large item shipping",
+          "user_request": "User wants instructions on how to ship a television.",
+          "summary": "Provided guidance on packaging the TV.",
+          "resolution": "Recommend using JD Logistics Large Item Service.",
+          "need_follow_up": true
+        }
+        """
+    )
+
+    assert ticket.service_type == "邮政客服"
+    assert ticket.issue_type == "大件寄递咨询"
+    assert ticket.user_request == "用户咨询邮政业务办理。"
+    assert ticket.summary == "已根据当前对话整理用户诉求和客服处理过程。"
+    assert ticket.resolution == ""
+    assert ticket.need_follow_up is True
+
+
 def test_parse_ticket_json_rejects_extra_fields() -> None:
     with pytest.raises(TicketJSONError):
         parse_ticket_json(
