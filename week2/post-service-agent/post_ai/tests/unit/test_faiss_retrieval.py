@@ -1,5 +1,5 @@
-from post_ai.retrieval import FaissPostalIndex
 from post_ai.schemas import PostalDocument
+from post_ai.vectorstores import FaissPostalIndex
 
 
 def _doc(index: int, content: str) -> PostalDocument:
@@ -44,3 +44,5 @@ def test_faiss_index_save_and_load_roundtrip(tmp_path) -> None:
 
     assert loaded.documents[0].source_key == docs[0].source_key
     assert loaded.search([1.0, 0.0], top_k=1)[0].score > 0.99
+    assert (tmp_path / "postal.faiss").stat().st_size > 0
+    assert (tmp_path / "postal_metadata.json").stat().st_size > 0

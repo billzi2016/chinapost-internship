@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
   "faiss-cpu",
   "pydantic>=2",
+  "PyYAML>=6",
   "pytest",
 ]
 

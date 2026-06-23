@@ -5,10 +5,11 @@ from pathlib import Path
 from post_ai.config import AppConfig
 from post_ai.embeddings import embed_documents, embed_query
 from post_ai.filter_mapping import iter_postal_documents, load_filter_results
+from post_ai.old_embeddings import load_embedding_metadata, load_postal_vectors_from_h5
 from post_ai.providers.registry import build_default_registry
-from post_ai.retrieval import FaissPostalIndex
 from post_ai.schemas import PostalDocument, RetrievalHit
 from post_ai.source_loader import load_all_csds
+from post_ai.vectorstores import FaissPostalIndex, build_vector_store_registry
 
 
 def load_postal_documents(config: AppConfig | None = None) -> list[PostalDocument]:
@@ -64,5 +65,56 @@ def query_faiss_index(
     return index.search(result.vectors[0], top_k=top_k)
 
 
+def query_configured_vector_store(
+    query: str,
+    config: AppConfig | None = None,
+    top_k: int = 5,
+) -> list[RetrievalHit]:
+    config = config or AppConfig.from_env()
+    settings = config.provider_settings
+    registry = build_default_registry(settings)
+    embedding_provider = registry.get(settings.default_embedding_provider)
+    embedding = embed_query(
+        provider=embedding_provider,
+        query=query,
+        model=settings.default_embedding_model,
+    )
+    vector_stores = build_vector_store_registry(config.vector_store_settings)
+    store = vector_stores.get(config.vector_store_settings.provider)
+    return store.search(embedding.vectors[0], top_k=top_k)
+
+
 def save_faiss_index(index: FaissPostalIndex, artifact_dir: Path) -> None:
     index.save(artifact_dir)
+
+
+def build_faiss_index_from_old_h5(config: AppConfig | None = None) -> FaissPostalIndex:
+    config = config or AppConfig.from_env()
+    documents = load_postal_documents(config)
+    metadata_by_split = load_embedding_metadata(config.data_paths.embedding_metadata_path)
+    selected_keys = [
+        (document.split, document.index, document.session_id, document.dialogue_id)
+        for document in documents
+    ]
+    vectors = load_postal_vectors_from_h5(
+        h5_path=config.data_paths.old_embedding_h5_path,
+        metadata_by_split=metadata_by_split,
+        selected_keys=selected_keys,
+    )
+    return FaissPostalIndex.build(
+        documents=documents,
+        vectors=vectors,
+        embedding_model="dialogue_embeddings.h5",
+        provider="old-h5",
+    )
+
+
+def build_and_save_faiss_from_old_h5(
+    artifact_dir: Path | None = None,
+    config: AppConfig | None = None,
+) -> FaissPostalIndex:
+    config = config or AppConfig.from_env()
+    index = build_faiss_index_from_old_h5(config)
+    default_artifact_dir = config.vector_store_settings.faiss_artifact_dir or (config.artifact_dir / "faiss")
+    index.save(artifact_dir or default_artifact_dir)
+    return index

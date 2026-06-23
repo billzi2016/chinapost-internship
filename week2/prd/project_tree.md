@@ -29,6 +29,11 @@
 │   ├── source_loader.py
 │   ├── filter_mapping.py
 │   ├── retrieval.py
+│   ├── vectorstores/
+│   │   ├── __init__.py
+│   │   └── faiss_store.py
+│   ├── old_embeddings.py
+│   ├── build_faiss.py
 │   ├── prompts.py
 │   ├── tickets.py
 │   ├── schemas.py
@@ -152,8 +157,12 @@ AI 工具包。先独立实现并测试通过，再被 Django apps 调用。
 - `llm_filter` 映射。
 - RAG prompt。
 - 工单 JSON schema 和修复逻辑。
+- 当前阶段 FAISS vector store。
+- 使用已有 `dialogue_embeddings.h5` 构建 `artifacts/faiss/postal.faiss`。
 
 Django 不在 view 里直接写这些 AI 细节。
+
+FAISS 只作为临时 vector store 层存在。后续切换 pgvector 时，不改 provider、数据映射、prompt、ticket 等上层逻辑，只替换 `post_ai/vectorstores` 对应实现。
 
 ### `apps/web`
 

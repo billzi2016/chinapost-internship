@@ -1,0 +1,68 @@
+# =============================================================================
+# post_ai configuration
+# =============================================================================
+#
+# This file belongs to the standalone AI toolkit only.
+# Django must keep its own settings module and should not mix web/database
+# settings into this file.
+
+# -----------------------------------------------------------------------------
+# Data sources
+# -----------------------------------------------------------------------------
+# Source data used by the AI toolkit before Django ingestion.
+data:
+  data_dir: ../data
+
+# -----------------------------------------------------------------------------
+# Local artifacts
+# -----------------------------------------------------------------------------
+# Runtime artifacts created by post_ai, such as FAISS indexes.
+artifacts:
+  artifact_dir: artifacts
+
+# -----------------------------------------------------------------------------
+# Model selection
+# -----------------------------------------------------------------------------
+# All model calls go through provider adapters. Business logic should never call
+# Ollama, vLLM, OpenRouter, or a custom FastAPI service directly.
+models:
+  chat:
+    provider: ollama
+    model: gpt-oss:20b
+  embedding:
+    provider: ollama
+    model: qwen3-embedding:8b
+  sft:
+    provider:
+    model:
+
+# -----------------------------------------------------------------------------
+# Model providers
+# -----------------------------------------------------------------------------
+# Provider-specific connection settings. Empty values mean the provider exists as
+# a placeholder but is not currently usable.
+providers:
+  ollama:
+    base_url: http://localhost:11434
+  vllm:
+    base_url:
+  openrouter:
+    base_url: https://openrouter.ai/api/v1
+    api_key:
+  fastapi:
+    base_url:
+
+# -----------------------------------------------------------------------------
+# Vector store provider
+# -----------------------------------------------------------------------------
+# Current phase uses FAISS to run RAG locally. Later Django + PostgreSQL can
+# switch provider to pgvector while keeping the upper RAG code stable.
+vector_store:
+  provider: faiss
+  faiss:
+    artifact_dir: artifacts/faiss
+    index_file: postal.faiss
+    metadata_file: postal_metadata.json
+  pgvector:
+    dsn:
+    table: rag_postalembedding
