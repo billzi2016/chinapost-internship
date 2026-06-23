@@ -4,8 +4,9 @@
 # datasets
 CSDS/
 
-# external / large project directories
-Whisper-main/
+# Whisper project runtime outputs
+Whisper-main/media/
+Whisper-main/subtitles/
 
 # model artifacts
 *.h5
