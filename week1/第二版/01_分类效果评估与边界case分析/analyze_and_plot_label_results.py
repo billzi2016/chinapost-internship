@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -43,11 +44,13 @@ CATEGORY_ORDER = [
 COLORS = {
     "20b": "#D1495B",
     "regex": "#2F6B7C",
-    "strict": "#1F7A5C",
-    "non_strict": "#9CA3AF",
-    "parse_error": "#C75B39",
     "bar": "#386FA4",
 }
+
+MATRIX_CMAP = LinearSegmentedColormap.from_list(
+    "postal_matrix",
+    ["#F8FAFC", "#BBD3E9", "#4E89B8", "#1F5F8B"],
+)
 
 
 def add_vertical_headroom(values: list[int | float], ratio: float = 0.16) -> None:
@@ -111,19 +114,16 @@ def save_grouped_split_bar(summary: dict[str, Any], output_path: Path) -> None:
         summary["by_split"][split].get("regex_related", 0)
         for split in splits
     ]
-    review = [summary["by_split"][split]["needs_120b_review"] for split in splits]
 
     x = range(len(splits))
-    width = 0.24
+    width = 0.32
     plt.figure(figsize=(11, 6.5))
-    plt.bar([i - width for i in x], related, width=width, color=COLORS["20b"], label="20B 判为相关")
-    plt.bar(x, regex_related, width=width, color=COLORS["regex"], label="Regex 命中")
-    plt.bar([i + width for i in x], review, width=width, color=COLORS["bar"], label="需 120B 复核")
-    add_vertical_headroom([*related, *regex_related, *review])
+    plt.bar([i - width / 2 for i in x], related, width=width, color=COLORS["20b"], label="20B 判为相关")
+    plt.bar([i + width / 2 for i in x], regex_related, width=width, color=COLORS["regex"], label="Regex 命中")
+    add_vertical_headroom([*related, *regex_related])
     for i, total in enumerate(totals):
-        plt.text(i - width, related[i], f"{pct(related[i], total)}", ha="center", va="bottom", fontsize=10)
-        plt.text(i, regex_related[i], f"{pct(regex_related[i], total)}", ha="center", va="bottom", fontsize=10)
-        plt.text(i + width, review[i], f"{pct(review[i], total)}", ha="center", va="bottom", fontsize=10)
+        plt.text(i - width / 2, related[i], f"{pct(related[i], total)}", ha="center", va="bottom", fontsize=10)
+        plt.text(i + width / 2, regex_related[i], f"{pct(regex_related[i], total)}", ha="center", va="bottom", fontsize=10)
     plt.title("各 split 标签规模对比", fontsize=18)
     plt.xlabel("数据划分", fontsize=13)
     plt.ylabel("样本数", fontsize=13)
@@ -135,36 +135,58 @@ def save_grouped_split_bar(summary: dict[str, Any], output_path: Path) -> None:
     plt.close()
 
 
+def save_binary_matrix(
+    counts: dict[str, int],
+    row_label: str,
+    col_label: str,
+    title: str,
+    output_path: Path,
+) -> None:
+    matrix = [
+        [
+            int(counts.get(f"{row_label}=True {col_label}=True", 0)),
+            int(counts.get(f"{row_label}=True {col_label}=False", 0)),
+        ],
+        [
+            int(counts.get(f"{row_label}=False {col_label}=True", 0)),
+            int(counts.get(f"{row_label}=False {col_label}=False", 0)),
+        ],
+    ]
+    total = sum(sum(row) for row in matrix)
+
+    fig, ax = plt.subplots(figsize=(7.2, 6.2))
+    image = ax.imshow(matrix, cmap=MATRIX_CMAP)
+    ax.set_title(title, fontsize=18, pad=14)
+    ax.set_xlabel(col_label, fontsize=13)
+    ax.set_ylabel(row_label, fontsize=13)
+    ax.set_xticks([0, 1], labels=["True", "False"], fontsize=12)
+    ax.set_yticks([0, 1], labels=["True", "False"], fontsize=12)
+
+    max_value = max(max(row) for row in matrix) if total else 0
+    for row_index, row in enumerate(matrix):
+        for col_index, value in enumerate(row):
+            text_color = "white" if max_value and value >= max_value * 0.55 else "#111827"
+            ax.text(
+                col_index,
+                row_index,
+                f"{value}\n{pct(value, total)}",
+                ha="center",
+                va="center",
+                fontsize=14,
+                color=text_color,
+                fontweight="bold",
+            )
+
+    cbar = fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+    cbar.ax.tick_params(labelsize=10)
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=220)
+    plt.close(fig)
+
+
 def save_matrix_bar(summary: dict[str, Any], output_path: Path) -> None:
     counts = summary["twenty_b_vs_regex_counts"]
-    labels = [
-        "20B=True\nregex=True",
-        "20B=True\nregex=False",
-        "20B=False\nregex=True",
-        "20B=False\nregex=False",
-    ]
-    keys = [
-        "20b=True regex=True",
-        "20b=True regex=False",
-        "20b=False regex=True",
-        "20b=False regex=False",
-    ]
-    values = [counts.get(key, 0) for key in keys]
-    total = sum(values)
-
-    plt.figure(figsize=(10, 6))
-    bars = plt.bar(labels, values, color=["#1F7A5C", "#D1495B", "#E6A23C", "#9CA3AF"])
-    add_vertical_headroom(values)
-    for bar, value in zip(bars, values):
-        plt.text(bar.get_x() + bar.get_width() / 2, value, f"{value}\n{pct(value, total)}", ha="center", va="bottom", fontsize=11)
-    plt.title("20B 二分类与 Regex 对比", fontsize=18)
-    plt.xlabel("标签组合", fontsize=13)
-    plt.ylabel("样本数", fontsize=13)
-    plt.xticks(fontsize=11)
-    plt.yticks(fontsize=11)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=220)
-    plt.close()
+    save_binary_matrix(counts, "20b", "regex", "20B 二分类与 Regex 对比", output_path)
 
 
 def save_horizontal_bar(counter: dict[str, int], title: str, output_path: Path) -> None:
@@ -187,76 +209,6 @@ def save_horizontal_bar(counter: dict[str, int], title: str, output_path: Path) 
     plt.ylabel("类别", fontsize=13)
     plt.xticks(fontsize=11)
     plt.yticks(fontsize=12)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=220)
-    plt.close()
-
-
-def save_120b_broad_bar(summary: dict[str, Any], output_path: Path) -> None:
-    counts = summary["gpt_oss_120b_review"]["broad_related_counts"]
-    false_count = int(counts.get("False", 0))
-    true_count = int(counts.get("True", 0))
-    total = false_count + true_count
-    labels = ["120B=False", "120B=True"]
-    values = [false_count, true_count]
-
-    plt.figure(figsize=(8.5, 6))
-    bars = plt.bar(labels, values, color=[COLORS["non_strict"], COLORS["strict"]])
-    add_vertical_headroom(values)
-    for bar, value in zip(bars, values):
-        plt.text(bar.get_x() + bar.get_width() / 2, value, f"{value}\n{pct(value, total)}", ha="center", va="bottom", fontsize=12)
-    plt.title("120B 宽口径二分类分布", fontsize=18)
-    plt.ylabel("样本数", fontsize=13)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=11)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=220)
-    plt.close()
-
-
-def save_count_matrix_bar(counts: dict[str, int], title: str, output_path: Path) -> None:
-    labels = list(counts.keys())
-    values = [int(counts[label]) for label in labels]
-    total = sum(values)
-    if not labels:
-        return
-
-    plt.figure(figsize=(10, 6))
-    bars = plt.bar(labels, values, color=COLORS["bar"])
-    add_vertical_headroom(values)
-    for bar, value in zip(bars, values):
-        plt.text(
-            bar.get_x() + bar.get_width() / 2,
-            value,
-            f"{value}\n{pct(value, total)}",
-            ha="center",
-            va="bottom",
-            fontsize=11,
-        )
-    plt.title(title, fontsize=18)
-    plt.ylabel("样本数", fontsize=13)
-    plt.xticks(rotation=20, ha="right", fontsize=10)
-    plt.yticks(fontsize=11)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=220)
-    plt.close()
-
-
-def save_parse_quality_bar(summary: dict[str, Any], output_path: Path) -> None:
-    review = summary["gpt_oss_120b_review"]
-    total = int(review["total"])
-    parse_errors = int(review.get("parse_errors", 0))
-    parsed = total - parse_errors
-
-    plt.figure(figsize=(8.5, 6))
-    bars = plt.bar(["解析成功", "解析失败"], [parsed, parse_errors], color=[COLORS["strict"], COLORS["parse_error"]])
-    add_vertical_headroom([parsed, parse_errors])
-    for bar, value in zip(bars, [parsed, parse_errors]):
-        plt.text(bar.get_x() + bar.get_width() / 2, value, f"{value}\n{pct(value, total)}", ha="center", va="bottom", fontsize=12)
-    plt.title("120B JSON 解析质量", fontsize=18)
-    plt.ylabel("样本数", fontsize=13)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=11)
     plt.tight_layout()
     plt.savefig(output_path, dpi=220)
     plt.close()
@@ -285,7 +237,6 @@ def build_analysis_markdown(summary: dict[str, Any]) -> str:
                 str(total),
                 f"{related} ({pct(related, total)})",
                 f"{regex_related} ({pct(regex_related, total)})",
-                f"{review} ({pct(review, total)})",
             ]
         )
 
@@ -303,33 +254,11 @@ def build_analysis_markdown(summary: dict[str, Any]) -> str:
         for name, value in sorted_counter_items(regex_counts)
     ]
 
-    review = summary.get("gpt_oss_120b_review", {})
-    review_total = int(review.get("total", 0))
-    category_counts = review.get("category_counts", {})
-    category_rows = [
-        [name, str(value), pct(value, review_total)]
-        for name, value in sorted_counter_items(category_counts)
-    ]
-
-    broad_counts = review.get("broad_related_counts", {})
-    broad_true = int(broad_counts.get("True", 0))
-    broad_false = int(broad_counts.get("False", 0))
-    twenty_b_vs_120b_rows = [
-        [key, str(value), pct(value, review_total)]
-        for key, value in review.get("twenty_b_vs_120b_counts", {}).items()
-    ]
-    regex_vs_120b_rows = [
-        [key, str(value), pct(value, review_total)]
-        for key, value in review.get("regex_vs_120b_counts", {}).items()
-    ]
-    parse_errors = int(review.get("parse_errors", 0))
-    parsed = review_total - parse_errors
-
     return f"""# 分类效果评估与边界 case 分析产物
 
 ## 1. 各 split 标签规模
 
-{markdown_table(["split", "总样本数", "20B 判为相关", "Regex 命中", "需 120B 复核"], split_rows)}
+{markdown_table(["split", "总样本数", "20B 判为相关", "Regex 命中"], split_rows)}
 
 图表：`figures/20b_by_split.png`
 
@@ -344,42 +273,6 @@ def build_analysis_markdown(summary: dict[str, Any]) -> str:
 {markdown_table(["类别", "命中数", "占比"], regex_rows)}
 
 图表：`figures/regex_category_counts.png`
-
-## 4. 120B 宽口径二分类分布
-
-| 判断 | 样本数 | 占比 |
-| --- | ---: | ---: |
-| 120B=True | {broad_true} | {pct(broad_true, review_total)} |
-| 120B=False | {broad_false} | {pct(broad_false, review_total)} |
-
-图表：`figures/120b_broad_related_counts.png`
-
-## 5. 20B 与 120B 宽口径二分类对比
-
-{markdown_table(["标签组合", "样本数", "占比"], twenty_b_vs_120b_rows)}
-
-图表：`figures/20b_vs_120b_broad_matrix.png`
-
-## 6. Regex 与 120B 宽口径二分类对比
-
-{markdown_table(["标签组合", "样本数", "占比"], regex_vs_120b_rows)}
-
-图表：`figures/regex_vs_120b_broad_matrix.png`
-
-## 7. 120B 精细类别分布
-
-{markdown_table(["类别", "样本数", "占比"], category_rows)}
-
-图表：`figures/120b_category_counts.png`
-
-## 8. 120B JSON 解析质量
-
-| 状态 | 样本数 | 占比 |
-| --- | ---: | ---: |
-| 解析成功 | {parsed} | {pct(parsed, review_total)} |
-| 解析失败 | {parse_errors} | {pct(parse_errors, review_total)} |
-
-图表：`figures/120b_parse_quality.png`
 """
 
 
@@ -396,22 +289,6 @@ def generate_outputs(output_dir: Path, figure_dirname: str) -> None:
     save_grouped_split_bar(summary, figure_dir / "20b_by_split.png")
     save_matrix_bar(summary, figure_dir / "20b_vs_regex_matrix.png")
     save_horizontal_bar(summary["regex_category_counts"], "regex 业务类弱标签分布", figure_dir / "regex_category_counts.png")
-
-    if "gpt_oss_120b_review" in summary:
-        review = summary["gpt_oss_120b_review"]
-        save_120b_broad_bar(summary, figure_dir / "120b_broad_related_counts.png")
-        save_count_matrix_bar(
-            review.get("twenty_b_vs_120b_counts", {}),
-            "20B 与 120B 宽口径二分类对比",
-            figure_dir / "20b_vs_120b_broad_matrix.png",
-        )
-        save_count_matrix_bar(
-            review.get("regex_vs_120b_counts", {}),
-            "Regex 与 120B 宽口径二分类对比",
-            figure_dir / "regex_vs_120b_broad_matrix.png",
-        )
-        save_horizontal_bar(review["category_counts"], "120B 复核业务类分布", figure_dir / "120b_category_counts.png")
-        save_parse_quality_bar(summary, figure_dir / "120b_parse_quality.png")
 
     write_markdown(output_dir / "analysis_tables.md", build_analysis_markdown(summary))
 
