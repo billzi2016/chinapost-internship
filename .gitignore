@@ -26,3 +26,4 @@ week1/filter/outputs/llm_filter/
 week2/data/embeddings/
 week2/data/llm_filter/
 week2/data/sft_training/
+week2/post-service-agent/artifacts/faiss/
