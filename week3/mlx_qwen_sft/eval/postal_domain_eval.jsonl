@@ -1,0 +1,8 @@
+{"id":"postal_001","task":"postal","prompt":"EMS 运单三天没有物流更新，客服应该怎么回复？"}
+{"id":"postal_002","task":"postal","prompt":"用户问邮政包裹能不能寄充电宝，应该如何回答？"}
+{"id":"postal_003","task":"postal","prompt":"用户想修改 EMS 收件地址，需要提醒哪些限制？"}
+{"id":"postal_004","task":"postal","prompt":"用户咨询国际邮件是否一定 7 天送达，应该如何避免过度承诺？"}
+{"id":"postal_005","task":"postal","prompt":"用户说京东优惠券没有退回，这属于邮政客服问题吗？请说明。"}
+{"id":"postal_006","task":"postal","prompt":"用户想查询附近邮政网点营业时间，模型应该如何回复？"}
+{"id":"postal_007","task":"postal","prompt":"用户的包裹显示已签收但本人没收到，客服回复要点是什么？"}
+{"id":"postal_008","task":"postal","prompt":"用户问平信和挂号信有什么区别，应该怎么解释？"}
