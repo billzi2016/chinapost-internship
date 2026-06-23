@@ -1,6 +1,6 @@
 # ChinaPost Internship / 邮政实习项目
 
-本仓库按周整理邮政客服数据分析、RAG 智能客服和语音转写相关实验代码。当前主要包含 `week1`、`week2` 和 `Whisper-main` 三部分。
+本仓库按周整理邮政客服数据分析、RAG 智能客服、本地 Qwen2.5 微调实验和语音转写相关代码。当前主要包含 `week1`、`week2`、`week3` 和 `Whisper-main` 四部分。
 
 说明：这是对历史实习项目的重新整理版本，git commit 时间仅代表本次整理入库时间，不代表原始实习开发时间。由于实习期间使用的远程电脑无法继续获取原文件，本仓库按现有资料和需求重新复现、整理和补全。
 
@@ -30,6 +30,30 @@
 
 ![Django Week 2 界面](django_week2.png)
 
+## Week 3
+
+`week3` 主要是在 Apple Silicon 本地环境中，使用 Apple MLX 路线对 Qwen2.5 进行邮政客服场景 SFT。
+
+- `week3/PRD_Qwen2.5_MLX_LoRA微调方案.md`：Qwen2.5 3B / 7B 的 MLX LoRA 微调 PRD 和技术方案。
+- `week3/mlx_qwen_sft`：可复现的 MLX 微调工程。
+- 基座模型使用 `Qwen/Qwen2.5-3B-Instruct` 和 `Qwen/Qwen2.5-7B-Instruct`。
+- 训练工具以 `mlx-lm` 为主，不依赖 CUDA、bitsandbytes 或 NVIDIA 训练栈。
+- 原始数据、派生训练数据、adapter、融合模型、训练日志、评估输出和绘图产物都已在 `.gitignore` 中排除。
+
+第三周工程包含完整脚本流程：
+
+- 整理 raw SFT 数据到 MLX 工程目录。
+- 将 raw JSON 转换成 `mlx-lm` 可训练的 chat JSONL。
+- 下载 C-Eval 小样本，并生成邮政专项、JSON 格式和安全边界评估集。
+- 分段训练 Qwen2.5 LoRA，并在训练过程中做回归评估。
+- 只保留一个 best adapter，路径为 `adapters/best/<label>/`。
+- 触发退化 gate 时停止训练，并回到 best adapter。
+- 输出评估汇总和 JPG 图表。
+
+第三周运行入口：
+
+- `week3/mlx_qwen_sft/README.md`
+
 ## Whisper-main
 
 `Whisper-main` 是用于对公开会议和课程内容进行批量自动化精确转录的工具，支持音视频输入、字幕生成和转写结果整理。代码可以纳入版本控制，但运行时产生的大文件不进入 git：
@@ -44,6 +68,10 @@
 - `week2/post-service-agent/README.md`
 - `week2/post-service-agent/QUICKSTART.md`
 - `week2/post-service-agent/docs/`
+
+第三周 MLX 微调工程说明在：
+
+- `week3/mlx_qwen_sft/README.md`
 
 Swagger / API 文档入口在 Django 服务启动后的：
 
