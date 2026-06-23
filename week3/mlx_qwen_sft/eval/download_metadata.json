@@ -1,0 +1,26 @@
+{
+  "external_downloads": [
+    {
+      "dataset": "ceval/ceval-exam/computer_network",
+      "split": "val[:13]",
+      "count": 13
+    },
+    {
+      "dataset": "ceval/ceval-exam/high_school_chinese",
+      "split": "val[:13]",
+      "count": 13
+    },
+    {
+      "dataset": "ceval/ceval-exam/logic",
+      "split": "val[:13]",
+      "count": 13
+    }
+  ],
+  "errors": [],
+  "counts": {
+    "general_regression_eval": 47,
+    "postal_domain_eval": 8,
+    "format_eval": 3,
+    "safety_eval": 5
+  }
+}
