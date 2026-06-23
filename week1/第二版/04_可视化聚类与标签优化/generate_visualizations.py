@@ -173,9 +173,9 @@ def save_binary_scatter(points: np.ndarray, mask: np.ndarray, title: str, output
     ax.set_title(title, fontsize=18, pad=12)
     ax.set_xlabel("Component 1", fontsize=12)
     ax.set_ylabel("Component 2", fontsize=12)
-    ax.legend(fontsize=11, loc="best", frameon=True)
+    ax.legend(fontsize=11, loc="best", frameon=True, markerscale=1.8)
     fig.tight_layout()
-    fig.savefig(output_path, dpi=220)
+    fig.savefig(output_path, dpi=220, bbox_inches="tight", pad_inches=0.08)
     plt.close(fig)
 
 
@@ -199,9 +199,16 @@ def save_category_scatter(points: np.ndarray, categories: np.ndarray, title: str
     ax.set_title(title, fontsize=18, pad=12)
     ax.set_xlabel("Component 1", fontsize=12)
     ax.set_ylabel("Component 2", fontsize=12)
-    ax.legend(fontsize=10, loc="upper left", bbox_to_anchor=(1.01, 1.0), frameon=True)
-    fig.tight_layout(rect=[0, 0, 0.80, 1])
-    fig.savefig(output_path, dpi=220)
+    ax.legend(
+        fontsize=10,
+        loc="upper left",
+        bbox_to_anchor=(1.01, 1.0),
+        frameon=True,
+        markerscale=2.4,
+        scatterpoints=1,
+    )
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=220, bbox_inches="tight", pad_inches=0.08)
     plt.close(fig)
 
 
