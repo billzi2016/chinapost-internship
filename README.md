@@ -19,6 +19,11 @@
 - 当前系统支持左侧会话历史、右侧聊天窗口、RAG 引用展示、工单 JSON 生成、Markdown 渲染、Provider 健康提示，以及 PostgreSQL + pgvector 向量检索。
 - 设计上保留 FAISS/local 和 PostgreSQL-pgvector/microservice 两种模式，便于本地调试和正式服务切换。
 
+配套工具：
+
+- Postman：用于接口请求调试和 API 验证。
+- DBeaver：用于连接 PostgreSQL，查看会话、消息、工单和向量数据表。
+
 ## Week 2 界面截图
 
 ![Django Week 2 界面](django_week2.png)
