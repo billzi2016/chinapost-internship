@@ -290,6 +290,7 @@ class DjangoSmokeTests(TestCase):
         self.assertEqual(latest.status_code, 200)
         self.assertEqual(Ticket.objects.count(), 1)
         self.assertEqual(generated.json()["payload"]["user_request"], "包裹什么时候派送")
+        self.assertEqual(generated.json()["payload"]["user_id"], f"conversation:{conversation.id}")
 
     def test_ticket_generation_is_idempotent_after_first_ticket(self) -> None:
         conversation = Conversation.objects.create(title="测试")
@@ -318,6 +319,7 @@ class DjangoSmokeTests(TestCase):
         self.assertEqual(Ticket.objects.count(), 1)
         self.assertEqual(first.json()["id"], second.json()["id"])
         self.assertEqual(second.json()["payload"]["user_request"], "第一次问题")
+        self.assertEqual(second.json()["payload"]["user_id"], f"conversation:{conversation.id}")
 
     def test_provider_health_api(self) -> None:
         response = Client().get("/api/provider/health")

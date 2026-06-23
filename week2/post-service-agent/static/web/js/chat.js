@@ -180,6 +180,11 @@ function renderCitationText(text) {
   }).join("");
 }
 
+function renderTicketValue(value, fallback = "无") {
+  const text = String(value || fallback);
+  return renderMarkdown(text);
+}
+
 function renderCitations(citations) {
   if (!citations || !citations.length) return "";
   const items = citations.map((item, index) => {
@@ -336,15 +341,15 @@ function renderTicket(ticket) {
         <h2>工单摘要</h2>
         <dl>
           <dt>服务类型</dt>
-          <dd>${escapeHtml(payload.service_type || "未识别")}</dd>
+          <dd>${renderTicketValue(payload.service_type, "未识别")}</dd>
           <dt>问题类型</dt>
-          <dd>${escapeHtml(payload.issue_type || "未识别")}</dd>
+          <dd>${renderTicketValue(payload.issue_type, "未识别")}</dd>
           <dt>用户请求</dt>
-          <dd>${escapeHtml(payload.user_request || "无")}</dd>
+          <dd>${renderTicketValue(payload.user_request)}</dd>
           <dt>处理摘要</dt>
-          <dd>${escapeHtml(payload.summary || "无")}</dd>
+          <dd>${renderTicketValue(payload.summary)}</dd>
           <dt>处理结果</dt>
-          <dd>${escapeHtml(payload.resolution || "无")}</dd>
+          <dd>${renderTicketValue(payload.resolution)}</dd>
           <dt>是否需要跟进</dt>
           <dd>${payload.need_follow_up ? "需要" : "不需要"}</dd>
         </dl>

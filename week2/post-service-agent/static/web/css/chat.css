@@ -207,7 +207,7 @@ body {
   max-height: 520px;
   min-height: 160px;
   overflow: hidden;
-  padding: 14px 24px;
+  padding: 26px 24px 14px;
   position: relative;
 }
 
@@ -238,7 +238,7 @@ body {
   line-height: 1;
   position: absolute;
   right: 10px;
-  top: 10px;
+  top: 12px;
   width: 28px;
   z-index: 2;
 }
@@ -382,10 +382,9 @@ body {
 }
 
 .ticket-readable {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
+  padding-right: 10px;
   user-select: none;
 }
 
@@ -397,7 +396,7 @@ body {
   margin: 0;
   min-height: 0;
   overflow: auto;
-  padding-right: 10px;
+  padding-right: 8px;
 }
 
 .ticket-readable dt {
@@ -411,18 +410,31 @@ body {
 
 .ticket-readable dd {
   align-self: start;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
   line-height: 1.45;
   margin: 0;
   min-width: 0;
-  overflow: hidden;
+  max-width: 100%;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
-.ticket-readable dd:hover {
-  -webkit-line-clamp: unset;
+.ticket-readable dd table {
+  border-collapse: collapse;
+  display: block;
+  font-size: 12px;
+  max-width: 100%;
+  overflow: auto;
+}
+
+.ticket-readable dd th,
+.ticket-readable dd td {
+  border: 1px solid var(--line);
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+.ticket-readable dd p {
+  margin: 0 0 6px;
 }
 
 .ticket-json {

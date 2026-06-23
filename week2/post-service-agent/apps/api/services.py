@@ -12,7 +12,7 @@ from post_ai.config import AppConfig
 from post_ai.pipeline import query_configured_vector_store
 from post_ai.prompts import build_rag_messages, build_title_messages
 from post_ai.providers import ProviderError, build_default_registry
-from post_ai.tickets import build_rule_based_ticket
+from post_ai.tickets import TicketJSONError, build_rule_based_ticket, generate_ticket_json_with_provider
 from post_ai.vectorstores import VectorStoreError
 
 
@@ -236,12 +236,28 @@ def generate_ticket_for_conversation(conversation: Conversation) -> Ticket:
     assistant_messages = [
         message.content for message in messages if message.role == Message.ROLE_ASSISTANT
     ]
-    ticket = build_rule_based_ticket(
-        user_request="\n".join(user_messages).strip(),
-        summary=assistant_messages[-1] if assistant_messages else "",
-        issue_type=_latest_issue_type(conversation),
-        need_follow_up=False,
-    )
+    conversation_text = _ticket_conversation_text(messages)
+    ticket = None
+    if not settings.POST_SERVICE_FAKE_LLM:
+        try:
+            app_config = AppConfig.from_env()
+            provider_settings = app_config.provider_settings
+            provider = build_default_registry(provider_settings).get(provider_settings.default_chat_provider)
+            ticket = generate_ticket_json_with_provider(
+                provider=provider,
+                model=provider_settings.default_chat_model,
+                conversation_text=conversation_text,
+            )
+        except (ProviderError, TicketJSONError, ValueError):
+            ticket = None
+    if ticket is None:
+        ticket = build_rule_based_ticket(
+            user_request=_compact_text("\n".join(user_messages).strip(), 120),
+            summary=_compact_text(assistant_messages[-1] if assistant_messages else "", 180),
+            issue_type=_latest_issue_type(conversation),
+            need_follow_up=False,
+        )
+    ticket.user_id = f"conversation:{conversation.id}"
     return Ticket.objects.create(
         conversation=conversation,
         message=messages[-1] if messages else None,
@@ -273,3 +289,19 @@ def _latest_issue_type(conversation: Conversation) -> str:
         return ""
     intents = citation.metadata.get("intents") or []
     return intents[0] if intents else ""
+
+
+def _ticket_conversation_text(messages: list[Message]) -> str:
+    lines = []
+    for message in messages:
+        if message.role == Message.ROLE_SYSTEM:
+            continue
+        role = "用户" if message.role == Message.ROLE_USER else "助手"
+        lines.append(f"{role}: {message.content}")
+    return "\n".join(lines)
+
+
+def _compact_text(text: str, limit: int) -> str:
+    text = normalize_display_text(text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text[:limit]
