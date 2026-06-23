@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from post_ai.schemas import PostalDocument, RetrievalHit
@@ -12,86 +11,44 @@ class PgVectorStore(VectorStore):
 
     def __init__(self, dsn: str | None, table: str = "core_postalembedding") -> None:
         self.dsn = dsn
-        self.table = _validate_table_name(table)
+        self.table = table
 
     def search(self, query_vector: list[float], top_k: int = 5) -> list[RetrievalHit]:
-        if not self.dsn:
-            raise VectorStoreUnavailableError("pgvector DSN is not configured.")
+        from django.db import connection
+        from pgvector.django import CosineDistance
 
-        query_literal = _to_vector_literal(query_vector)
-        sql = f"""
-            SELECT
-                d.split,
-                d.source_index,
-                d.session_id,
-                d.dialogue_id,
-                d.source_path,
-                d.content,
-                d.metadata,
-                (e.embedding <=> %s::vector) AS distance
-            FROM {self.table} e
-            JOIN core_postaldocument d ON d.id = e.document_id
-            ORDER BY e.embedding <=> %s::vector
-            LIMIT %s
-        """
-        rows = _fetch_rows(self.dsn, sql, (query_literal, query_literal, top_k))
+        from apps.core.models import PostalEmbedding
+
+        if connection.vendor != "postgresql":
+            raise VectorStoreUnavailableError("pgvector search requires Django PostgreSQL connection.")
+
+        rows = (
+            PostalEmbedding.objects.select_related("document")
+            .annotate(distance=CosineDistance("embedding", query_vector))
+            .order_by("distance")[:top_k]
+        )
 
         hits: list[RetrievalHit] = []
         for rank, row in enumerate(rows, start=1):
+            source = row.document
             document = PostalDocument(
-                split=row["split"],
-                index=row["source_index"],
-                session_id=row["session_id"],
-                dialogue_id=row["dialogue_id"],
-                source_path=row["source_path"],
-                content=row["content"],
-                metadata=_metadata_dict(row["metadata"]),
+                split=source.split,
+                index=source.source_index,
+                session_id=source.session_id,
+                dialogue_id=source.dialogue_id,
+                source_path=source.source_path,
+                content=source.content,
+                metadata=_metadata_dict(source.metadata),
             )
             hits.append(
                 RetrievalHit(
                     document=document,
-                    score=1.0 - float(row["distance"]),
+                    score=1.0 - float(row.distance),
                     rank=rank,
                 )
             )
         return hits
 
 
-def _to_vector_literal(vector: list[float]) -> str:
-    return "[" + ",".join(str(float(value)) for value in vector) + "]"
-
-
 def _metadata_dict(value: Any) -> dict:
     return value if isinstance(value, dict) else {}
-
-
-def _validate_table_name(value: str) -> str:
-    if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", value):
-        raise VectorStoreUnavailableError(f"Invalid pgvector table name: {value}")
-    return value
-
-
-def _fetch_rows(dsn: str, sql: str, params: tuple) -> list[dict]:
-    try:
-        import psycopg
-        from psycopg.rows import dict_row
-
-        with psycopg.connect(dsn, row_factory=dict_row) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(sql, params)
-                return list(cursor.fetchall())
-    except ImportError:
-        pass
-
-    try:
-        import psycopg2
-        import psycopg2.extras
-    except ImportError as exc:
-        raise VectorStoreUnavailableError(
-            "pgvector search requires psycopg or psycopg2. Install psycopg[binary]."
-        ) from exc
-
-    with psycopg2.connect(dsn) as connection:
-        with connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
-            cursor.execute(sql, params)
-            return [dict(row) for row in cursor.fetchall()]

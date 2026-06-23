@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from django.db import models
-
-from apps.core.fields import VectorField
+from pgvector.django import VectorField
 
 
 EMBEDDING_DIMENSIONS = 4096

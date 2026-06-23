@@ -6,7 +6,7 @@ from django.db import migrations
 def create_vector_index(apps, schema_editor) -> None:
     # The current imported H5 vectors are 4096-dimensional. pgvector ivfflat
     # indexes support up to 2000 dimensions for vector columns, so keep exact
-    # search for now. The provider SQL still uses pgvector's <=> operator.
+    # search for now. Query code uses pgvector.django distance expressions.
     return
 
 

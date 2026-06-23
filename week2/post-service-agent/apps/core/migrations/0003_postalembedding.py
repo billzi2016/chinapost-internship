@@ -3,7 +3,7 @@ from __future__ import annotations
 import django.db.models.deletion
 from django.db import migrations, models
 
-import apps.core.fields
+import pgvector.django.vector
 
 
 def create_pgvector_extension(apps, schema_editor) -> None:
@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
             name="PostalEmbedding",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("embedding", apps.core.fields.VectorField(dimensions=4096)),
+                ("embedding", pgvector.django.vector.VectorField(dimensions=4096)),
                 ("provider", models.CharField(max_length=64)),
                 ("model", models.CharField(max_length=128)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),

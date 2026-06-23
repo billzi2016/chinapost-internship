@@ -276,7 +276,7 @@ python manage.py ingest_postal_rag
 
 - Django / django-ninja
 - PostgreSQL driver
-- pgvector 查询需要的 psycopg/psycopg2 支持
+- pgvector Django 支持库
 - FAISS
 - PyYAML
 - Pydantic
