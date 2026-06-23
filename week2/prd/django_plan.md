@@ -69,7 +69,11 @@
 - 左侧栏拖拽宽度、Markdown 清洗、代码高亮等基础能力使用成熟小库或 Bootstrap 现成组件，不手写脆弱实现。
 - 如果某个交互没有合适轻量依赖，优先降级为简单稳定方案。
 - API 层放在 `apps/api`，统一挂载 django-ninja router。
-- 聊天、RAG、工单分别放在独立业务 app，避免一个 app 过大。
+- 当前规模下不拆 `conversations/rag/llm/tickets` 多个 app，避免为了分层而分层。
+- Django 只保留 `apps/core`、`apps/api`、`apps/web` 三个 app。
+- `apps/core` 放 ORM 数据模型：会话、消息、邮政文档、引用、工单。
+- `apps/api` 放 django-ninja API 和 SSE 编排。
+- `apps/web` 放 templates 页面和静态资源入口。
 - 模型 provider、embedding 前缀、数据映射、prompt、工单 JSON 生成优先放在 `post_ai`，Django service 层只做业务编排。
 - 数据导入使用 Django management command。
 - 配置使用 `.env`，不要把模型名、数据库连接写死在业务代码里。
@@ -109,52 +113,25 @@ django-ninja API 入口。
 - 挂载 chat、conversation、ticket 等 router。
 - 统一 API 错误格式。
 
-### 4.4 `apps/conversations`
+### 4.4 `apps/core`
 
-会话与消息管理。
+Django ORM 核心数据层。
 
 职责：
 
 - 存储聊天会话。
 - 存储用户消息、AI 消息。
-- 存储会话标题。
-- 使用 `gpt-oss:20b` 对新会话生成简短标题。
-
-### 4.5 `apps/rag`
-
-RAG 和向量检索。
-
-职责：
-
 - 存储邮政相关原始对话片段。
-- 存储 embedding 向量。
-- 根据用户问题检索相似对话。
-- 返回引用信息。
+- 存储引用记录。
+- 存储工单 JSON。
+- 后续接 PostgreSQL + pgvector 时，存储 `PostalEmbedding`。
 
-### 4.6 `apps/llm`
+不做的事：
 
-模型 provider 调用封装。
-
-职责：
-
-- 通过 provider 调用 `gpt-oss:20b`。
-- 通过 provider 调用 `qwen3-embedding:8b`。
-- 处理 qwen3 embedding 查询前缀。
-- 提供流式生成接口。
-- 提供标题生成接口。
-- 提供工单 JSON 生成接口。
-- 校验 SFT provider 和模型是否存在。
-
-### 4.7 `apps/tickets`
-
-工单 JSON 生成与存储。
-
-职责：
-
-- 从对话上下文生成工单 JSON。
-- 校验 JSON 字段完整性。
-- 校验 JSON 是否合法。
-- 存储工单结果。
+- 不在 `apps/core` 里写模型 provider。
+- 不在 `apps/core` 里写 prompt。
+- 不在 `apps/core` 里写 CSDS/llm_filter 映射。
+- 这些 AI 能力继续由完整的 `post_ai` 包负责。
 
 ## 5. 数据来源
 
@@ -282,7 +259,9 @@ RAG 和向量检索。
 行为：
 
 - 写入用户消息。
-- 如果 `use_rag=true`，执行 pgvector 检索。
+- 如果 `use_rag=true`，执行配置的 vector provider 检索。
+- 当前阶段 vector provider 为 FAISS。
+- pgvector provider 作为后续 PostgreSQL 阶段实现，不把占位当完成。
 - 如果 `use_sft=true`，检查 SFT provider 和模型配置。
 - 当前没有 SFT 模型时返回前端可展示错误状态，并停止本轮生成。
 - `use_sft=true` 时不允许静默回退到 `gpt-oss:20b`。
@@ -389,7 +368,7 @@ AI 回复需要支持 Markdown：
 - 左侧能看到历史会话。
 - 右侧能发送消息并通过 SSE 看到流式回复。
 - 等待 AI 时有三点跳跃动画。
-- 勾选 RAG 后会使用 pgvector 检索。
+- 勾选 RAG 后会使用当前配置的 vector provider；当前为 FAISS，后续切 pgvector。
 - 勾选 SFT 后提示当前不存在 SFT 模型。
 - 每次回答能展示引用了哪些原始对话。
 - AI 回复能渲染 Markdown。

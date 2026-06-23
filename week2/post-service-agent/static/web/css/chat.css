@@ -15,8 +15,7 @@ body {
 }
 
 .app-shell {
-  display: grid;
-  grid-template-columns: 300px 1fr;
+  display: flex;
   height: 100vh;
 }
 
@@ -25,7 +24,19 @@ body {
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
+  width: 300px;
   min-width: 240px;
+}
+
+.gutter {
+  background: var(--line);
+  cursor: col-resize;
+  width: 6px;
+}
+
+.is-resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .sidebar-header {
@@ -44,16 +55,41 @@ body {
   padding: 8px;
 }
 
+.conversation-row {
+  align-items: center;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 1fr 28px 28px;
+}
+
 .conversation-item,
 .empty-list {
+  background: transparent;
+  border: 0;
   color: var(--text);
   display: block;
   padding: 9px 10px;
+  text-align: left;
   text-decoration: none;
+  width: 100%;
 }
 
-.conversation-item:hover {
+.conversation-row:hover,
+.conversation-row.active {
   background: #eef4ef;
+}
+
+.icon-button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  height: 28px;
+  width: 28px;
+}
+
+.icon-button:hover {
+  color: var(--postal-green);
 }
 
 .mode-panel {
@@ -71,6 +107,7 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  width: calc(100% - 300px);
 }
 
 .messages {

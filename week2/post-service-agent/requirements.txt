@@ -4,5 +4,6 @@ faiss-cpu>=1.12
 h5py>=3
 numpy>=2
 pydantic>=2,<3
+psycopg[binary]>=3
 PyYAML>=6
 pytest>=8

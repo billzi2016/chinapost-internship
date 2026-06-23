@@ -8,7 +8,8 @@
 - 根据筛选结果映射原始 CSDS 对话。
 - 丢弃非邮政系统相关的客服泛化信息。
 - 通过标准 provider 接口调用 embedding 模型生成向量。
-- 将邮政相关内容写入 PostgreSQL + pgvector。
+- 当前阶段将邮政相关内容映射为 `PostalDocument`，并用已有 H5 embedding 构建 FAISS artifact。
+- PostgreSQL + pgvector 是后续正式持久化向量库。
 - 查询时使用向量检索召回引用对话。
 - 通过标准 provider 接口调用生成模型，生成回答、会话标题和工单信息。
 
@@ -131,7 +132,7 @@ def build_document_embedding_input(text: str) -> str:
 - `CSDS/._*.json` 是 macOS AppleDouble 文件，必须跳过。
 - `postal_filter_results.json` 顶层为 `train/val/test`。
 - 每条 filter 记录通过 `index + session_id + dialogue_id` 映射 CSDS。
-- 只有 `is_postal_related == true` 的对话允许进入 pgvector。
+- 只有 `is_postal_related == true` 的对话允许进入当前 vector store；后续 pgvector 也遵守同一规则。
 - `dialogue_embeddings.h5` 的 `train/val/test` dataset 和 metadata、CSDS、filter 通过同一个 index 对齐。
 - 旧 H5 embedding 不能和新 `qwen3-embedding:8b` 生成的向量混用，除非明确记录模型来源和向量维度。
 
@@ -175,7 +176,7 @@ filter index == CSDS array index
 明确规则：
 
 - 只有邮政系统相关内容进入 `PostalDocument`。
-- 客服通用闲聊、非邮政业务、无关咨询不进入 pgvector。
+- 客服通用闲聊、非邮政业务、无关咨询不进入当前 vector store，也不进入后续 pgvector。
 - 不因为相似客服语义而保留无关数据。
 
 ### 4.4 文本切分
@@ -220,7 +221,9 @@ python manage.py ingest_postal_rag
 
 1. 保存用户消息。
 2. 如果启用 RAG，通过 embedding provider 使用 `qwen3-embedding:8b` 生成查询向量。
-3. 在 pgvector 中做相似度搜索。
+3. 在当前配置的 vector provider 中做相似度搜索。
+   - 当前阶段：FAISS。
+   - PostgreSQL 阶段：pgvector。
 4. 取 Top K 邮政相关对话。
 5. 将引用对话拼入 prompt。
 6. 通过 chat provider 使用 `gpt-oss:20b` 生成回答。
@@ -337,7 +340,7 @@ python manage.py ingest_postal_rag
 - 非邮政数据是否被排除。
 - embedding 查询前缀是否正确使用。
 - 旧 H5 embedding 是否没有和新 embedding 混用。
-- pgvector 检索是否能返回合理引用。
+- 当前 vector provider 检索是否能返回合理引用。
 - SSE token 是否连续返回。
 - SFT 勾选是否正确提示不可用。
 - 工单 JSON 是否稳定可解析。
@@ -370,7 +373,14 @@ post_ai/
 ├── embeddings.py
 ├── source_loader.py
 ├── filter_mapping.py
-├── retrieval.py
+├── vectorstores/
+│   ├── __init__.py
+│   ├── base.py
+│   ├── registry.py
+│   ├── faiss_store.py
+│   └── pgvector_store.py
+├── old_embeddings.py
+├── build_faiss.py
 ├── prompts.py
 ├── tickets.py
 └── schemas.py
@@ -387,17 +397,22 @@ post_ai/
 - `embeddings.py`：封装 `qwen3-embedding:8b`，包含 query 前缀和 document 输入规则。
 - `source_loader.py`：读取 CSDS 原始数据。
 - `filter_mapping.py`：读取 `llm_filter` 并映射回 CSDS。
-- `retrieval.py`：提供检索输入输出结构，Django 接入时再替换为 pgvector 查询。
+- `vectorstores/base.py`：定义 vector store 抽象接口。
+- `vectorstores/registry.py`：根据配置选择 vector provider。
+- `vectorstores/faiss_store.py`：当前阶段可用的 FAISS vector provider。
+- `vectorstores/pgvector_store.py`：后续 PostgreSQL + pgvector provider，目前不冒充完成。
+- `old_embeddings.py`：读取旧 `dialogue_embeddings.h5` 并校验 metadata 对齐。
+- `build_faiss.py`：用旧 H5 构建本地 FAISS artifact。
 - `prompts.py`：集中管理 RAG prompt、标题 prompt、工单 prompt。
 - `tickets.py`：生成和修复工单 JSON。
 - `schemas.py`：定义 Pydantic schema，保证输出结构稳定。
 
 工具包测试通过后，再包进 Django：
 
-- Django `apps/llm` 调用 `post_ai.providers`、`post_ai.embeddings`。
-- Django `apps/rag` 调用 `post_ai.source_loader`、`post_ai.filter_mapping`。
-- Django `apps/tickets` 调用 `post_ai.tickets` 和 `post_ai.schemas`。
-- SSE 层只消费工具包返回的流式 token 和结构化结果。
+- Django 不拆散 `post_ai`。
+- Django `apps/api` 调用 `post_ai.providers`、`post_ai.embeddings`、`post_ai.vectorstores`、`post_ai.tickets`。
+- Django `apps/core` 只负责 ORM 数据持久化。
+- SSE 层只消费 `post_ai` 返回的流式 token、引用和结构化结果。
 
 AI 工具包测试重点：
 

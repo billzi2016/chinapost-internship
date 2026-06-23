@@ -8,6 +8,7 @@ from ninja import Schema
 class ConversationOut(Schema):
     id: int
     title: str
+    is_pinned: bool
     created_at: datetime
     updated_at: datetime
 

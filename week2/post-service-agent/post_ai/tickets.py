@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from post_ai.prompts import build_ticket_messages
+from post_ai.providers.base import ModelProvider, ProviderError
 from post_ai.schemas import TicketPayload
 
 
@@ -48,6 +50,38 @@ def build_rule_based_ticket(
 
 def ticket_to_json(ticket: TicketPayload) -> str:
     return json.dumps(ticket.model_dump(), ensure_ascii=False, indent=2)
+
+
+def generate_ticket_json_with_provider(
+    provider: ModelProvider,
+    model: str,
+    conversation_text: str,
+) -> TicketPayload:
+    result = provider.chat(messages=build_ticket_messages(conversation_text), model=model)
+    try:
+        return parse_ticket_json(result.content)
+    except TicketJSONError:
+        repair = provider.chat(
+            messages=build_ticket_repair_messages(result.content),
+            model=model,
+        )
+        return parse_ticket_json(repair.content)
+
+
+def build_ticket_repair_messages(raw_output: str):
+    from post_ai.schemas import ChatMessage
+
+    return [
+        ChatMessage(
+            role="system",
+            content=(
+                "把输入修复为严格合法JSON，只输出JSON。字段必须包含 "
+                "user_id, timestamp, service_type, issue_type, user_request, "
+                "summary, resolution, need_follow_up。need_follow_up 必须是 boolean。"
+            ),
+        ),
+        ChatMessage(role="user", content=raw_output),
+    ]
 
 
 def _strip_code_fence(text: str) -> str:

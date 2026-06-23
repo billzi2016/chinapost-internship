@@ -101,7 +101,9 @@
 
 行为：
 
-- 勾选 RAG：本轮聊天使用 pgvector 向量检索。
+- 勾选 RAG：本轮聊天使用当前配置的 vector provider。
+- 当前阶段 vector provider 是 FAISS。
+- 后续 PostgreSQL 阶段切换为 pgvector。
 - 取消 RAG：本轮聊天只使用当前会话上下文。
 - 勾选 SFT：切换到监督微调模型模式。
 - 当前没有 SFT 模型，所以勾选后在下方显示红色提示：

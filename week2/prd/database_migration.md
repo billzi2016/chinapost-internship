@@ -32,8 +32,8 @@ CREATE EXTENSION IF NOT EXISTS vector;
 ```text
 conversations_conversation
 conversations_message
-rag_postaldocument
-rag_postalembedding
+core_postaldocument
+core_postalembedding
 rag_citation
 tickets_ticket
 ```
@@ -82,7 +82,7 @@ PRD 阶段建议先按 `4096` 规划，因为当前已有 H5 embedding 是 `(N, 
 目标文件位置示例：
 
 ```text
-post-service-agent/apps/rag/migrations/0001_initial.py
+post-service-agent/apps/core/migrations/0001_initial.py
 ```
 
 示例：
@@ -95,9 +95,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
     initial = True
 
-    dependencies = [
-        ("conversations", "0001_initial"),
-    ]
+    dependencies = []
 
     operations = [
         migrations.RunSQL(
@@ -122,10 +120,10 @@ class Migration(migrations.Migration):
         ),
         migrations.RunSQL(
             sql="""
-            CREATE TABLE rag_postalembedding (
+            CREATE TABLE core_postalembedding (
                 id bigserial PRIMARY KEY,
                 document_id bigint NOT NULL UNIQUE
-                    REFERENCES rag_postaldocument(id)
+                    REFERENCES core_postaldocument(id)
                     ON DELETE CASCADE,
                 embedding vector(4096) NOT NULL,
                 embedding_model varchar(128) NOT NULL,
@@ -133,15 +131,15 @@ class Migration(migrations.Migration):
                 created_at timestamptz NOT NULL DEFAULT now()
             );
             """,
-            reverse_sql="DROP TABLE IF EXISTS rag_postalembedding;",
+            reverse_sql="DROP TABLE IF EXISTS core_postalembedding;",
         ),
         migrations.RunSQL(
             sql="""
-            CREATE INDEX rag_postalembedding_embedding_hnsw
-            ON rag_postalembedding
+            CREATE INDEX core_postalembedding_embedding_hnsw
+            ON core_postalembedding
             USING hnsw (embedding vector_cosine_ops);
             """,
-            reverse_sql="DROP INDEX IF EXISTS rag_postalembedding_embedding_hnsw;",
+            reverse_sql="DROP INDEX IF EXISTS core_postalembedding_embedding_hnsw;",
         ),
     ]
 ```
@@ -151,7 +149,7 @@ class Migration(migrations.Migration):
 目标文件位置示例：
 
 ```text
-post-service-agent/apps/conversations/migrations/0001_initial.py
+post-service-agent/apps/core/migrations/0001_initial.py
 ```
 
 示例：
@@ -189,7 +187,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="messages",
-                        to="conversations.conversation",
+                        to="core.conversation",
                     ),
                 ),
             ],
@@ -199,7 +197,7 @@ class Migration(migrations.Migration):
 
 ## 6. Citation Migration 示例
 
-引用记录建议放在 `apps/rag`。
+引用记录放在 `apps/core`。
 
 示例：
 
@@ -217,7 +215,7 @@ migrations.CreateModel(
             models.ForeignKey(
                 on_delete=django.db.models.deletion.CASCADE,
                 related_name="citations",
-                to="conversations.message",
+                to="core.message",
             ),
         ),
         (
@@ -225,7 +223,7 @@ migrations.CreateModel(
             models.ForeignKey(
                 on_delete=django.db.models.deletion.CASCADE,
                 related_name="citations",
-                to="rag.postaldocument",
+                to="core.postaldocument",
             ),
         ),
     ],
@@ -237,7 +235,7 @@ migrations.CreateModel(
 目标文件位置示例：
 
 ```text
-post-service-agent/apps/tickets/migrations/0001_initial.py
+post-service-agent/apps/core/migrations/0001_initial.py
 ```
 
 示例：
@@ -251,7 +249,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("conversations", "0001_initial"),
+        ("core", "0001_initial"),
     ]
 
     operations = [
@@ -268,7 +266,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="tickets",
-                        to="conversations.conversation",
+                        to="core.conversation",
                     ),
                 ),
                 (
@@ -278,7 +276,7 @@ class Migration(migrations.Migration):
                         null=True,
                         blank=True,
                         related_name="tickets",
-                        to="conversations.message",
+                        to="core.message",
                     ),
                 ),
             ],
@@ -304,8 +302,8 @@ class Migration(migrations.Migration):
 向量索引：
 
 ```sql
-CREATE INDEX rag_postalembedding_embedding_hnsw
-ON rag_postalembedding
+CREATE INDEX core_postalembedding_embedding_hnsw
+ON core_postalembedding
 USING hnsw (embedding vector_cosine_ops);
 ```
 

@@ -114,7 +114,7 @@ class VectorStoreSettings:
     faiss_index_file: str = "postal.faiss"
     faiss_metadata_file: str = "postal_metadata.json"
     pgvector_dsn: str | None = None
-    pgvector_table: str = "rag_postalembedding"
+    pgvector_table: str = "core_postalembedding"
 
     @classmethod
     def from_mapping(cls, data: dict) -> "VectorStoreSettings":
@@ -130,7 +130,7 @@ class VectorStoreSettings:
             faiss_index_file=faiss.get("index_file") or "postal.faiss",
             faiss_metadata_file=faiss.get("metadata_file") or "postal_metadata.json",
             pgvector_dsn=pgvector.get("dsn"),
-            pgvector_table=pgvector.get("table") or "rag_postalembedding",
+            pgvector_table=pgvector.get("table") or "core_postalembedding",
         )
 
 
@@ -173,7 +173,7 @@ class AppConfig:
                     os.getenv("POST_AI_FAISS_ARTIFACT_DIR", str(DEFAULT_ARTIFACT_DIR / "faiss"))
                 ).expanduser(),
                 pgvector_dsn=os.getenv("POST_AI_PGVECTOR_DSN"),
-                pgvector_table=os.getenv("POST_AI_PGVECTOR_TABLE", "rag_postalembedding"),
+                pgvector_table=os.getenv("POST_AI_PGVECTOR_TABLE", "core_postalembedding"),
             ),
             artifact_dir=artifact_dir,
         )

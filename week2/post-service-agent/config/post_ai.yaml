@@ -65,4 +65,4 @@ vector_store:
     metadata_file: postal_metadata.json
   pgvector:
     dsn:
-    table: rag_postalembedding
+    table: core_postalembedding

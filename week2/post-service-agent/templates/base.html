@@ -10,6 +10,7 @@
 </head>
 <body>
   {% block content %}{% endblock %}
+  <script src="{% static 'web/vendor/split.min.js' %}?v={{ static_version }}" defer></script>
   <script src="{% static 'web/vendor/marked.min.js' %}?v={{ static_version }}" defer></script>
   <script src="{% static 'web/vendor/purify.min.js' %}?v={{ static_version }}" defer></script>
   <script src="{% static 'web/js/chat.js' %}?v={{ static_version }}" defer></script>

@@ -76,3 +76,4 @@ STATIC_VERSION = os.getenv("STATIC_VERSION", "20260622")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 POST_AI_CONFIG_PATH = BASE_DIR / "config" / "post_ai.yaml"
+POST_SERVICE_FAKE_LLM = os.getenv("POST_SERVICE_FAKE_LLM", "0") == "1"

@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
+from io import StringIO
 
-from django.test import Client, TestCase
+from django.core.management import call_command
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from apps.core.models import Conversation, Message, Ticket
+from apps.core.models import Conversation, Message, PostalDocument, Ticket
+from apps.api.services import normalize_display_text
 from post_ai.config import AppConfig
 
 
+@override_settings(POST_SERVICE_FAKE_LLM=True)
 class DjangoSmokeTests(TestCase):
     def test_settings_load_post_ai_yaml(self) -> None:
         config = AppConfig.from_env()
@@ -37,6 +41,18 @@ class DjangoSmokeTests(TestCase):
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.json()[0]["title"], "测试会话")
 
+    def test_conversation_pin_and_delete_api(self) -> None:
+        conversation = Conversation.objects.create(title="测试")
+        client = Client()
+
+        pinned = client.patch(f"/api/conversations/{conversation.id}/pin")
+        self.assertEqual(pinned.status_code, 200)
+        self.assertTrue(pinned.json()["is_pinned"])
+
+        deleted = client.delete(f"/api/conversations/{conversation.id}")
+        self.assertEqual(deleted.status_code, 200)
+        self.assertEqual(Conversation.objects.count(), 0)
+
     def test_sft_stream_returns_error_without_creating_assistant_message(self) -> None:
         response = Client().post(
             "/api/chat/stream",
@@ -64,8 +80,9 @@ class DjangoSmokeTests(TestCase):
         self.assertEqual(Conversation.objects.count(), 1)
         self.assertEqual(Message.objects.count(), 2)
         self.assertEqual(Ticket.objects.count(), 1)
+        self.assertEqual(Conversation.objects.first().title, "包裹什么时候派送")
 
-    def test_rag_stream_does_not_crash_when_enabled(self) -> None:
+    def test_rag_stream_returns_clear_error_when_provider_unavailable(self) -> None:
         response = Client().post(
             "/api/chat/stream",
             data=json.dumps({"message": "包裹什么时候派送", "use_rag": True, "use_sft": False}),
@@ -74,4 +91,19 @@ class DjangoSmokeTests(TestCase):
 
         body = b"".join(response.streaming_content).decode("utf-8")
         self.assertIn("event: meta", body)
-        self.assertIn("event: done", body)
+        self.assertIn("event: error", body)
+        self.assertIn("RAG 检索失败", body)
+
+    def test_ingest_postal_rag_is_idempotent_with_limit(self) -> None:
+        output = StringIO()
+        call_command("ingest_postal_rag", "--limit", "2", stdout=output)
+        call_command("ingest_postal_rag", "--limit", "2", stdout=output)
+
+        self.assertEqual(PostalDocument.objects.count(), 2)
+        self.assertIn("created=2", output.getvalue())
+        self.assertIn("updated=2", output.getvalue())
+
+    def test_normalize_display_text_removes_chinese_spacing(self) -> None:
+        text = "用户 询问 邮寄 的 信息 ， 客服 回复 。"
+
+        self.assertEqual(normalize_display_text(text), "用户询问邮寄的信息，客服回复。")

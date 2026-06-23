@@ -34,6 +34,21 @@ def list_messages(request, conversation_id: int):
     return list(conversation.messages.all())
 
 
+@api.patch("/conversations/{conversation_id}/pin", response=ConversationOut)
+def toggle_pin_conversation(request, conversation_id: int):
+    conversation = get_object_or_404(Conversation, pk=conversation_id)
+    conversation.is_pinned = not conversation.is_pinned
+    conversation.save(update_fields=["is_pinned", "updated_at"])
+    return conversation
+
+
+@api.delete("/conversations/{conversation_id}")
+def delete_conversation(request, conversation_id: int):
+    conversation = get_object_or_404(Conversation, pk=conversation_id)
+    conversation.delete()
+    return {"ok": True}
+
+
 @api.post("/conversations/{conversation_id}/messages", response=MessageOut)
 def create_message(request, conversation_id: int, payload: MessageCreateIn):
     conversation = get_object_or_404(Conversation, pk=conversation_id)
