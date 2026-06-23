@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from django.db import models
 
+from apps.core.fields import VectorField
+
+
+EMBEDDING_DIMENSIONS = 4096
+
 
 class Conversation(models.Model):
     title = models.CharField(max_length=128, blank=True)
@@ -66,6 +71,19 @@ class PostalDocument(models.Model):
                 name="uniq_postal_document_source",
             )
         ]
+
+
+class PostalEmbedding(models.Model):
+    document = models.OneToOneField(
+        PostalDocument,
+        on_delete=models.CASCADE,
+        related_name="embedding",
+    )
+    embedding = VectorField(dimensions=EMBEDDING_DIMENSIONS)
+    provider = models.CharField(max_length=64)
+    model = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class Citation(models.Model):

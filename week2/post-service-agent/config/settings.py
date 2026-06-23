@@ -3,12 +3,16 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from post_ai.env import load_env_file
+
 
 BASE_DIR = Path(__file__).resolve().parents[1]
+load_env_file(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-post-service-agent")
 DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+POST_SERVICE_MODE = os.getenv("POST_SERVICE_MODE", "local")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -55,12 +59,12 @@ TEMPLATES = [
 
 DATABASES = {
     "default": {
-        "ENGINE": os.getenv("DJANGO_DB_ENGINE", "django.db.backends.sqlite3"),
-        "NAME": os.getenv("DJANGO_DB_NAME", str(BASE_DIR / "db.sqlite3")),
-        "USER": os.getenv("DJANGO_DB_USER", ""),
-        "PASSWORD": os.getenv("DJANGO_DB_PASSWORD", ""),
-        "HOST": os.getenv("DJANGO_DB_HOST", ""),
-        "PORT": os.getenv("DJANGO_DB_PORT", ""),
+        "ENGINE": os.getenv("DJANGO_DB_ENGINE", "django.db.backends.postgresql"),
+        "NAME": os.getenv("DJANGO_DB_NAME", "post_service_agent"),
+        "USER": os.getenv("DJANGO_DB_USER", "post_service"),
+        "PASSWORD": os.getenv("DJANGO_DB_PASSWORD", "post_service"),
+        "HOST": os.getenv("DJANGO_DB_HOST", "127.0.0.1"),
+        "PORT": os.getenv("DJANGO_DB_PORT", "5432"),
     }
 }
 

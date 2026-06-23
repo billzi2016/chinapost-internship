@@ -5,6 +5,7 @@
 # This file belongs to the standalone AI toolkit only.
 # Django must keep its own settings module and should not mix web/database
 # settings into this file.
+mode: local
 
 # -----------------------------------------------------------------------------
 # Data sources
@@ -55,10 +56,10 @@ providers:
 # -----------------------------------------------------------------------------
 # Vector store provider
 # -----------------------------------------------------------------------------
-# Current phase uses FAISS to run RAG locally. Later Django + PostgreSQL can
-# switch provider to pgvector while keeping the upper RAG code stable.
+# Runtime vector provider is switchable. Default is pgvector for the formal
+# Django/PostgreSQL path. FAISS remains available for local fallback debugging.
 vector_store:
-  provider: faiss
+  provider: pgvector
   faiss:
     artifact_dir: artifacts/faiss
     index_file: postal.faiss

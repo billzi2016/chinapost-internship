@@ -6,12 +6,15 @@ from pathlib import Path
 
 import yaml
 
+from post_ai.env import load_env_file
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEEK2_ROOT = PROJECT_ROOT.parent
 DEFAULT_DATA_DIR = WEEK2_ROOT / "data"
 DEFAULT_ARTIFACT_DIR = PROJECT_ROOT / "artifacts"
 DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "post_ai.yaml"
+load_env_file(PROJECT_ROOT / ".env")
 
 
 def _resolve_project_path(value: str | None, default: Path | None = None) -> Path | None:
@@ -77,17 +80,17 @@ class ProviderSettings:
         openrouter = providers.get("openrouter", {})
         fastapi = providers.get("fastapi", {})
         return cls(
-            default_chat_provider=chat.get("provider") or "ollama",
-            default_embedding_provider=embedding.get("provider") or "ollama",
-            default_chat_model=chat.get("model") or "gpt-oss:20b",
-            default_embedding_model=embedding.get("model") or "qwen3-embedding:8b",
-            ollama_base_url=ollama.get("base_url") or "http://localhost:11434",
-            vllm_base_url=vllm.get("base_url"),
-            openrouter_base_url=openrouter.get("base_url") or "https://openrouter.ai/api/v1",
-            openrouter_api_key=openrouter.get("api_key"),
-            fastapi_base_url=fastapi.get("base_url"),
-            sft_provider=sft.get("provider"),
-            sft_model=sft.get("model"),
+            default_chat_provider=os.getenv("POST_AI_CHAT_PROVIDER") or chat.get("provider") or "ollama",
+            default_embedding_provider=os.getenv("POST_AI_EMBEDDING_PROVIDER") or embedding.get("provider") or "ollama",
+            default_chat_model=os.getenv("POST_AI_CHAT_MODEL") or chat.get("model") or "gpt-oss:20b",
+            default_embedding_model=os.getenv("POST_AI_EMBEDDING_MODEL") or embedding.get("model") or "qwen3-embedding:8b",
+            ollama_base_url=os.getenv("OLLAMA_BASE_URL") or ollama.get("base_url") or "http://localhost:11434",
+            vllm_base_url=os.getenv("VLLM_BASE_URL") or vllm.get("base_url"),
+            openrouter_base_url=os.getenv("OPENROUTER_BASE_URL") or openrouter.get("base_url") or "https://openrouter.ai/api/v1",
+            openrouter_api_key=os.getenv("OPENROUTER_API_KEY") or openrouter.get("api_key"),
+            fastapi_base_url=os.getenv("SFT_FASTAPI_BASE_URL") or fastapi.get("base_url"),
+            sft_provider=os.getenv("SFT_PROVIDER") or sft.get("provider"),
+            sft_model=os.getenv("SFT_MODEL") or sft.get("model"),
         )
 
     @classmethod
@@ -109,7 +112,7 @@ class ProviderSettings:
 
 @dataclass(frozen=True)
 class VectorStoreSettings:
-    provider: str = "faiss"
+    provider: str = "pgvector"
     faiss_artifact_dir: Path | None = DEFAULT_ARTIFACT_DIR / "faiss"
     faiss_index_file: str = "postal.faiss"
     faiss_metadata_file: str = "postal_metadata.json"
@@ -122,20 +125,21 @@ class VectorStoreSettings:
         faiss = vector.get("faiss", {})
         pgvector = vector.get("pgvector", {})
         return cls(
-            provider=vector.get("provider") or "faiss",
+            provider=os.getenv("POST_AI_VECTOR_PROVIDER") or vector.get("provider") or "pgvector",
             faiss_artifact_dir=_resolve_project_path(
-                faiss.get("artifact_dir"),
+                os.getenv("POST_AI_FAISS_ARTIFACT_DIR") or faiss.get("artifact_dir"),
                 DEFAULT_ARTIFACT_DIR / "faiss",
             ),
             faiss_index_file=faiss.get("index_file") or "postal.faiss",
             faiss_metadata_file=faiss.get("metadata_file") or "postal_metadata.json",
-            pgvector_dsn=pgvector.get("dsn"),
-            pgvector_table=pgvector.get("table") or "core_postalembedding",
+            pgvector_dsn=os.getenv("POST_AI_PGVECTOR_DSN") or pgvector.get("dsn") or build_pgvector_dsn_from_env(),
+            pgvector_table=os.getenv("POST_AI_PGVECTOR_TABLE") or pgvector.get("table") or "core_postalembedding",
         )
 
 
 @dataclass(frozen=True)
 class AppConfig:
+    mode: str
     data_paths: DataPaths
     provider_settings: ProviderSettings
     vector_store_settings: VectorStoreSettings
@@ -152,6 +156,7 @@ class AppConfig:
         assert data_dir is not None
         assert artifact_dir is not None
         return cls(
+            mode=os.getenv("POST_SERVICE_MODE", data.get("mode") or "local"),
             data_paths=DataPaths(data_dir=data_dir),
             provider_settings=ProviderSettings.from_mapping(data),
             vector_store_settings=VectorStoreSettings.from_mapping(data),
@@ -165,15 +170,25 @@ class AppConfig:
         data_dir = Path(os.getenv("POST_AI_DATA_DIR", str(DEFAULT_DATA_DIR))).expanduser()
         artifact_dir = Path(os.getenv("POST_AI_ARTIFACT_DIR", str(DEFAULT_ARTIFACT_DIR))).expanduser()
         return cls(
+            mode=os.getenv("POST_SERVICE_MODE", "local"),
             data_paths=DataPaths(data_dir=data_dir),
             provider_settings=ProviderSettings.from_env(),
             vector_store_settings=VectorStoreSettings(
-                provider=os.getenv("POST_AI_VECTOR_PROVIDER", "faiss"),
+                provider=os.getenv("POST_AI_VECTOR_PROVIDER", "pgvector"),
                 faiss_artifact_dir=Path(
                     os.getenv("POST_AI_FAISS_ARTIFACT_DIR", str(DEFAULT_ARTIFACT_DIR / "faiss"))
                 ).expanduser(),
-                pgvector_dsn=os.getenv("POST_AI_PGVECTOR_DSN"),
+                pgvector_dsn=os.getenv("POST_AI_PGVECTOR_DSN") or build_pgvector_dsn_from_env(),
                 pgvector_table=os.getenv("POST_AI_PGVECTOR_TABLE", "core_postalembedding"),
             ),
             artifact_dir=artifact_dir,
         )
+
+
+def build_pgvector_dsn_from_env() -> str:
+    user = os.getenv("DJANGO_DB_USER", "post_service")
+    password = os.getenv("DJANGO_DB_PASSWORD", "post_service")
+    host = os.getenv("DJANGO_DB_HOST", "127.0.0.1")
+    port = os.getenv("DJANGO_DB_PORT", "5432")
+    name = os.getenv("DJANGO_DB_NAME", "post_service_agent")
+    return f"postgresql://{user}:{password}@{host}:{port}/{name}"

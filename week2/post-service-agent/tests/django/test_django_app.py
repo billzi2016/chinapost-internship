@@ -18,7 +18,7 @@ class DjangoSmokeTests(TestCase):
         config = AppConfig.from_env()
 
         self.assertEqual(config.provider_settings.default_chat_provider, "ollama")
-        self.assertEqual(config.vector_store_settings.provider, "faiss")
+        self.assertEqual(config.vector_store_settings.provider, "pgvector")
 
     def test_chat_page_renders_light_template(self) -> None:
         response = Client().get(reverse("chat"))
@@ -165,9 +165,40 @@ class DjangoSmokeTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["chat_provider"], "ollama")
+        self.assertEqual(response.json()["vector_provider"], "pgvector")
+
+    def test_provider_health_respects_vector_provider_override(self) -> None:
+        import os
+
+        old_provider = os.environ.get("POST_AI_VECTOR_PROVIDER")
+        os.environ["POST_AI_VECTOR_PROVIDER"] = "faiss"
+        self.addCleanup(
+            lambda: (
+                os.environ.pop("POST_AI_VECTOR_PROVIDER", None)
+                if old_provider is None
+                else os.environ.__setitem__("POST_AI_VECTOR_PROVIDER", old_provider)
+            )
+        )
+
+        response = Client().get("/api/provider/health")
+
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["vector_provider"], "faiss")
 
+    @override_settings(POST_SERVICE_FAKE_LLM=True)
     def test_rag_stream_returns_citations_when_faiss_is_available(self) -> None:
+        import os
+
+        old_provider = os.environ.get("POST_AI_VECTOR_PROVIDER")
+        os.environ["POST_AI_VECTOR_PROVIDER"] = "faiss"
+        self.addCleanup(
+            lambda: (
+                os.environ.pop("POST_AI_VECTOR_PROVIDER", None)
+                if old_provider is None
+                else os.environ.__setitem__("POST_AI_VECTOR_PROVIDER", old_provider)
+            )
+        )
+
         response = Client().post(
             "/api/chat/stream",
             data=json.dumps({"message": "包裹什么时候派送", "use_rag": True, "use_sft": False}),
@@ -206,8 +237,8 @@ class DjangoSmokeTests(TestCase):
         call_command("ingest_postal_rag", "--limit", "2", stdout=output)
 
         self.assertEqual(PostalDocument.objects.count(), 2)
-        self.assertIn("created=2", output.getvalue())
-        self.assertIn("updated=2", output.getvalue())
+        self.assertIn("documents_created=2", output.getvalue())
+        self.assertIn("documents_updated=2", output.getvalue())
 
     def test_normalize_display_text_removes_chinese_spacing(self) -> None:
         text = "用户 询问 邮寄 的 信息 ， 客服 回复 。"

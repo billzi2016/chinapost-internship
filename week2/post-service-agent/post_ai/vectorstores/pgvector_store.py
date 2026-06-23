@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from post_ai.schemas import PostalDocument, RetrievalHit
@@ -11,7 +12,7 @@ class PgVectorStore(VectorStore):
 
     def __init__(self, dsn: str | None, table: str = "core_postalembedding") -> None:
         self.dsn = dsn
-        self.table = table
+        self.table = _validate_table_name(table)
 
     def search(self, query_vector: list[float], top_k: int = 5) -> list[RetrievalHit]:
         if not self.dsn:
@@ -73,3 +74,9 @@ def _to_vector_literal(vector: list[float]) -> str:
 
 def _metadata_dict(value: Any) -> dict:
     return value if isinstance(value, dict) else {}
+
+
+def _validate_table_name(value: str) -> str:
+    if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", value):
+        raise VectorStoreUnavailableError(f"Invalid pgvector table name: {value}")
+    return value
