@@ -75,12 +75,6 @@ python run_label_comparison.py --limit 0
 python run_label_comparison.py --review-policy all --limit 0
 ```
 
-最全运行方式：全部样本都交给 `gpt-oss:120b` 复核，并显式使用 `think=low`：
-
-```bash
-python run_label_comparison.py --review-policy all --limit 0 --think low
-```
-
 ## 保存与断点续跑
 
 默认保存策略：
@@ -126,4 +120,12 @@ python run_label_comparison.py --limit 0
 ```bash
 python run_label_comparison.py --limit 0 --think medium
 python run_label_comparison.py --limit 0 --think high
+```
+
+# 最全运行命令
+
+全部样本都交给 `gpt-oss:120b` 复核，并显式使用 `think=low`：
+
+```bash
+python run_label_comparison.py --review-policy all --limit 0 --think low
 ```
