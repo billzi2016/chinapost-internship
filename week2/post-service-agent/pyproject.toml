@@ -9,6 +9,7 @@ dependencies = [
   "django-ninja>=1",
   "pydantic>=2",
   "psycopg[binary]>=3",
+  "psycopg2-binary>=2.9",
   "PyYAML>=6",
   "pytest",
 ]

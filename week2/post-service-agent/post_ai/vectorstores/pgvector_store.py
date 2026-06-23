@@ -18,14 +18,6 @@ class PgVectorStore(VectorStore):
         if not self.dsn:
             raise VectorStoreUnavailableError("pgvector DSN is not configured.")
 
-        try:
-            import psycopg
-            from psycopg.rows import dict_row
-        except ImportError as exc:
-            raise VectorStoreUnavailableError(
-                "psycopg is required for pgvector search. Install psycopg[binary]."
-            ) from exc
-
         query_literal = _to_vector_literal(query_vector)
         sql = f"""
             SELECT
@@ -42,10 +34,7 @@ class PgVectorStore(VectorStore):
             ORDER BY e.embedding <=> %s::vector
             LIMIT %s
         """
-        with psycopg.connect(self.dsn, row_factory=dict_row) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(sql, (query_literal, query_literal, top_k))
-                rows = cursor.fetchall()
+        rows = _fetch_rows(self.dsn, sql, (query_literal, query_literal, top_k))
 
         hits: list[RetrievalHit] = []
         for rank, row in enumerate(rows, start=1):
@@ -80,3 +69,29 @@ def _validate_table_name(value: str) -> str:
     if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", value):
         raise VectorStoreUnavailableError(f"Invalid pgvector table name: {value}")
     return value
+
+
+def _fetch_rows(dsn: str, sql: str, params: tuple) -> list[dict]:
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+
+        with psycopg.connect(dsn, row_factory=dict_row) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(sql, params)
+                return list(cursor.fetchall())
+    except ImportError:
+        pass
+
+    try:
+        import psycopg2
+        import psycopg2.extras
+    except ImportError as exc:
+        raise VectorStoreUnavailableError(
+            "pgvector search requires psycopg or psycopg2. Install psycopg[binary]."
+        ) from exc
+
+    with psycopg2.connect(dsn) as connection:
+        with connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
+            cursor.execute(sql, params)
+            return [dict(row) for row in cursor.fetchall()]

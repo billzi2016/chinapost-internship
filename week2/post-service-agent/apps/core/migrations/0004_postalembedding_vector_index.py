@@ -4,19 +4,14 @@ from django.db import migrations
 
 
 def create_vector_index(apps, schema_editor) -> None:
-    if schema_editor.connection.vendor != "postgresql":
-        return
-    schema_editor.execute(
-        "CREATE INDEX IF NOT EXISTS core_postalembedding_embedding_ivfflat "
-        "ON core_postalembedding USING ivfflat (embedding vector_cosine_ops) "
-        "WITH (lists = 100);"
-    )
+    # The current imported H5 vectors are 4096-dimensional. pgvector ivfflat
+    # indexes support up to 2000 dimensions for vector columns, so keep exact
+    # search for now. The provider SQL still uses pgvector's <=> operator.
+    return
 
 
 def drop_vector_index(apps, schema_editor) -> None:
-    if schema_editor.connection.vendor != "postgresql":
-        return
-    schema_editor.execute("DROP INDEX IF EXISTS core_postalembedding_embedding_ivfflat;")
+    return
 
 
 class Migration(migrations.Migration):
