@@ -1,0 +1,25 @@
+{
+  "total": 10701,
+  "binary_counts": {
+    "postal_related": 6321,
+    "other": 4380
+  },
+  "category_counts": {
+    "流程规则类": 3131,
+    "非邮政相关": 5413,
+    "时限时效类": 1463,
+    "费率价格类": 580,
+    "泛物流配送类": 74,
+    "解析失败": 13,
+    "禁限寄类": 24,
+    "国际业务类": 3
+  },
+  "figures": [
+    "figures/all_pca_binary.png",
+    "figures/all_pca_120b_category.png",
+    "figures/all_tsne_binary.png",
+    "figures/all_tsne_120b_category.png",
+    "figures/all_umap_binary.png",
+    "figures/all_umap_120b_category.png"
+  ]
+}

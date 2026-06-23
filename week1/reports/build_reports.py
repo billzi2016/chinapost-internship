@@ -18,8 +18,10 @@
 3. 第一版/stats/outputs/report.md
 4. 第一版/filter/outputs/report.md
 5. 第二版/01_分类效果评估与边界case分析/outputs/report.md
+6. 第二版/02_模型选型补充/outputs/report.md
+7. 第二版/04_可视化聚类与标签优化/outputs/report.md
 
-输出 PDF 会统一落盘到 week1/reports 目录。
+输出 PDF 会按版本落盘到 week1/reports/第一版 和 week1/reports/第二版。
 """
 
 from __future__ import annotations
@@ -37,6 +39,8 @@ from playwright.sync_api import sync_playwright
 # 统一定位目录，避免到处手写相对路径。
 REPORTS_DIR = Path(__file__).resolve().parent
 WEEK1_DIR = REPORTS_DIR.parent
+FIRST_VERSION_DIR = REPORTS_DIR / "第一版"
+SECOND_VERSION_DIR = REPORTS_DIR / "第二版"
 
 
 # 这里维护“输入 Markdown -> 输出 PDF”的映射关系。
@@ -44,28 +48,38 @@ WEEK1_DIR = REPORTS_DIR.parent
 REPORT_SPECS = [
     {
         "source": WEEK1_DIR / "第一版" / "docs" / "模型选型报告.md",
-        "output": REPORTS_DIR / "中文邮政客服任务开源大模型选型研究报告.pdf",
+        "output": FIRST_VERSION_DIR / "中文邮政客服任务开源大模型选型研究报告.pdf",
         "title": "中文邮政客服任务开源大模型选型研究报告",
     },
     {
         "source": WEEK1_DIR / "第一版" / "docs" / "SFT训练与风险控制.md",
-        "output": REPORTS_DIR / "中文邮政客服任务SFT训练方案与风险控制报告.pdf",
+        "output": FIRST_VERSION_DIR / "中文邮政客服任务SFT训练方案与风险控制报告.pdf",
         "title": "中文邮政客服任务SFT训练方案与风险控制报告",
     },
     {
         "source": WEEK1_DIR / "第一版" / "stats" / "outputs" / "report.md",
-        "output": REPORTS_DIR / "CSDS数据集统计分析与关键词提取结果报告.pdf",
+        "output": FIRST_VERSION_DIR / "CSDS数据集统计分析与关键词提取结果报告.pdf",
         "title": "CSDS数据集统计分析与关键词提取结果报告",
     },
     {
         "source": WEEK1_DIR / "第一版" / "filter" / "outputs" / "report.md",
-        "output": REPORTS_DIR / "邮政相关对话筛选与向量空间可视化结果报告.pdf",
+        "output": FIRST_VERSION_DIR / "邮政相关对话筛选与向量空间可视化结果报告.pdf",
         "title": "邮政相关对话筛选与向量空间可视化结果报告",
     },
     {
         "source": WEEK1_DIR / "第二版" / "01_分类效果评估与边界case分析" / "outputs" / "report.md",
-        "output": REPORTS_DIR / "分类效果评估与边界case分析报告.pdf",
+        "output": SECOND_VERSION_DIR / "分类效果评估与边界case分析报告.pdf",
         "title": "分类效果评估与边界 case 分析报告",
+    },
+    {
+        "source": WEEK1_DIR / "第二版" / "02_模型选型补充" / "outputs" / "report.md",
+        "output": SECOND_VERSION_DIR / "模型选型工程指标补充报告.pdf",
+        "title": "模型选型工程指标补充报告",
+    },
+    {
+        "source": WEEK1_DIR / "第二版" / "04_可视化聚类与标签优化" / "outputs" / "report.md",
+        "output": SECOND_VERSION_DIR / "可视化聚类与标签优化报告.pdf",
+        "title": "可视化聚类与标签优化报告",
     },
 ]
 
