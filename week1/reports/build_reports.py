@@ -18,8 +18,7 @@
 3. 第一版/stats/outputs/report.md
 4. 第一版/filter/outputs/report.md
 5. 第二版/01_分类效果评估与边界case分析/outputs/report.md
-6. 第二版/02_模型选型补充/outputs/report.md
-7. 第二版/04_可视化聚类与标签优化/outputs/report.md
+6. 第二版/04_可视化聚类与标签优化/outputs/report.md
 
 输出 PDF 会按版本落盘到 week1/reports/第一版 和 week1/reports/第二版。
 """
@@ -70,11 +69,6 @@ REPORT_SPECS = [
         "source": WEEK1_DIR / "第二版" / "01_分类效果评估与边界case分析" / "outputs" / "report.md",
         "output": SECOND_VERSION_DIR / "分类效果评估与边界case分析报告.pdf",
         "title": "分类效果评估与边界 case 分析报告",
-    },
-    {
-        "source": WEEK1_DIR / "第二版" / "02_模型选型补充" / "outputs" / "report.md",
-        "output": SECOND_VERSION_DIR / "模型选型工程指标补充报告.pdf",
-        "title": "模型选型工程指标补充报告",
     },
     {
         "source": WEEK1_DIR / "第二版" / "04_可视化聚类与标签优化" / "outputs" / "report.md",
@@ -177,7 +171,9 @@ code {
 }
 
 pre {
-  overflow-x: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  word-break: break-word;
   padding: 12px 14px;
   border-radius: 8px;
   background: #0f172a;
@@ -188,6 +184,9 @@ pre code {
   background: transparent;
   color: inherit;
   padding: 0;
+  white-space: inherit;
+  overflow-wrap: inherit;
+  word-break: inherit;
 }
 
 img {

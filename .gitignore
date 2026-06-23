@@ -33,6 +33,7 @@ db.sqlite3
 # ----------------------------------------------------------------------
 # week1 outputs
 # ----------------------------------------------------------------------
+week1/reports/**/*.pdf
 week1/filter/outputs/embeddings/
 week1/filter/outputs/llm_filter/
 week1/filter/outputs/llm_filter/postal_filter_results.json
