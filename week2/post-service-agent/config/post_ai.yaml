@@ -5,7 +5,40 @@
 # This file belongs to the standalone AI toolkit only.
 # Django must keep its own settings module and should not mix web/database
 # settings into this file.
-mode: local
+#
+# mode options:
+# - local: local debugging mode. The default vector provider is FAISS.
+# - microservice: formal service mode. The default vector provider is pgvector.
+# POST_AI_VECTOR_PROVIDER may still override the mode default for temporary
+# troubleshooting.
+mode: microservice
+
+# -----------------------------------------------------------------------------
+# Mode switch
+# -----------------------------------------------------------------------------
+# The selected mode is the main switch. Keep concrete services here so the
+# runtime shape is visible from this file.
+modes:
+  local:
+    database: local-artifacts
+    vector_store:
+      provider: faiss
+    chat:
+      provider: ollama
+      model: gpt-oss:20b
+    embedding:
+      provider: ollama
+      model: qwen3-embedding:8b
+  microservice:
+    database: postgresql
+    vector_store:
+      provider: pgvector
+    chat:
+      provider: ollama
+      model: gpt-oss:20b
+    embedding:
+      provider: ollama
+      model: qwen3-embedding:8b
 
 # -----------------------------------------------------------------------------
 # Data sources
@@ -56,10 +89,13 @@ providers:
 # -----------------------------------------------------------------------------
 # Vector store provider
 # -----------------------------------------------------------------------------
-# Runtime vector provider is switchable. Default is pgvector for the formal
-# Django/PostgreSQL path. FAISS remains available for local fallback debugging.
+# Runtime vector provider is controlled by mode as the main switch:
+# - mode: local -> modes.local.vector_store.provider
+# - mode: microservice -> modes.microservice.vector_store.provider
+#
+# Provider-specific settings stay below. Do not set a top-level provider here;
+# use mode or POST_AI_VECTOR_PROVIDER instead.
 vector_store:
-  provider: pgvector
   faiss:
     artifact_dir: artifacts/faiss
     index_file: postal.faiss

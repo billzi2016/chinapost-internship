@@ -18,6 +18,7 @@ class DjangoSmokeTests(TestCase):
         config = AppConfig.from_env()
 
         self.assertEqual(config.provider_settings.default_chat_provider, "ollama")
+        self.assertEqual(config.mode, "microservice")
         self.assertEqual(config.vector_store_settings.provider, "pgvector")
 
     def test_chat_page_renders_light_template(self) -> None:

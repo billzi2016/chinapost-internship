@@ -83,15 +83,15 @@ PYTHONPATH=. python -m post_ai.build_faiss
 - provider 标记：`old-h5`
 - 文档数：6321
 
-FAISS 作为 vector provider 封装在 `post_ai/vectorstores/faiss_store.py`。后续接入 Django + pgvector 时，保留 RAG 上层接口，把 `config/post_ai.yaml` 的 `vector_store.provider` 从 `faiss` 切到 `pgvector`，再实现 `post_ai/vectorstores/pgvector_store.py` 即可。
+FAISS 和 pgvector 都作为 vector provider 封装在 `post_ai/vectorstores/`。当前通过 `config/post_ai.yaml` 的 `mode` 做总闸：`local` 默认走 FAISS，`microservice` 默认走 pgvector；`POST_AI_VECTOR_PROVIDER` 只用于临时覆盖。
 
 当前状态要实事求是：
 
 - `faiss` provider 可用。
-- `pgvector` provider 只是占位，尚未实现真实数据库检索。
+- `pgvector` provider 可用，正式链路默认使用 PostgreSQL + pgvector。
 - 当前 FAISS artifact 使用旧 `dialogue_embeddings.h5` 的文档向量。
-- 旧 H5 没有用户 query embedding；Django 里的 RAG 请求目前是接线验证，不是最终语义检索效果。
-- 真正查询语义检索需要接入 `qwen3-embedding:8b` query embedding 后再搜索 FAISS 或 pgvector。
+- pgvector 数据由 Django ORM migration 建表，并通过 `ingest_postal_rag` 导入旧 `dialogue_embeddings.h5`。
+- 查询时使用 `qwen3-embedding:8b` 生成 query embedding，再搜索当前 mode 选择的向量库。
 
 ## 分离原则
 

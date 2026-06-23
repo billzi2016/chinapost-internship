@@ -75,7 +75,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_VERSION = os.getenv("STATIC_VERSION", "20260623-18")
+STATIC_VERSION = os.getenv("STATIC_VERSION", "20260623-21")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

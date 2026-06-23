@@ -57,15 +57,17 @@ cp .env.example .env
 
 ```bash
 export POST_SERVICE_MODE=local
-export POST_AI_VECTOR_PROVIDER=faiss
+unset POST_AI_VECTOR_PROVIDER
 ```
 
 切到 microservice：
 
 ```bash
 export POST_SERVICE_MODE=microservice
-export POST_AI_VECTOR_PROVIDER=pgvector
+unset POST_AI_VECTOR_PROVIDER
 ```
+
+`POST_AI_VECTOR_PROVIDER` 只用于临时覆盖总闸，例如短时间强制切到 FAISS 排查问题。
 
 ## 4. Local：生成 FAISS Artifact
 
@@ -317,7 +319,7 @@ export DJANGO_DB_USER=post_service
 export DJANGO_DB_PASSWORD=post_service
 export DJANGO_DB_HOST=127.0.0.1
 export DJANGO_DB_PORT=5432
-export POST_AI_VECTOR_PROVIDER=pgvector
+unset POST_AI_VECTOR_PROVIDER
 ```
 
 如果 Docker 映射到了 `15432`：

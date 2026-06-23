@@ -269,6 +269,26 @@ body {
   margin-bottom: 0;
 }
 
+.message table {
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 10px 0;
+  width: 100%;
+}
+
+.message th,
+.message td {
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.message th {
+  background: #eef4ef;
+  font-weight: 700;
+}
+
 .message.user {
   margin-left: auto;
 }

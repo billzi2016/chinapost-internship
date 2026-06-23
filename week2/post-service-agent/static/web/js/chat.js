@@ -90,6 +90,13 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function titleCaseProvider(value) {
+  return String(value || "")
+    .split(/([/_-])/)
+    .map((part) => /^[a-zA-Z0-9]/.test(part) ? part.charAt(0).toUpperCase() + part.slice(1) : part)
+    .join("");
+}
+
 function renderConversationTitle(conversation) {
   const title = conversation.title || "未命名会话";
   const error = conversation.latest_error || "";
@@ -231,22 +238,22 @@ async function loadProviderHealth() {
     providerHealth.innerHTML = `
       <span class="health-item">
         <span class="health-dot ok" aria-hidden="true"></span>
-        Chat ${escapeHtml(health.chat_provider)}/${escapeHtml(health.chat_model)}
+        Chat Provider: ${escapeHtml(titleCaseProvider(health.chat_provider))}/${escapeHtml(titleCaseProvider(health.chat_model))}
       </span>
       <span class="health-item">
         <span class="health-dot ok" aria-hidden="true"></span>
-        Vector ${escapeHtml(health.vector_provider)}
+        Vector Provider: ${escapeHtml(titleCaseProvider(health.vector_provider))}
       </span>
     `;
   } catch {
     providerHealth.innerHTML = `
       <span class="health-item">
         <span class="health-dot bad" aria-hidden="true"></span>
-        Chat unavailable
+        Chat Provider: Unavailable
       </span>
       <span class="health-item">
         <span class="health-dot bad" aria-hidden="true"></span>
-        Vector unavailable
+        Vector Provider: Unavailable
       </span>
     `;
   }

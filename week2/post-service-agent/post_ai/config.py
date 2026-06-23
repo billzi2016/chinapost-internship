@@ -33,6 +33,17 @@ def _load_yaml_config(path: Path) -> dict:
     return data or {}
 
 
+def _normalize_mode(value: str | None) -> str:
+    mode = (value or "local").strip().lower()
+    if mode not in {"local", "microservice"}:
+        raise ValueError(f"Unsupported POST_SERVICE_MODE: {value!r}. Expected local or microservice.")
+    return mode
+
+
+def _default_vector_provider_for_mode(mode: str) -> str:
+    return "faiss" if mode == "local" else "pgvector"
+
+
 @dataclass(frozen=True)
 class DataPaths:
     data_dir: Path = DEFAULT_DATA_DIR
@@ -120,12 +131,15 @@ class VectorStoreSettings:
     pgvector_table: str = "core_postalembedding"
 
     @classmethod
-    def from_mapping(cls, data: dict) -> "VectorStoreSettings":
+    def from_mapping(cls, data: dict, mode: str) -> "VectorStoreSettings":
+        mode_settings = data.get("modes", {}).get(mode, {})
         vector = data.get("vector_store", {})
         faiss = vector.get("faiss", {})
         pgvector = vector.get("pgvector", {})
         return cls(
-            provider=os.getenv("POST_AI_VECTOR_PROVIDER") or vector.get("provider") or "pgvector",
+            provider=os.getenv("POST_AI_VECTOR_PROVIDER")
+            or mode_settings.get("vector_store", {}).get("provider")
+            or _default_vector_provider_for_mode(mode),
             faiss_artifact_dir=_resolve_project_path(
                 os.getenv("POST_AI_FAISS_ARTIFACT_DIR") or faiss.get("artifact_dir"),
                 DEFAULT_ARTIFACT_DIR / "faiss",
@@ -148,6 +162,7 @@ class AppConfig:
     @classmethod
     def from_yaml(cls, path: Path = DEFAULT_CONFIG_PATH) -> "AppConfig":
         data = _load_yaml_config(path)
+        mode = _normalize_mode(os.getenv("POST_SERVICE_MODE") or data.get("mode"))
         data_dir = _resolve_project_path(data.get("data", {}).get("data_dir"), DEFAULT_DATA_DIR)
         artifact_dir = _resolve_project_path(
             data.get("artifacts", {}).get("artifact_dir"),
@@ -156,10 +171,10 @@ class AppConfig:
         assert data_dir is not None
         assert artifact_dir is not None
         return cls(
-            mode=os.getenv("POST_SERVICE_MODE", data.get("mode") or "local"),
+            mode=mode,
             data_paths=DataPaths(data_dir=data_dir),
             provider_settings=ProviderSettings.from_mapping(data),
-            vector_store_settings=VectorStoreSettings.from_mapping(data),
+            vector_store_settings=VectorStoreSettings.from_mapping(data, mode),
             artifact_dir=artifact_dir,
         )
 
@@ -169,12 +184,13 @@ class AppConfig:
             return cls.from_yaml(DEFAULT_CONFIG_PATH)
         data_dir = Path(os.getenv("POST_AI_DATA_DIR", str(DEFAULT_DATA_DIR))).expanduser()
         artifact_dir = Path(os.getenv("POST_AI_ARTIFACT_DIR", str(DEFAULT_ARTIFACT_DIR))).expanduser()
+        mode = _normalize_mode(os.getenv("POST_SERVICE_MODE"))
         return cls(
-            mode=os.getenv("POST_SERVICE_MODE", "local"),
+            mode=mode,
             data_paths=DataPaths(data_dir=data_dir),
             provider_settings=ProviderSettings.from_env(),
             vector_store_settings=VectorStoreSettings(
-                provider=os.getenv("POST_AI_VECTOR_PROVIDER", "pgvector"),
+                provider=os.getenv("POST_AI_VECTOR_PROVIDER") or _default_vector_provider_for_mode(mode),
                 faiss_artifact_dir=Path(
                     os.getenv("POST_AI_FAISS_ARTIFACT_DIR", str(DEFAULT_ARTIFACT_DIR / "faiss"))
                 ).expanduser(),
