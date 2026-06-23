@@ -26,3 +26,31 @@
 - LLM 标签与正则弱标签对比结果
 - 边界 case 样本列表
 - 报告补充段落
+
+## 当前产出
+
+- `01_04_合并分析方案.md`
+- `run_label_comparison.py`
+
+当前判断：01 和 04 应合并为“标签质量评估 + 业务主题细分”流程。  
+其中 01 侧重点是 regex 弱标签和二分类效果评估，04 侧重点是 `gpt-oss:120b` 细分业务类，并将分类结果用于可视化标签。
+
+## 运行方式
+
+只统计 `gpt-oss:20b` 与 regex 的对比，不调用 120B：
+
+```bash
+python /Users/bizi/Desktop/邮政实习/week1/第二版/01_分类效果评估与边界case分析/run_label_comparison.py --no-ollama --limit 0
+```
+
+抽取前 50 条分歧样本，调用 `gpt-oss:120b` 复核，并显示 `tqdm` 进度条：
+
+```bash
+python /Users/bizi/Desktop/邮政实习/week1/第二版/01_分类效果评估与边界case分析/run_label_comparison.py --limit 50
+```
+
+只处理训练集，抽取前 200 条分歧样本：
+
+```bash
+python /Users/bizi/Desktop/邮政实习/week1/第二版/01_分类效果评估与边界case分析/run_label_comparison.py --split train --limit 200
+```

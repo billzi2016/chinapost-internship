@@ -17,9 +17,15 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 db.sqlite3
+*.sqlite3
+*.db
 .env
 *.env.local
+*.log
 
 # Jupyter
 .ipynb_checkpoints/
@@ -31,3 +37,4 @@ week2/data/embeddings/
 week2/data/llm_filter/
 week2/data/sft_training/
 week2/post-service-agent/artifacts/faiss/
+*.faiss
