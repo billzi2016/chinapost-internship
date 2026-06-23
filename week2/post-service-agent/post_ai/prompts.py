@@ -34,6 +34,8 @@ def build_ticket_messages(conversation_text: str) -> list[ChatMessage]:
                 "根据对话生成严格合法JSON，只输出JSON，不要Markdown，不要表格，不要代码块。"
                 "字段必须包含 user_id, timestamp, service_type, issue_type, user_request, "
                 "summary, resolution, need_follow_up。"
+                "所有字符串字段必须使用简体中文，不允许输出英文分类词或英文句子；"
+                "service_type 固定写“邮政客服”。"
                 "user_request 用一句话概括用户诉求；summary 用一到两句话概括客服处理过程，"
                 "不要复制完整回答；resolution 写当前处理结果或建议；need_follow_up 必须是 boolean。"
             ),
