@@ -127,55 +127,64 @@ def save_bar(labels: list[str], values: list[float], title: str, ylabel: str, pa
     plt.close(fig)
 
 
+def plot_series(ax: Any, steps: list[int], series: list[tuple[str, list[float]]], title: str, ylabel: str) -> None:
+    """在已有子图上画折线。"""
+    for name, values in series:
+        ax.plot(steps, values, marker="o", linewidth=1.6, label=name)
+    ax.set_title(title)
+    ax.set_xlabel("step")
+    ax.set_ylabel(ylabel)
+    ax.grid(True, alpha=0.25)
+    ax.legend(fontsize=8)
+
+
 def plot_monitor(rows: list[dict[str, Any]], out_dir: Path, label: str) -> None:
-    """绘制训练过程曲线。"""
+    """绘制 2x2 训练监控组图。"""
     if not rows:
         return
     rows = sorted(rows, key=lambda row: int(row.get("step", 0)))
-    save_line(
-        rows,
+    steps = [int(row.get("step", index + 1)) for index, row in enumerate(rows)]
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+    plot_series(
+        axes[0][0],
+        steps,
         [("score", [float(row.get("score", 0.0)) for row in rows])],
+        "Eval score",
         "score",
-        "score",
-        output_path(out_dir, label, "score_curve"),
     )
-    save_line(
-        rows,
+    plot_series(
+        axes[0][1],
+        steps,
         [
             ("json valid", [metric(row, "format", "json_valid_rate") for row in rows]),
             ("json keys", [metric(row, "format", "json_required_keys_rate") for row in rows]),
         ],
-        "json quality",
+        "JSON format",
         "rate",
-        output_path(out_dir, label, "json_quality"),
     )
-    save_line(
-        rows,
+    plot_series(
+        axes[1][0],
+        steps,
         [
             ("safety risk", [metric(row, "safety", "risk_rate") for row in rows]),
             ("pollution max", [max_pollution(row) for row in rows]),
         ],
-        "risk monitor",
+        "Risk guard",
         "rate",
-        output_path(out_dir, label, "risk_monitor"),
     )
-    save_line(
-        rows,
+    plot_series(
+        axes[1][1],
+        steps,
         [
             ("postal terms", [metric(row, "postal", "avg_postal_term_hits") for row in rows]),
             ("next steps", [metric(row, "postal", "avg_next_step_hits") for row in rows]),
         ],
-        "postal signals",
+        "Postal signal",
         "avg hits",
-        output_path(out_dir, label, "postal_signals"),
     )
-    save_bar(
-        [str(row.get("step")) for row in rows],
-        [1.0 if row.get("best_updated") else 0.0 for row in rows],
-        "best updates",
-        "updated",
-        output_path(out_dir, label, "best_updates"),
-    )
+    fig.tight_layout()
+    fig.savefig(output_path(out_dir, label, "training_dashboard"), format="jpg")
+    plt.close(fig)
 
 
 def max_pollution(row: dict[str, Any]) -> float:
@@ -189,7 +198,7 @@ def max_pollution(row: dict[str, Any]) -> float:
 
 
 def plot_latest_task_bars(records: list[dict[str, Any]], out_dir: Path, label: str) -> None:
-    """绘制最新一次评估的任务横向对比。"""
+    """绘制最新一次评估的任务输出长度。"""
     if not records:
         return
     latest = records[-1]
@@ -201,13 +210,6 @@ def plot_latest_task_bars(records: list[dict[str, Any]], out_dir: Path, label: s
         "output length",
         "chars",
         output_path(out_dir, label, "latest_output_length"),
-    )
-    save_bar(
-        task_names,
-        [float(tasks[name].get("risk_rate", 0.0)) for name in task_names],
-        "risk rate",
-        "rate",
-        output_path(out_dir, label, "latest_risk_rate"),
     )
 
 
