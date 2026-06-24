@@ -25,6 +25,8 @@ Detach: `Ctrl-b` then `d`.
 
 ## Rank Sweep
 
+Outputs are grouped under `runs/<timestamp>_<run-name>/`. Rank logs, eval outputs and adapters stay in `rank_<rank>/`; all JPG plots are saved in the top-level `plots/`.
+
 3B:
 
 ```bash

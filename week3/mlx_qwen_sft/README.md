@@ -118,7 +118,7 @@ adapters/best/<label>/
 best 元数据会写入：
 
 ```text
-logs/best_adapter_<label>_<run_id>.json
+logs/best_adapter_<label>_<train_run_timestamp>.json
 ```
 
 每个 chunk 评估后会自动覆盖生成 JPG 图表到 `plots/`：
@@ -171,6 +171,11 @@ python3 scripts/train_with_eval.py \
 ## 7. Rank Sweep
 
 rank sweep 不生成多份 YAML，而是在运行时注入 `rank`、`scale` 和 `adapter_path`。
+每次 sweep 会自动创建带时间戳的实验目录，不需要手动写时间：
+
+```text
+runs/<timestamp>_<run-name>/rank_<rank>/
+```
 
 3B：
 
@@ -201,10 +206,11 @@ python3 scripts/run_rank_sweep.py \
 ```text
 qwen2.5-3b-lora-r8
 adapters/qwen2.5-3b-r8
-plots/qwen2.5-3b-lora-r8_*.jpg
+runs/<timestamp>_qwen2.5-3b-lora_rank_sweep/plots/
 ```
 
-默认 `scale = rank * 2`。实际传给 `mlx_lm.lora` 的临时 YAML 会保存在 `logs/<label>_<run_id>/chunk_configs/`，便于复查。
+默认 `scale = rank * 2`。实际传给 `mlx_lm.lora` 的临时 YAML 会保存在对应 rank 目录下的 `logs/<label>_<train_run_timestamp>/chunk_configs/`，便于复查。
+每个 rank 的图表文件名都会带 `r1`、`r2`、`r4` 等 label，因此统一放在本次 sweep 顶层 `plots/`，不需要逐个打开 `rank_<rank>/` 目录找图。
 
 ## 8. 单独评估模型
 

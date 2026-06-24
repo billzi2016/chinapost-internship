@@ -53,6 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rank", type=int, default=0, help="运行时覆盖 LoRA rank，0 表示使用配置文件。")
     parser.add_argument("--scale", type=float, default=0.0, help="运行时覆盖 LoRA scale，0 表示 rank * 2。")
     parser.add_argument("--adapter-path", default="", help="运行时覆盖 adapter_path。")
+    parser.add_argument("--run-dir", type=Path, default=None, help="单次实验目录；设置后日志、评估、图和 best 都写到该目录。")
     parser.add_argument("--logs-dir", type=Path, default=root / "logs", help="训练监控日志目录。")
     parser.add_argument("--eval-dir", type=Path, default=root / "eval", help="评估集目录。")
     parser.add_argument("--out-dir", type=Path, default=root / "eval_outputs", help="评估输出目录。")
@@ -63,7 +64,6 @@ def parse_args() -> argparse.Namespace:
         help="只保存一个最佳 adapter 的目录根路径。",
     )
     parser.add_argument("--plots-dir", type=Path, default=root / "plots", help="训练过程 JPG 图表输出目录。")
-    parser.add_argument("--no-plot", action="store_true", help="训练过程中不自动绘图。")
     parser.add_argument("--skip-eval", action="store_true", help="只分段训练，不做自动评估。")
     return parser.parse_args()
 
@@ -97,6 +97,17 @@ def apply_runtime_overrides(config: dict[str, Any], args: argparse.Namespace) ->
     if args.adapter_path:
         patched["adapter_path"] = args.adapter_path
     return patched
+
+
+def apply_run_dir(args: argparse.Namespace) -> None:
+    """把单次训练的产物集中到 run-dir。"""
+    if not args.run_dir:
+        return
+    run_dir = args.run_dir.resolve()
+    args.logs_dir = run_dir / "logs"
+    args.out_dir = run_dir / "eval_outputs"
+    args.plots_dir = run_dir.parent / "plots" if run_dir.name.startswith("rank_") else run_dir / "plots"
+    args.best_dir = run_dir / "best_adapter"
 
 
 def adapter_file(adapter_path: Path) -> Path:
@@ -169,8 +180,6 @@ def run_plot(args: argparse.Namespace, monitor_path: Path) -> str:
 
     绘图是报告辅助产物，失败时不应中断训练，因此返回 warning 文本。
     """
-    if args.no_plot:
-        return ""
     print(f"[plot] updating JPG plots: {args.plots_dir}", flush=True)
     command = [
         "python3",
@@ -333,6 +342,7 @@ def main() -> None:
     args = parse_args()
     root = project_dir()
     args.config = args.config.resolve()
+    apply_run_dir(args)
     args.logs_dir.mkdir(parents=True, exist_ok=True)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     args.best_dir.mkdir(parents=True, exist_ok=True)
