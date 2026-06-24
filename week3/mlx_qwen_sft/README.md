@@ -13,6 +13,10 @@ mlx_qwen_sft/
 │   └── raw/                 # 已加入 .gitignore
 ├── eval/
 ├── scripts/
+├── train_3b_tmux.sh
+├── train_7b_tmux.sh
+├── requirements.txt
+├── pyproject.toml
 ├── adapters/                # 已加入 .gitignore
 ├── logs/                    # 已加入 .gitignore
 ├── eval_outputs/            # 已加入 .gitignore
@@ -22,7 +26,13 @@ mlx_qwen_sft/
 ## 1. 安装依赖
 
 ```bash
-pip install -U "mlx-lm[train]" datasets matplotlib tqdm pyyaml
+python3 -m pip install -r requirements.txt
+```
+
+如果使用 `pyproject.toml` 管理环境，也可以在本目录执行：
+
+```bash
+python3 -m pip install -e .
 ```
 
 ## 2. 整理原始数据
@@ -95,7 +105,7 @@ python3 scripts/train_with_eval.py \
   --eval-limit 20
 ```
 
-训练脚本每个 chunk 后会运行自动评估。如果 JSON 可解析率、安全风险率或通用任务邮政话术污染率触发阈值，脚本会停止，避免继续训练出退化模型。
+训练脚本每个 chunk 后会运行自动评估。gate 不会因为单个小样本指标波动就停止训练；JSON 字段不完整、轻微安全风险或单个通用任务疑似污染会写入 `collapse_warnings`。只有出现明显崩坏，例如 JSON 大面积不可解析、安全风险率明显过高、多个通用任务严重被邮政话术污染时，脚本才会停止。
 
 训练过程中只保留一个 best adapter：
 
@@ -111,7 +121,59 @@ best 元数据会写入：
 logs/best_adapter_<label>_<run_id>.json
 ```
 
-## 6. 单独评估模型
+每个 chunk 评估后会自动覆盖生成 JPG 图表到 `plots/`：
+
+```text
+plots/<label>_score_curve.jpg
+plots/<label>_json_quality.jpg
+plots/<label>_risk_monitor.jpg
+plots/<label>_postal_signals.jpg
+plots/<label>_best_updates.jpg
+plots/<label>_latest_output_length.jpg
+plots/<label>_latest_risk_rate.jpg
+```
+
+图表只放短标题、坐标轴和图例；解释文字放到最终报告中，不写在图里。
+
+## 6. tmux 后台训练
+
+3B：
+
+```bash
+chmod +x train_3b_tmux.sh
+./train_3b_tmux.sh
+tmux attach -t qwen25_3b_lora
+```
+
+7B：
+
+```bash
+chmod +x train_7b_tmux.sh
+./train_7b_tmux.sh
+tmux attach -t qwen25_7b_lora
+```
+
+脚本会在 tmux 中运行同样的分段训练命令：
+
+```bash
+python3 scripts/train_with_eval.py \
+  --config configs/qwen2.5-3b-lora.yaml \
+  --label qwen2.5-3b-lora \
+  --chunk-iters 100 \
+  --eval-limit 20
+```
+
+```bash
+python3 scripts/train_with_eval.py \
+  --config configs/qwen2.5-7b-lora.yaml \
+  --label qwen2.5-7b-lora \
+  --chunk-iters 100 \
+  --eval-limit 20
+```
+
+训练和评估的进度输出来自 `mlx-lm` 和脚本中的 `tqdm`。退出 tmux 但不中断训练使用 `Ctrl-b` 后按 `d`。
+
+## 7. 单独评估模型
 
 评估 base 模型：
 
@@ -132,15 +194,15 @@ python3 scripts/evaluate_model.py \
   --limit 20
 ```
 
-## 7. 绘图
+## 8. 绘图
 
 ```bash
 python3 scripts/plot_eval_metrics.py
 ```
 
-所有图输出为 JPG，脚本不显式设置 DPI，使用 Matplotlib 原始默认 DPI。
+所有图输出为 JPG，脚本不显式设置 DPI，使用 Matplotlib 原始默认 DPI。训练脚本会自动调用绘图脚本；也可以手动运行该命令重新覆盖生成。
 
-## 8. 生成评估汇总
+## 9. 生成评估汇总
 
 ```bash
 python3 scripts/report_eval_summary.py
@@ -152,7 +214,7 @@ python3 scripts/report_eval_summary.py
 eval_summary.md
 ```
 
-## 9. 常规训练命令
+## 10. 常规训练命令
 
 如果只想使用 `mlx_lm.lora` 直接训练，不启用分段评估：
 
