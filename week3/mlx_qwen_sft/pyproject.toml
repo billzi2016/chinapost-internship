@@ -1,0 +1,21 @@
+[project]
+name = "chinapost-mlx-qwen-sft"
+version = "0.1.0"
+description = "Apple MLX LoRA fine-tuning workflow for Qwen2.5 Instruct postal customer-service experiments."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+  "mlx-lm[train]>=0.24.0",
+  "datasets>=2.19.0",
+  "matplotlib>=3.8.0",
+  "tqdm>=4.66.0",
+  "PyYAML>=6.0.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

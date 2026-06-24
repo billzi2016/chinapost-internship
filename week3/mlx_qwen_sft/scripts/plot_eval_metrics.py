@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""把训练和评估指标绘制成 JPG。
+"""训练过程评估指标绘图。
 
-绘图约定：
-- 输出 JPG，不输出 PNG。
-- 不显式设置 dpi，使用 Matplotlib 默认 DPI，保留原始导出设置。
-- 能画的都画：任务样本数、JSON 通过率、安全风险率、话术污染率、输出长度、训练监控曲线。
+设计目标：
+- 训练过程中可反复调用，每次覆盖保存同名 JPG。
+- 图上只保留短标题、坐标轴和图例，不放大段说明。
+- 不显式设置 dpi，沿用 Matplotlib 默认导出 DPI。
+- 同时支持单次训练 run 和全量历史指标。
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -29,15 +31,46 @@ def project_dir() -> Path:
 def parse_args() -> argparse.Namespace:
     """解析绘图参数。"""
     root = project_dir()
-    parser = argparse.ArgumentParser(description="Plot evaluation metrics to JPG files.")
+    parser = argparse.ArgumentParser(description="Plot training/evaluation metrics to JPG files.")
     parser.add_argument("--eval-output-dir", type=Path, default=root / "eval_outputs", help="评估指标目录。")
     parser.add_argument("--logs-dir", type=Path, default=root / "logs", help="训练监控日志目录。")
     parser.add_argument("--out-dir", type=Path, default=root / "plots", help="JPG 输出目录。")
+    parser.add_argument("--monitor", type=Path, default=None, help="只绘制指定 train_monitor JSONL。")
+    parser.add_argument("--label", default="", help="输出文件名前缀；训练中建议传入模型 label。")
     return parser.parse_args()
 
 
+def safe_name(value: str) -> str:
+    """把 label 转成适合作为文件名的短前缀。"""
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("_")
+
+
+def output_path(out_dir: Path, label: str, name: str) -> Path:
+    """生成固定 JPG 输出路径，重复绘图会覆盖同名文件。"""
+    prefix = safe_name(label)
+    filename = f"{prefix}_{name}.jpg" if prefix else f"{name}.jpg"
+    return out_dir / filename
+
+
+def read_monitor_files(logs_dir: Path, monitor: Path | None) -> list[dict[str, Any]]:
+    """读取训练监控 JSONL。"""
+    paths = [monitor] if monitor else sorted(logs_dir.glob("train_monitor_*.jsonl"))
+    rows: list[dict[str, Any]] = []
+    for path in paths:
+        if not path or not path.exists():
+            continue
+        with path.open("r", encoding="utf-8") as file:
+            for line in file:
+                if not line.strip():
+                    continue
+                row = json.loads(line)
+                row["source"] = path.name
+                rows.append(row)
+    return rows
+
+
 def read_metrics(eval_output_dir: Path) -> list[dict[str, Any]]:
-    """读取所有 *_metrics.json。"""
+    """读取所有评估汇总 JSON。"""
     records: list[dict[str, Any]] = []
     for path in sorted(eval_output_dir.glob("*_metrics.json")):
         item = json.loads(path.read_text(encoding="utf-8"))
@@ -46,98 +79,147 @@ def read_metrics(eval_output_dir: Path) -> list[dict[str, Any]]:
     return records
 
 
-def save_bar(labels: list[str], values: list[float], title: str, ylabel: str, path: Path) -> None:
-    """保存柱状图为 JPG。"""
-    if not labels:
+def metric(row: dict[str, Any], task: str, key: str, default: float = 0.0) -> float:
+    """从 monitor row 里取某个 task 指标。"""
+    value = row.get("metrics", {}).get("tasks", {}).get(task, {}).get(key, default)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def save_line(
+    rows: list[dict[str, Any]],
+    series: list[tuple[str, list[float]]],
+    title: str,
+    ylabel: str,
+    path: Path,
+) -> None:
+    """保存折线图。"""
+    if not rows:
         return
-    fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.2), 4.8))
-    ax.bar(labels, values)
+    steps = [int(row.get("step", index + 1)) for index, row in enumerate(rows)]
+    fig, ax = plt.subplots(figsize=(8, 4.8))
+    for name, values in series:
+        ax.plot(steps, values, marker="o", linewidth=1.8, label=name)
     ax.set_title(title)
+    ax.set_xlabel("step")
     ax.set_ylabel(ylabel)
-    ax.tick_params(axis="x", rotation=35)
+    ax.grid(True, alpha=0.25)
+    ax.legend()
     fig.tight_layout()
     fig.savefig(path, format="jpg")
     plt.close(fig)
 
 
-def plot_metric(records: list[dict[str, Any]], task: str, metric: str, out_dir: Path) -> None:
-    """对指定 task/metric 跨模型绘图。"""
-    labels: list[str] = []
-    values: list[float] = []
-    for record in records:
-        task_metrics = record.get("tasks", {}).get(task, {})
-        if metric in task_metrics:
-            labels.append(record["label"])
-            values.append(float(task_metrics[metric]))
-    save_bar(labels, values, f"{task} - {metric}", metric, out_dir / f"{task}_{metric}.jpg")
-
-
-def read_monitor(logs_dir: Path) -> list[dict[str, Any]]:
-    """读取分段训练监控日志。"""
-    rows: list[dict[str, Any]] = []
-    for path in sorted(logs_dir.glob("train_monitor_*.jsonl")):
-        with path.open("r", encoding="utf-8") as file:
-            for line in file:
-                if line.strip():
-                    item = json.loads(line)
-                    item["source"] = path.name
-                    rows.append(item)
-    return rows
-
-
-def plot_monitor(rows: list[dict[str, Any]], out_dir: Path) -> None:
-    """绘制训练过程中可用的自动评估曲线。"""
-    if not rows:
+def save_bar(labels: list[str], values: list[float], title: str, ylabel: str, path: Path) -> None:
+    """保存柱状图。"""
+    if not labels:
         return
-    steps = [row["step"] for row in rows]
-    safety = [
-        row.get("metrics", {}).get("tasks", {}).get("safety", {}).get("risk_rate", 0.0)
-        for row in rows
-    ]
-    fmt = [
-        row.get("metrics", {}).get("tasks", {}).get("format", {}).get("json_valid_rate", 0.0)
-        for row in rows
-    ]
-
-    fig, ax = plt.subplots(figsize=(8, 4.8))
-    ax.plot(steps, safety, marker="o", label="safety risk rate")
-    ax.plot(steps, fmt, marker="o", label="format json valid rate")
-    ax.set_xlabel("training step")
-    ax.set_ylabel("rate")
-    ax.set_title("training collapse monitor")
-    ax.legend()
+    fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.0), 4.8))
+    ax.bar(labels, values)
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.tick_params(axis="x", rotation=35)
+    ax.grid(True, axis="y", alpha=0.25)
     fig.tight_layout()
-    fig.savefig(out_dir / "training_collapse_monitor.jpg", format="jpg")
+    fig.savefig(path, format="jpg")
     plt.close(fig)
 
 
+def plot_monitor(rows: list[dict[str, Any]], out_dir: Path, label: str) -> None:
+    """绘制训练过程曲线。"""
+    if not rows:
+        return
+    rows = sorted(rows, key=lambda row: int(row.get("step", 0)))
+    save_line(
+        rows,
+        [("score", [float(row.get("score", 0.0)) for row in rows])],
+        "score",
+        "score",
+        output_path(out_dir, label, "score_curve"),
+    )
+    save_line(
+        rows,
+        [
+            ("json valid", [metric(row, "format", "json_valid_rate") for row in rows]),
+            ("json keys", [metric(row, "format", "json_required_keys_rate") for row in rows]),
+        ],
+        "json quality",
+        "rate",
+        output_path(out_dir, label, "json_quality"),
+    )
+    save_line(
+        rows,
+        [
+            ("safety risk", [metric(row, "safety", "risk_rate") for row in rows]),
+            ("pollution max", [max_pollution(row) for row in rows]),
+        ],
+        "risk monitor",
+        "rate",
+        output_path(out_dir, label, "risk_monitor"),
+    )
+    save_line(
+        rows,
+        [
+            ("postal terms", [metric(row, "postal", "avg_postal_term_hits") for row in rows]),
+            ("next steps", [metric(row, "postal", "avg_next_step_hits") for row in rows]),
+        ],
+        "postal signals",
+        "avg hits",
+        output_path(out_dir, label, "postal_signals"),
+    )
+    save_bar(
+        [str(row.get("step")) for row in rows],
+        [1.0 if row.get("best_updated") else 0.0 for row in rows],
+        "best updates",
+        "updated",
+        output_path(out_dir, label, "best_updates"),
+    )
+
+
+def max_pollution(row: dict[str, Any]) -> float:
+    """取当前 step 所有通用任务中最大的污染率。"""
+    values = [
+        float(task_metrics.get("postal_pollution_rate", 0.0))
+        for task_metrics in row.get("metrics", {}).get("tasks", {}).values()
+        if "postal_pollution_rate" in task_metrics
+    ]
+    return max(values) if values else 0.0
+
+
+def plot_latest_task_bars(records: list[dict[str, Any]], out_dir: Path, label: str) -> None:
+    """绘制最新一次评估的任务横向对比。"""
+    if not records:
+        return
+    latest = records[-1]
+    tasks = latest.get("tasks", {})
+    task_names = sorted(tasks)
+    save_bar(
+        task_names,
+        [float(tasks[name].get("avg_output_chars", 0.0)) for name in task_names],
+        "output length",
+        "chars",
+        output_path(out_dir, label, "latest_output_length"),
+    )
+    save_bar(
+        task_names,
+        [float(tasks[name].get("risk_rate", 0.0)) for name in task_names],
+        "risk rate",
+        "rate",
+        output_path(out_dir, label, "latest_risk_rate"),
+    )
+
+
 def main() -> None:
-    """脚本入口：读取指标并输出多张 JPG。"""
+    """脚本入口：读取训练/评估指标并覆盖保存 JPG。"""
     args = parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
+    rows = read_monitor_files(args.logs_dir, args.monitor)
     records = read_metrics(args.eval_output_dir)
-    if records:
-        save_bar(
-            [record["label"] for record in records],
-            [float(record.get("total", 0)) for record in records],
-            "evaluated sample count",
-            "count",
-            args.out_dir / "evaluated_sample_count.jpg",
-        )
-        for task in ["format", "safety", "postal", "math", "summary", "extract", "rewrite", "code", "logic"]:
-            for metric in [
-                "avg_output_chars",
-                "avg_postal_term_hits",
-                "avg_next_step_hits",
-                "risk_rate",
-                "json_valid_rate",
-                "json_required_keys_rate",
-                "postal_pollution_rate",
-            ]:
-                plot_metric(records, task, metric, args.out_dir)
-
-    plot_monitor(read_monitor(args.logs_dir), args.out_dir)
+    plot_monitor(rows, args.out_dir, args.label)
+    plot_latest_task_bars(records, args.out_dir, args.label)
     print(f"plots written to {args.out_dir}")
 
 
