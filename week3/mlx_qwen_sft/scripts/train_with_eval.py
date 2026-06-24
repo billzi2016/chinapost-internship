@@ -50,6 +50,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--chunk-iters", type=int, default=100, help="每段训练多少步。")
     parser.add_argument("--eval-limit", type=int, default=20, help="每个评估文件每轮最多评估多少条。")
     parser.add_argument("--max-tokens", type=int, default=256, help="评估生成最大 token 数。")
+    parser.add_argument("--rank", type=int, default=0, help="运行时覆盖 LoRA rank，0 表示使用配置文件。")
+    parser.add_argument("--scale", type=float, default=0.0, help="运行时覆盖 LoRA scale，0 表示 rank * 2。")
+    parser.add_argument("--adapter-path", default="", help="运行时覆盖 adapter_path。")
     parser.add_argument("--logs-dir", type=Path, default=root / "logs", help="训练监控日志目录。")
     parser.add_argument("--eval-dir", type=Path, default=root / "eval", help="评估集目录。")
     parser.add_argument("--out-dir", type=Path, default=root / "eval_outputs", help="评估输出目录。")
@@ -72,6 +75,28 @@ def load_config(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"配置文件不是 YAML dict：{path}")
     return data
+
+
+def apply_runtime_overrides(config: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    """把命令行参数注入到基础 YAML 配置中。
+
+    mlx_lm.lora 最终仍然读取临时 YAML；这里不生成长期配置文件，
+    只在内存中覆盖 rank、scale 和 adapter_path，再写入 chunk config。
+    """
+    patched = dict(config)
+    lora_parameters = dict(patched.get("lora_parameters") or {})
+    if args.rank:
+        if args.rank <= 0:
+            raise ValueError("--rank 必须大于 0。")
+        lora_parameters["rank"] = args.rank
+        lora_parameters["scale"] = args.scale if args.scale > 0 else float(args.rank * 2)
+    elif args.scale > 0:
+        lora_parameters["scale"] = args.scale
+    patched["lora_parameters"] = lora_parameters
+
+    if args.adapter_path:
+        patched["adapter_path"] = args.adapter_path
+    return patched
 
 
 def adapter_file(adapter_path: Path) -> Path:
@@ -313,7 +338,7 @@ def main() -> None:
     args.best_dir.mkdir(parents=True, exist_ok=True)
     args.plots_dir.mkdir(parents=True, exist_ok=True)
 
-    base_config = load_config(args.config)
+    base_config = apply_runtime_overrides(load_config(args.config), args)
     total_iters = args.total_iters or int(base_config.get("iters", 0))
     if total_iters <= 0:
         raise ValueError("total iters 必须大于 0。")

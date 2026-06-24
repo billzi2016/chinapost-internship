@@ -173,7 +173,45 @@ python3 scripts/train_with_eval.py \
 
 训练和评估的进度输出来自 `mlx-lm` 和脚本中的 `tqdm`。退出 tmux 但不中断训练使用 `Ctrl-b` 后按 `d`。
 
-## 7. 单独评估模型
+## 7. Rank Sweep
+
+rank sweep 不生成多份 YAML，而是在运行时注入 `rank`、`scale` 和 `adapter_path`。
+
+3B：
+
+```bash
+python3 scripts/run_rank_sweep.py \
+  --config configs/qwen2.5-3b-lora.yaml \
+  --label-prefix qwen2.5-3b-lora \
+  --adapter-prefix ./adapters/qwen2.5-3b \
+  --ranks 1 2 4 8 16 32 \
+  --chunk-iters 100 \
+  --eval-limit 20
+```
+
+7B：
+
+```bash
+python3 scripts/run_rank_sweep.py \
+  --config configs/qwen2.5-7b-lora.yaml \
+  --label-prefix qwen2.5-7b-lora \
+  --adapter-prefix ./adapters/qwen2.5-7b \
+  --ranks 1 2 4 8 16 32 \
+  --chunk-iters 100 \
+  --eval-limit 20
+```
+
+每个 rank 会产生独立的 label 和 adapter，例如：
+
+```text
+qwen2.5-3b-lora-r8
+adapters/qwen2.5-3b-r8
+plots/qwen2.5-3b-lora-r8_*.jpg
+```
+
+默认 `scale = rank * 2`。实际传给 `mlx_lm.lora` 的临时 YAML 会保存在 `logs/<label>_<run_id>/chunk_configs/`，便于复查。
+
+## 8. 单独评估模型
 
 评估 base 模型：
 
@@ -194,7 +232,7 @@ python3 scripts/evaluate_model.py \
   --limit 20
 ```
 
-## 8. 绘图
+## 9. 绘图
 
 ```bash
 python3 scripts/plot_eval_metrics.py
@@ -202,7 +240,7 @@ python3 scripts/plot_eval_metrics.py
 
 所有图输出为 JPG，脚本不显式设置 DPI，使用 Matplotlib 原始默认 DPI。训练脚本会自动调用绘图脚本；也可以手动运行该命令重新覆盖生成。
 
-## 9. 生成评估汇总
+## 10. 生成评估汇总
 
 ```bash
 python3 scripts/report_eval_summary.py
@@ -214,7 +252,7 @@ python3 scripts/report_eval_summary.py
 eval_summary.md
 ```
 
-## 10. 常规训练命令
+## 11. 常规训练命令
 
 如果只想使用 `mlx_lm.lora` 直接训练，不启用分段评估：
 
