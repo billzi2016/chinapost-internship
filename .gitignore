@@ -10,7 +10,6 @@ Whisper-main/subtitles/
 
 # model artifacts
 *.h5
-*.pdf
 
 # Python caches
 __pycache__/
