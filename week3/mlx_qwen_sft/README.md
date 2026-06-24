@@ -124,16 +124,11 @@ logs/best_adapter_<label>_<run_id>.json
 每个 chunk 评估后会自动覆盖生成 JPG 图表到 `plots/`：
 
 ```text
-plots/<label>_score_curve.jpg
-plots/<label>_json_quality.jpg
-plots/<label>_risk_monitor.jpg
-plots/<label>_postal_signals.jpg
-plots/<label>_best_updates.jpg
+plots/<label>_training_dashboard.jpg
 plots/<label>_latest_output_length.jpg
-plots/<label>_latest_risk_rate.jpg
 ```
 
-图表只放短标题、坐标轴和图例；解释文字放到最终报告中，不写在图里。
+`training_dashboard` 是 2x2 组图，包含 eval score、JSON format、risk guard、postal signal 四个子图。图表只放短标题、坐标轴和图例；解释文字放到最终报告中，不写在图里。
 
 ## 6. tmux 后台训练
 
