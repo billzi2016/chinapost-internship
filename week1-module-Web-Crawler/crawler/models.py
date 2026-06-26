@@ -69,6 +69,8 @@ class FetchResult:
     final_url: str
     fetched_at: datetime
     success: bool
+    robots_allowed: bool
+    robots_reason: str
     failure_reason: str = ""
 
 

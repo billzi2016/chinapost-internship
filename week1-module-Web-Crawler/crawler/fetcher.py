@@ -74,6 +74,8 @@ class Fetcher:
                 final_url=url,
                 fetched_at=datetime.utcnow(),
                 success=False,
+                robots_allowed=robots_decision.allowed,
+                robots_reason=robots_decision.reason,
                 failure_reason=robots_decision.reason,
             )
 
@@ -90,6 +92,8 @@ class Fetcher:
                 final_url=url,
                 fetched_at=datetime.utcnow(),
                 success=False,
+                robots_allowed=robots_decision.allowed,
+                robots_reason=robots_decision.reason,
                 failure_reason=f"缺少 httpx 依赖: {exc}",
             )
 
@@ -111,6 +115,8 @@ class Fetcher:
                 final_url=url,
                 fetched_at=datetime.utcnow(),
                 success=False,
+                robots_allowed=robots_decision.allowed,
+                robots_reason=robots_decision.reason,
                 failure_reason=f"请求失败: {exc}",
             )
 
@@ -123,6 +129,8 @@ class Fetcher:
                 final_url=str(response.url),
                 fetched_at=datetime.utcnow(),
                 success=False,
+                robots_allowed=robots_decision.allowed,
+                robots_reason=robots_decision.reason,
                 failure_reason=f"服务端拒绝访问，状态码 {response.status_code}",
             )
 
@@ -134,5 +142,7 @@ class Fetcher:
             final_url=str(response.url),
             fetched_at=datetime.utcnow(),
             success=response.is_success,
+            robots_allowed=robots_decision.allowed,
+            robots_reason=robots_decision.reason,
             failure_reason="" if response.is_success else f"HTTP {response.status_code}",
         )

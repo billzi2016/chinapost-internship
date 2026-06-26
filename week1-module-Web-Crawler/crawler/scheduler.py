@@ -51,6 +51,7 @@ def run_seed_tasks(
             continue
 
         result = fetcher.fetch(task.url)
+        storage.append_robots_from_fetch_result(result)
         storage.append_fetch_result(result)
         summaries.append(
             f"[FETCH] {task.company}: {task.url} -> "
