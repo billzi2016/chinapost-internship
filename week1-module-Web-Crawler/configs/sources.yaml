@@ -1,0 +1,39 @@
+sources:
+  - source_id: ems_policy
+    company: 中国邮政 EMS
+    source_type: 企业官网
+    country_region: 中国
+    base_url: https://www.ems.com.cn
+    entry_urls:
+      - https://www.ems.com.cn/
+    allowed_topics:
+      - 禁限寄
+      - 国际清关
+      - 邮寄保险
+      - 保价赔付
+    parser_hint: generic
+  - source_id: sf_policy
+    company: 顺丰速运
+    source_type: 企业官网
+    country_region: 中国
+    base_url: https://www.sf-express.com
+    entry_urls:
+      - https://www.sf-express.com/
+    allowed_topics:
+      - 禁限寄
+      - 冷链
+      - 邮寄保险
+      - 保价赔付
+    parser_hint: generic
+  - source_id: spb_policy
+    company: 国家邮政局
+    source_type: 监管机构
+    country_region: 中国
+    base_url: https://www.spb.gov.cn
+    entry_urls:
+      - https://www.spb.gov.cn/
+    allowed_topics:
+      - 禁限寄
+      - 服务条款
+      - 投诉申诉
+    parser_hint: generic

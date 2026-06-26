@@ -1,0 +1,16 @@
+defaults:
+  min_interval_seconds: 5
+  max_interval_seconds: 15
+  max_concurrency: 1
+  user_agent: PolicyCrawler/0.1 (+policy-crawler@example.com)
+
+domains:
+  ems.com.cn:
+    min_interval_seconds: 8
+    max_interval_seconds: 15
+  sf-express.com:
+    min_interval_seconds: 8
+    max_interval_seconds: 15
+  spb.gov.cn:
+    min_interval_seconds: 5
+    max_interval_seconds: 10
