@@ -1,0 +1,35 @@
+"""测试政策链接发现逻辑。"""
+
+from crawler.link_discovery import discover_policy_links
+
+
+def test_discover_policy_links_keeps_same_domain_policy_urls() -> None:
+    """应只保留同域且像政策页面的链接。"""
+
+    html = """
+    <a href="/service/terms">服务条款</a>
+    <a href="/help/claim">理赔说明</a>
+    <a href="https://other.example.com/policy">其他域名</a>
+    <a href="/product/list">产品列表</a>
+    """
+
+    links = discover_policy_links("https://example.com/", html)
+
+    assert "https://example.com/service/terms" in links
+    assert "https://example.com/help/claim" in links
+    assert "https://other.example.com/policy" not in links
+    assert "https://example.com/product/list" not in links
+
+
+def test_discover_policy_links_skips_static_assets() -> None:
+    """静态资源路径不应被误认为政策页面。"""
+
+    html = """
+    <a href="/xhtml/libs/idangerous.swiper.css">css</a>
+    <a href="/policy/dangerous-goods.html">危险品规则</a>
+    """
+
+    links = discover_policy_links("https://example.com/", html)
+
+    assert "https://example.com/xhtml/libs/idangerous.swiper.css" not in links
+    assert "https://example.com/policy/dangerous-goods.html" in links

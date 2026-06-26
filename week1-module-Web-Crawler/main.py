@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from crawler.config_loader import load_rate_limits, load_sources
@@ -39,7 +40,44 @@ def build_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="只展示将要处理的种子任务，不发起网络请求",
     )
+    parser.add_argument(
+        "--max-pages-per-source",
+        type=int,
+        default=3,
+        help="每个来源最多处理的页面数，默认 3",
+    )
+    parser.add_argument(
+        "--discovery-depth",
+        type=int,
+        default=1,
+        help="链接发现深度，默认 1，表示抓首页并继续一层候选页面",
+    )
+    parser.add_argument(
+        "--full-run",
+        action="store_true",
+        help="启用完整抓取模式，自动放大页面上限并清空旧输出目录",
+    )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=4,
+        help="跨来源并发 worker 数，默认 4；同一来源内部仍保持串行",
+    )
     return parser
+
+
+def resolve_runtime_options(args: argparse.Namespace) -> tuple[int, int, bool, int]:
+    """根据命令行参数计算最终运行选项。
+
+    `--full-run` 是给最终执行准备的一键模式，
+    启用后会自动扩大抓取范围并刷新输出目录，避免旧数据残留。
+    """
+
+    if args.full_run:
+        cpu_count = os.cpu_count() or 8
+        auto_workers = max(4, cpu_count // 2)
+        return 20, 2, True, auto_workers
+    return args.max_pages_per_source, args.discovery_depth, False, args.max_workers
 
 
 def main() -> int:
@@ -48,12 +86,16 @@ def main() -> int:
     args = build_argument_parser().parse_args()
     config_dir = Path(args.config_dir)
     data_dir = Path(args.data_dir)
+    max_pages_per_source, discovery_depth, reset_output, max_workers = resolve_runtime_options(args)
 
     sources = load_sources(config_dir)
     default_rate_limit, domain_rate_limits = load_rate_limits(config_dir)
 
     storage = Storage(data_dir)
-    storage.ensure_directories()
+    if reset_output:
+        storage.reset_data_dir()
+    else:
+        storage.ensure_directories()
 
     fetcher = Fetcher(
         robots_manager=RobotsManager(),
@@ -66,9 +108,10 @@ def main() -> int:
         fetcher=fetcher,
         storage=storage,
         dry_run=args.dry_run,
+        max_pages_per_source=max_pages_per_source,
+        discovery_depth=discovery_depth,
+        max_workers=max_workers,
     )
-    for summary in summaries:
-        print(summary)
     return 0
 
 

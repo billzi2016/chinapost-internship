@@ -48,18 +48,54 @@ def _guess_categories(text: str, allowed_topics: list[str]) -> list[str]:
     return matches or ["服务条款"]
 
 
+def _extract_title(html_text: str, company: str) -> str:
+    """优先提取页面 title，没有时回退到公司名。"""
+
+    title_match = re.search(r"<title[^>]*>(.*?)</title>", html_text, flags=re.IGNORECASE | re.DOTALL)
+    if not title_match:
+        return company
+    title = " ".join(unescape(title_match.group(1)).split())
+    return title or company
+
+
+def _extract_published_at(text: str) -> str:
+    """从正文中提取发布日期或更新时间。"""
+
+    patterns = [
+        r"(20\d{2}[-/年]\d{1,2}[-/月]\d{1,2}日?)",
+        r"(20\d{2}\.\d{1,2}\.\d{1,2})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1)
+    return ""
+
+
+def _build_summary(text: str) -> str:
+    """生成较短摘要，避免把整页导航都带进展示结果。"""
+
+    sentences = re.split(r"[。！？.!?]", text)
+    useful_parts = [part.strip() for part in sentences if len(part.strip()) >= 12]
+    summary = "。".join(useful_parts[:3]).strip()
+    if summary:
+        return summary[:300]
+    return text[:300]
+
+
 def parse_policy_page(source: SourceConfig, url: str, html_text: str) -> PolicyRecord:
     """把 HTML 页面转换为政策记录。"""
 
     plain_text = _strip_html_tags(html_text)
-    summary = plain_text[:300]
+    summary = _build_summary(plain_text)
     insurance_info = parse_insurance_terms(plain_text)
 
     return PolicyRecord(
         source_id=source.source_id,
         company=source.company,
         url=url,
-        title=source.company,
+        title=_extract_title(html_text, source.company),
+        published_at=_extract_published_at(plain_text),
         policy_categories=_guess_categories(plain_text, source.allowed_topics),
         summary=summary,
         evidence_text=summary,
