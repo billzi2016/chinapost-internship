@@ -5,4 +5,11 @@
 
 set -e
 
-python3 main.py --full-run
+mkdir -p data/logs
+
+timestamp="$(date +%Y%m%d_%H%M%S)"
+log_file="data/logs/full_run_${timestamp}.log"
+
+echo "日志文件: ${log_file}"
+
+PYTHONUNBUFFERED=1 python3 -u main.py --full-run 2>&1 | tee "${log_file}"

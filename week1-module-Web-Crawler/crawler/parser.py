@@ -10,7 +10,48 @@ import re
 from html import unescape
 
 from crawler.insurance_parser import parse_insurance_terms
-from crawler.models import PolicyRecord, SourceConfig
+from crawler.models import FilteredPageRecord, PolicyRecord, SourceConfig
+
+POLICY_SIGNAL_KEYWORDS = [
+    "禁寄",
+    "限寄",
+    "规则",
+    "条款",
+    "协议",
+    "理赔",
+    "赔付",
+    "保价",
+    "保险",
+    "声明价值",
+    "清关",
+    "海关",
+    "危险品",
+    "锂电池",
+    "冷链",
+    "包装",
+    "寄件须知",
+    "prohibited",
+    "restricted",
+    "terms",
+    "liability",
+    "claim",
+    "dangerous goods",
+    "customs",
+]
+
+NOISE_HINTS = [
+    "登录",
+    "注册",
+    "搜索",
+    "首页",
+    "购物车",
+    "立即下单",
+    "个人中心",
+    "login",
+    "register",
+    "sign in",
+    "track",
+]
 
 
 def _strip_html_tags(html_text: str) -> str:
@@ -83,20 +124,76 @@ def _build_summary(text: str) -> str:
     return text[:300]
 
 
-def parse_policy_page(source: SourceConfig, url: str, html_text: str) -> PolicyRecord:
-    """把 HTML 页面转换为政策记录。"""
+def _count_policy_signals(text: str, title: str) -> int:
+    """统计页面中与政策规则相关的信号词数量。"""
+
+    combined = f"{title} {text}".lower()
+    return sum(1 for keyword in POLICY_SIGNAL_KEYWORDS if keyword.lower() in combined)
+
+
+def _is_noise_page(title: str, summary: str) -> bool:
+    """粗略排除首页导航、登录注册、纯跳转等噪声页面。"""
+
+    combined = f"{title} {summary}".lower()
+    noise_hits = sum(1 for keyword in NOISE_HINTS if keyword.lower() in combined)
+    return noise_hits >= 3
+
+
+def _build_filtered_record(
+    source: SourceConfig,
+    url: str,
+    title: str,
+    reason: str,
+    summary: str,
+) -> FilteredPageRecord:
+    """构造被过滤页面的审计记录。"""
+
+    return FilteredPageRecord(
+        source_id=source.source_id,
+        company=source.company,
+        url=url,
+        title=title,
+        filter_reason=reason,
+        summary=summary[:300],
+    )
+
+
+def parse_policy_page(
+    source: SourceConfig,
+    url: str,
+    html_text: str,
+) -> tuple[PolicyRecord | None, FilteredPageRecord | None]:
+    """把 HTML 页面转换为政策记录，或给出过滤原因。
+
+    返回:
+    - `(PolicyRecord, None)` 表示页面通过筛选，可作为结构化样本保存。
+    - `(None, FilteredPageRecord)` 表示页面质量不足，只做审计记录，不进入训练样本。
+    """
 
     plain_text = _strip_html_tags(html_text)
+    title = _extract_title(html_text, source.company)
     summary = _build_summary(plain_text)
+    policy_categories = _guess_categories(plain_text, source.allowed_topics)
+    policy_signals = _count_policy_signals(plain_text, title)
+
+    if len(plain_text) < 120:
+        return None, _build_filtered_record(source, url, title, "正文过短", summary)
+
+    if _is_noise_page(title, summary):
+        return None, _build_filtered_record(source, url, title, "页面噪声过高", summary)
+
+    if policy_signals < 2 and policy_categories == ["服务条款"]:
+        return None, _build_filtered_record(source, url, title, "政策信号不足", summary)
+
     insurance_info = parse_insurance_terms(plain_text)
 
     return PolicyRecord(
         source_id=source.source_id,
         company=source.company,
         url=url,
-        title=_extract_title(html_text, source.company),
+        title=title,
         published_at=_extract_published_at(plain_text),
-        policy_categories=_guess_categories(plain_text, source.allowed_topics),
+        policy_categories=policy_categories,
         summary=summary,
         evidence_text=summary,
         insurance_available=insurance_info["insurance_available"],
@@ -105,4 +202,4 @@ def parse_policy_page(source: SourceConfig, url: str, html_text: str) -> PolicyR
         claim_deadline=insurance_info["claim_deadline"],
         requirements=insurance_info["requirements"],
         insurance_exclusions=insurance_info["insurance_exclusions"],
-    )
+    ), None
