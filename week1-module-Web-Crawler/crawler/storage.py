@@ -9,7 +9,7 @@ from dataclasses import asdict
 from hashlib import sha1
 from pathlib import Path
 
-from crawler.models import FetchResult, FilteredPageRecord, PdfDownloadRecord, PolicyRecord, RobotsDecision
+from crawler.models import FetchResult, FilteredPageRecord, PdfDownloadRecord, PolicyRecord
 
 
 class Storage:
@@ -43,31 +43,12 @@ class Storage:
             shutil.rmtree(self.data_dir)
         self.ensure_directories()
 
-    def append_robots_decision(self, decision: RobotsDecision) -> None:
-        """记录 robots 校验结果。"""
-
-        self._append_json_line(self.logs_dir / "robots_report.jsonl", asdict(decision))
-
     def append_fetch_result(self, result: FetchResult) -> None:
         """记录页面抓取结果。"""
 
         payload = asdict(result)
         payload["body_bytes"] = f"<bytes:{len(result.body_bytes)}>"
         self._append_json_line(self.logs_dir / "fetch_results.jsonl", payload)
-
-    def append_robots_from_fetch_result(self, result: FetchResult) -> None:
-        """从抓取结果中抽出 robots 决策并单独记录。
-
-        这样即使某次抓取后来失败，合规判断也仍然有独立日志可追溯。
-        """
-
-        decision = {
-            "url": result.url,
-            "allowed": result.robots_allowed,
-            "checked_at": result.fetched_at.isoformat(),
-            "reason": result.robots_reason,
-        }
-        self._append_json_line(self.logs_dir / "robots_report.jsonl", decision)
 
     def append_policy_record(self, record: PolicyRecord) -> None:
         """记录解析后的政策结果。"""

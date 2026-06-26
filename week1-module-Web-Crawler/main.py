@@ -2,7 +2,7 @@
 
 当前入口只负责:
 - 读取配置。
-- 初始化 robots、限速和存储。
+- 初始化请求器、限速和存储。
 - 执行第一批种子任务或 dry-run。
 
 它不直接承担抓取细节，避免入口脚本不断膨胀。
@@ -16,7 +16,6 @@ from pathlib import Path
 
 from crawler.config_loader import load_rate_limits, load_sources
 from crawler.fetcher import Fetcher
-from crawler.robots import RobotsManager
 from crawler.scheduler import run_seed_tasks
 from crawler.storage import Storage
 
@@ -98,7 +97,6 @@ def main() -> int:
         storage.ensure_directories()
 
     fetcher = Fetcher(
-        robots_manager=RobotsManager(),
         default_rate_limit=default_rate_limit,
         domain_rate_limits=domain_rate_limits,
     )
