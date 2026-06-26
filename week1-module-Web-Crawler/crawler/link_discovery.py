@@ -14,7 +14,6 @@ from crawler.dedupe import canonicalize_url
 
 POLICY_HINT_KEYWORDS = [
     "policy",
-    "service",
     "terms",
     "claim",
     "insurance",
@@ -27,8 +26,6 @@ POLICY_HINT_KEYWORDS = [
     "guide",
     "notice",
     "rules",
-    "help",
-    "faq",
     "保价",
     "保险",
     "理赔",
@@ -43,7 +40,7 @@ POLICY_HINT_KEYWORDS = [
     "海关",
     "清关",
     "冷链",
-    "国际",
+    "危险品",
 ]
 
 STATIC_FILE_SUFFIXES = {
@@ -84,6 +81,20 @@ NEGATIVE_HINT_KEYWORDS = [
     "注册",
     "查询",
     "下单",
+    "contact",
+    "support",
+    "customer-service",
+    "service-alert",
+    "news",
+    "media",
+    "about",
+    "careers",
+    "portal",
+    "帮助中心",
+    "联系我们",
+    "关于我们",
+    "新闻中心",
+    "通知公告",
 ]
 
 

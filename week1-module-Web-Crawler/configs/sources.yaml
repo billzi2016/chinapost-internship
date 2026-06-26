@@ -47,7 +47,8 @@ sources:
     country_region: 中国
     base_url: https://www.jdl.com
     entry_urls:
-      - https://www.jdl.com/
+      - https://www.jdl.com/express/addValueService/
+      - https://www.jdl.com/coldChain/
     allowed_topics:
       - 禁限寄
       - 冷链
@@ -61,7 +62,7 @@ sources:
     country_region: 中国
     base_url: https://www.yto.net.cn
     entry_urls:
-      - https://www.yto.net.cn/
+      - https://www.yto.net.cn/service/standard/
     allowed_topics:
       - 禁限寄
       - 保价赔付
@@ -74,7 +75,7 @@ sources:
     country_region: 中国
     base_url: https://www.sto.cn
     entry_urls:
-      - https://www.sto.cn/
+      - https://www.sto.cn/service/express/
     allowed_topics:
       - 禁限寄
       - 保价赔付
@@ -87,7 +88,7 @@ sources:
     country_region: 中国
     base_url: https://www.zto.com
     entry_urls:
-      - https://www.zto.com/
+      - https://www.zto.com/express/standard/
     allowed_topics:
       - 禁限寄
       - 保价赔付
@@ -100,7 +101,7 @@ sources:
     country_region: 中国
     base_url: https://www.yundaex.com
     entry_urls:
-      - https://www.yundaex.com/
+      - https://www.yundaex.com/cn/service/
     allowed_topics:
       - 禁限寄
       - 保价赔付
@@ -113,7 +114,8 @@ sources:
     country_region: 中国
     base_url: https://www.jtexpress.com.cn
     entry_urls:
-      - https://www.jtexpress.com.cn/
+      - https://www.jtexpress.com.cn/service.html
+      - https://www.jtexpress.com.cn/international.html
     allowed_topics:
       - 禁限寄
       - 保价赔付
@@ -127,7 +129,7 @@ sources:
     country_region: 中国
     base_url: https://www.deppon.com
     entry_urls:
-      - https://www.deppon.com/
+      - https://www.deppon.com/standard/
     allowed_topics:
       - 禁限寄
       - 保价赔付
@@ -141,7 +143,7 @@ sources:
     country_region: 中国
     base_url: https://www.ky-express.com
     entry_urls:
-      - https://www.ky-express.com/
+      - https://www.ky-express.com/serve/service.html
     allowed_topics:
       - 禁限寄
       - 保价赔付
@@ -155,7 +157,7 @@ sources:
     country_region: 中国
     base_url: https://www.cainiao.com
     entry_urls:
-      - https://www.cainiao.com/
+      - https://www.cainiao.com/markets/cn/
     allowed_topics:
       - 服务条款
       - 物流规则
@@ -183,7 +185,7 @@ sources:
     country_region: 中国
     base_url: http://www.customs.gov.cn
     entry_urls:
-      - http://www.customs.gov.cn/
+      - http://www.customs.gov.cn/customs/302249/302266/302267/index.html
     allowed_topics:
       - 国际清关
       - 进出口限制
@@ -196,7 +198,7 @@ sources:
     country_region: 中国
     base_url: http://www.caac.gov.cn
     entry_urls:
-      - http://www.caac.gov.cn/
+      - http://www.caac.gov.cn/XXGK/XXGK/
     allowed_topics:
       - 危险品
       - 锂电池
@@ -209,7 +211,7 @@ sources:
     country_region: 中国
     base_url: https://www.mot.gov.cn
     entry_urls:
-      - https://www.mot.gov.cn/
+      - https://www.mot.gov.cn/zhengcejiedu/
     allowed_topics:
       - 危险品
       - 冷链
@@ -222,7 +224,7 @@ sources:
     country_region: 中国
     base_url: https://www.samr.gov.cn
     entry_urls:
-      - https://www.samr.gov.cn/
+      - https://www.samr.gov.cn/zw/zfxxgk/fdzdgknr/
     allowed_topics:
       - 包装要求
       - 服务条款
@@ -290,6 +292,7 @@ sources:
     country_region: 英国
     base_url: https://www.royalmail.com
     entry_urls:
+      - https://www.royalmail.com/sending/restrictions
       - https://www.royalmail.com/sending/international/country-guides
     allowed_topics:
       - 禁限寄
@@ -303,7 +306,8 @@ sources:
     country_region: 日本
     base_url: https://www.post.japanpost.jp
     entry_urls:
-      - https://www.post.japanpost.jp/int/index_en.html
+      - https://www.post.japanpost.jp/int/use/restriction_en.html
+      - https://www.post.japanpost.jp/int/use/damage_en.html
     allowed_topics:
       - 国际清关
       - 禁限寄
@@ -316,6 +320,7 @@ sources:
     country_region: 澳大利亚
     base_url: https://auspost.com.au
     entry_urls:
+      - https://auspost.com.au/sending/check-sending-guidelines/dangerous-and-prohibited-goods
       - https://auspost.com.au/sending/parcels-overseas/international-post-guide
     allowed_topics:
       - 国际清关
@@ -330,6 +335,7 @@ sources:
     base_url: https://www.canadapost-postescanada.ca
     entry_urls:
       - https://www.canadapost-postescanada.ca/cpc/en/support/articles/non-mailable-matter/what-is-non-mailable-matter.page
+      - https://www.canadapost-postescanada.ca/cpc/en/support/articles/parcel-services-shipping-in-canada/coverage-options.page
     allowed_topics:
       - 禁限寄
       - 国际清关
@@ -343,6 +349,7 @@ sources:
     base_url: https://www.singpost.com
     entry_urls:
       - https://www.singpost.com/send-receive/sending-overseas/conditions-for-posting
+      - https://www.singpost.com/send-receive/sending-overseas/prohibited-items
     allowed_topics:
       - 禁限寄
       - 国际清关
@@ -356,6 +363,7 @@ sources:
     base_url: https://www.upu.int
     entry_urls:
       - https://www.upu.int/en/Postal-Solutions/Programmes-Services/EMS
+      - https://www.upu.int/en/Postal-Solutions/Programmes-Services/Customs
     allowed_topics:
       - 国际清关
       - 禁限寄
