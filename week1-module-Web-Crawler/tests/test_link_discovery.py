@@ -8,7 +8,7 @@ def test_discover_policy_links_keeps_same_domain_policy_urls() -> None:
 
     html = """
     <a href="/service/terms">服务条款</a>
-    <a href="/help/claim">理赔说明</a>
+    <a href="/policy/prohibited-items">禁寄物品</a>
     <a href="https://other.example.com/policy">其他域名</a>
     <a href="/product/list">产品列表</a>
     """
@@ -16,7 +16,7 @@ def test_discover_policy_links_keeps_same_domain_policy_urls() -> None:
     links = discover_policy_links("https://example.com/", html)
 
     assert "https://example.com/service/terms" in links
-    assert "https://example.com/help/claim" in links
+    assert "https://example.com/policy/prohibited-items" in links
     assert "https://other.example.com/policy" not in links
     assert "https://example.com/product/list" not in links
 
@@ -47,3 +47,17 @@ def test_discover_policy_links_keeps_policy_pdf() -> None:
 
     assert "https://example.com/files/prohibited-items.pdf" in links
     assert "https://example.com/files/manual.pdf" not in links
+
+
+def test_discover_policy_links_skips_generic_claim_page() -> None:
+    """只有宽泛 claim 语义的帮助页不应直接进入候选队列。"""
+
+    html = """
+    <a href="/help/claim">Claim support</a>
+    <a href="/support/insurance">Insurance coverage</a>
+    """
+
+    links = discover_policy_links("https://example.com/", html)
+
+    assert "https://example.com/help/claim" not in links
+    assert "https://example.com/support/insurance" in links

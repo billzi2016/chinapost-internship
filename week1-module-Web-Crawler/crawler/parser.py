@@ -78,6 +78,9 @@ HARD_POLICY_TITLE_HINTS = [
     "协议",
     "禁寄",
     "限寄",
+    "须知",
+    "规范",
+    "标准",
     "restricted",
     "prohibited",
     "dangerous goods",
@@ -89,6 +92,8 @@ HARD_POLICY_TITLE_HINTS = [
     "理赔",
     "保价",
 ]
+
+GENERIC_POLICY_CATEGORY = "服务条款"
 
 
 def _strip_html_tags(html_text: str) -> str:
@@ -114,7 +119,9 @@ def _guess_categories(text: str, allowed_topics: list[str]) -> list[str]:
         "冷链": ["冷链", "冷藏", "冷冻", "温控", "干冰"],
         "国际清关": ["清关", "报关", "海关", "商业发票", "关税"],
         "邮寄保险": ["保险", "保价", "声明价值", "liability"],
-        "保价赔付": ["赔付", "理赔", "索赔", "免责条款"],
+        "保价赔付": ["赔付", "理赔", "索赔", "赔偿", "免责条款"],
+        "服务条款": ["服务条款", "使用条款", "terms", "conditions", "agreement", "协议"],
+        "包装要求": ["包装要求", "包装规范", "包装须知", "packaging"],
     }
 
     for category in allowed_topics:
@@ -123,7 +130,14 @@ def _guess_categories(text: str, allowed_topics: list[str]) -> list[str]:
         if any(keyword.lower() in text.lower() for keyword in keyword_map[category]):
             matches.append(category)
 
-    return matches or ["服务条款"]
+    if matches:
+        return matches
+
+    lowered = text.lower()
+    generic_terms = keyword_map[GENERIC_POLICY_CATEGORY]
+    if any(keyword.lower() in lowered for keyword in generic_terms):
+        return [GENERIC_POLICY_CATEGORY]
+    return []
 
 
 def _extract_title(html_text: str, company: str) -> str:
@@ -170,6 +184,13 @@ def _build_summary(text: str) -> str:
     return text[:300]
 
 
+def _count_keyword_hits(text: str, keywords: list[str]) -> int:
+    """统计关键字命中次数。"""
+
+    lowered = text.lower()
+    return sum(1 for keyword in keywords if keyword.lower() in lowered)
+
+
 def _count_policy_signals(text: str, title: str) -> int:
     """统计页面中与政策规则相关的信号词数量。"""
 
@@ -177,12 +198,17 @@ def _count_policy_signals(text: str, title: str) -> int:
     return sum(1 for keyword in POLICY_SIGNAL_KEYWORDS if keyword.lower() in combined)
 
 
+def _count_noise_hits(title: str, summary: str) -> int:
+    """统计噪声页命中词数量。"""
+
+    combined = f"{title} {summary}".lower()
+    return sum(1 for keyword in NOISE_HINTS if keyword.lower() in combined)
+
+
 def _is_noise_page(title: str, summary: str) -> bool:
     """粗略排除首页导航、登录注册、纯跳转等噪声页面。"""
 
-    combined = f"{title} {summary}".lower()
-    noise_hits = sum(1 for keyword in NOISE_HINTS if keyword.lower() in combined)
-    return noise_hits >= 3
+    return _count_noise_hits(title, summary) >= 3
 
 
 def _has_hard_policy_title(title: str) -> bool:
@@ -216,6 +242,63 @@ def _looks_like_navigation_page(text: str, summary: str) -> bool:
     ]
     hits = sum(1 for token in menu_tokens if token.lower() in combined)
     return hits >= 6
+
+
+def _looks_like_homepage(url: str, title: str, summary: str) -> bool:
+    """识别官网首页或强导航首页。"""
+
+    normalized_url = url.rstrip("/")
+    homepage_path = normalized_url.count("/") <= 2
+    homepage_title = any(token in title for token in ["首页", "Home"])
+    menu_heavy = _count_noise_hits(title, summary) >= 4
+    return homepage_path and (homepage_title or menu_heavy)
+
+
+def _has_meaningful_policy_category(categories: list[str]) -> bool:
+    """判断是否命中了非回退型主题。"""
+
+    return any(category != GENERIC_POLICY_CATEGORY for category in categories)
+
+
+def _looks_like_policy_content(
+    url: str,
+    title: str,
+    summary: str,
+    plain_text: str,
+    categories: list[str],
+    policy_signals: int,
+) -> tuple[bool, str]:
+    """集中判断页面是否足够像真实政策内容。"""
+
+    has_hard_title = _has_hard_policy_title(title)
+    meaningful_category = _has_meaningful_policy_category(categories)
+    insurance_hits = _count_keyword_hits(
+        plain_text,
+        ["保价", "声明价值", "shipment insurance", "declared value", "liability", "claim"],
+    )
+
+    if len(plain_text) < 120 and policy_signals < 4 and not has_hard_title:
+        return False, "正文过短"
+
+    if _looks_like_homepage(url, title, summary) and not has_hard_title:
+        return False, "首页导航特征过强"
+
+    if _is_noise_page(title, summary) and not has_hard_title:
+        return False, "页面噪声过高"
+
+    if _looks_like_navigation_page(plain_text, summary) and not has_hard_title:
+        return False, "导航页特征过强"
+
+    if not categories and policy_signals < 4 and not has_hard_title:
+        return False, "政策信号不足"
+
+    if categories == [GENERIC_POLICY_CATEGORY] and not has_hard_title and policy_signals < 4:
+        return False, "泛条款信号不足"
+
+    if not meaningful_category and not has_hard_title and insurance_hits < 2 and policy_signals < 5:
+        return False, "政策信号不足"
+
+    return True, ""
 
 
 def _build_filtered_record(
@@ -279,21 +362,16 @@ def parse_policy_text(
     summary = _build_summary(plain_text)
     policy_categories = _guess_categories(plain_text, source.allowed_topics)
     policy_signals = _count_policy_signals(plain_text, title)
-
-    if len(plain_text) < 120 and policy_signals < 4 and not _has_hard_policy_title(title):
-        return None, _build_filtered_record(source, url, title, "正文过短", summary)
-
-    if _is_noise_page(title, summary):
-        return None, _build_filtered_record(source, url, title, "页面噪声过高", summary)
-
-    if _looks_like_navigation_page(plain_text, summary) and not _has_hard_policy_title(title):
-        return None, _build_filtered_record(source, url, title, "导航页特征过强", summary)
-
-    if policy_signals < 3 and not _has_hard_policy_title(title):
-        return None, _build_filtered_record(source, url, title, "政策信号不足", summary)
-
-    if policy_signals < 2 and policy_categories == ["服务条款"]:
-        return None, _build_filtered_record(source, url, title, "政策信号不足", summary)
+    is_policy_like, filter_reason = _looks_like_policy_content(
+        url=url,
+        title=title,
+        summary=summary,
+        plain_text=plain_text,
+        categories=policy_categories,
+        policy_signals=policy_signals,
+    )
+    if not is_policy_like:
+        return None, _build_filtered_record(source, url, title, filter_reason, summary)
 
     insurance_info = parse_insurance_terms(plain_text)
 
