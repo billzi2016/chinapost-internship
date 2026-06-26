@@ -33,3 +33,17 @@ def test_discover_policy_links_skips_static_assets() -> None:
 
     assert "https://example.com/xhtml/libs/idangerous.swiper.css" not in links
     assert "https://example.com/policy/dangerous-goods.html" in links
+
+
+def test_discover_policy_links_keeps_policy_pdf() -> None:
+    """带政策语义的 PDF 应保留下来，供后续下载解析。"""
+
+    html = """
+    <a href="/files/prohibited-items.pdf">禁寄目录 PDF</a>
+    <a href="/files/manual.pdf">用户手册</a>
+    """
+
+    links = discover_policy_links("https://example.com/", html)
+
+    assert "https://example.com/files/prohibited-items.pdf" in links
+    assert "https://example.com/files/manual.pdf" not in links

@@ -73,6 +73,7 @@ class FetchResult:
     robots_allowed: bool
     robots_reason: str
     failure_reason: str = ""
+    body_bytes: bytes = b""
 
 
 @dataclass(slots=True)
@@ -105,3 +106,14 @@ class FilteredPageRecord:
     title: str
     filter_reason: str
     summary: str
+
+
+@dataclass(slots=True)
+class PdfDownloadRecord:
+    """记录 PDF 原始文件保存位置，便于后续审计和复跑。"""
+
+    source_id: str
+    company: str
+    url: str
+    title: str
+    saved_path: str

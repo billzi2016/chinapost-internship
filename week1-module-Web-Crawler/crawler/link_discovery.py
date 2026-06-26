@@ -124,6 +124,7 @@ def is_policy_like_url(source_base_url: str, url: str, anchor_text: str) -> bool
         return False
 
     lowered = url.lower()
+    is_pdf = lowered.endswith(".pdf")
     if any(lowered.endswith(suffix) for suffix in STATIC_FILE_SUFFIXES):
         return False
 
@@ -136,6 +137,11 @@ def is_policy_like_url(source_base_url: str, url: str, anchor_text: str) -> bool
     anchor_lower = anchor_text.lower()
     if any(keyword in anchor_lower for keyword in NEGATIVE_HINT_KEYWORDS):
         return False
+
+    if is_pdf:
+        return any(keyword in lowered for keyword in POLICY_HINT_KEYWORDS) or any(
+            keyword in anchor_lower for keyword in POLICY_HINT_KEYWORDS
+        )
 
     return any(keyword in lowered for keyword in POLICY_HINT_KEYWORDS) or any(
         keyword in anchor_lower for keyword in POLICY_HINT_KEYWORDS

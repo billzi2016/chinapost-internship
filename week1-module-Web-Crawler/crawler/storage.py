@@ -6,9 +6,10 @@ import json
 import shutil
 import threading
 from dataclasses import asdict
+from hashlib import sha1
 from pathlib import Path
 
-from crawler.models import FetchResult, FilteredPageRecord, PolicyRecord, RobotsDecision
+from crawler.models import FetchResult, FilteredPageRecord, PdfDownloadRecord, PolicyRecord, RobotsDecision
 
 
 class Storage:
@@ -17,6 +18,7 @@ class Storage:
     def __init__(self, data_dir: Path) -> None:
         self.data_dir = data_dir
         self.raw_dir = data_dir / "raw"
+        self.raw_pdf_dir = data_dir / "raw_pdfs"
         self.parsed_dir = data_dir / "parsed"
         self.logs_dir = data_dir / "logs"
         self._write_lock = threading.Lock()
@@ -27,7 +29,7 @@ class Storage:
         目录创建被集中到这里，便于以后统一加入权限检查或路径规范。
         """
 
-        for path in [self.data_dir, self.raw_dir, self.parsed_dir, self.logs_dir]:
+        for path in [self.data_dir, self.raw_dir, self.raw_pdf_dir, self.parsed_dir, self.logs_dir]:
             path.mkdir(parents=True, exist_ok=True)
 
     def reset_data_dir(self) -> None:
@@ -49,7 +51,9 @@ class Storage:
     def append_fetch_result(self, result: FetchResult) -> None:
         """记录页面抓取结果。"""
 
-        self._append_json_line(self.logs_dir / "fetch_results.jsonl", asdict(result))
+        payload = asdict(result)
+        payload["body_bytes"] = f"<bytes:{len(result.body_bytes)}>"
+        self._append_json_line(self.logs_dir / "fetch_results.jsonl", payload)
 
     def append_robots_from_fetch_result(self, result: FetchResult) -> None:
         """从抓取结果中抽出 robots 决策并单独记录。
@@ -75,6 +79,33 @@ class Storage:
         """记录被过滤掉的页面，不进入训练样本。"""
 
         self._append_json_line(self.logs_dir / "filtered_pages.jsonl", asdict(record))
+
+    def save_pdf_bytes(
+        self,
+        source_id: str,
+        company: str,
+        url: str,
+        title: str,
+        body_bytes: bytes,
+    ) -> Path:
+        """保存原始 PDF 文件并记录元数据。
+
+        文件名使用 URL 哈希，避免中文路径、查询串和同名覆盖问题。
+        """
+
+        digest = sha1(url.encode("utf-8")).hexdigest()
+        pdf_path = self.raw_pdf_dir / f"{digest}.pdf"
+        with self._write_lock:
+            pdf_path.write_bytes(body_bytes)
+        record = PdfDownloadRecord(
+            source_id=source_id,
+            company=company,
+            url=url,
+            title=title,
+            saved_path=str(pdf_path),
+        )
+        self._append_json_line(self.logs_dir / "pdf_downloads.jsonl", asdict(record))
+        return pdf_path
 
     def _append_json_line(self, path: Path, payload: dict[str, object]) -> None:
         """以 JSONL 形式追加写入单条记录。"""

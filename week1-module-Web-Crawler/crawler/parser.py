@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from html import unescape
+from pathlib import Path
 
 from crawler.insurance_parser import parse_insurance_terms
 from crawler.models import FilteredPageRecord, PolicyRecord, SourceConfig
@@ -135,6 +136,15 @@ def _extract_title(html_text: str, company: str) -> str:
     return title or company
 
 
+def _extract_pdf_title(url: str, company: str) -> str:
+    """从 PDF URL 推导标题，避免原始文件名完全丢失语义。"""
+
+    filename = Path(url.split("?", 1)[0]).name
+    if not filename:
+        return f"{company} PDF"
+    return unescape(filename)
+
+
 def _extract_published_at(text: str) -> str:
     """从正文中提取发布日期或更新时间。"""
 
@@ -241,11 +251,36 @@ def parse_policy_page(
 
     plain_text = _strip_html_tags(html_text)
     title = _extract_title(html_text, source.company)
+    return parse_policy_text(source, url, plain_text, title)
+
+
+def parse_policy_pdf(
+    source: SourceConfig,
+    url: str,
+    pdf_text: str,
+) -> tuple[PolicyRecord | None, FilteredPageRecord | None]:
+    """把 PDF 文本转换为政策记录。"""
+
+    title = _extract_pdf_title(url, source.company)
+    return parse_policy_text(source, url, pdf_text, title)
+
+
+def parse_policy_text(
+    source: SourceConfig,
+    url: str,
+    plain_text: str,
+    title: str,
+) -> tuple[PolicyRecord | None, FilteredPageRecord | None]:
+    """把已经抽出的正文文本转换为政策记录。
+
+    HTML 和 PDF 最终都会复用这套规则，保证过滤口径一致。
+    """
+
     summary = _build_summary(plain_text)
     policy_categories = _guess_categories(plain_text, source.allowed_topics)
     policy_signals = _count_policy_signals(plain_text, title)
 
-    if len(plain_text) < 120:
+    if len(plain_text) < 120 and policy_signals < 4 and not _has_hard_policy_title(title):
         return None, _build_filtered_record(source, url, title, "正文过短", summary)
 
     if _is_noise_page(title, summary):

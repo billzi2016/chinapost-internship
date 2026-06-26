@@ -75,9 +75,11 @@ python3 main.py --max-pages-per-source 2
 - `data/logs/fetch_results.jsonl`：抓取结果和失败原因。
 - `data/logs/filtered_pages.jsonl`：被过滤掉的低质量页面，只用于审计，不进入训练样本。
 - `data/logs/full_run_YYYYMMDD_HHMMSS.log`：完整运行日志，同时也会在屏幕显示。
+- `data/logs/pdf_downloads.jsonl`：公开 PDF 文件的下载记录。
 - `data/parsed/policies.jsonl`：结构化政策记录。
 - `data/parsed/training_samples.jsonl`：最终保留下来的微调样本文件。
 - `data/logs/crawl_report.md`：抓取汇总报告。
+- `data/raw_pdfs/`：保存下来的原始 PDF 文件。
 
 ## 5. 运行过程中的进度提示
 
@@ -101,10 +103,11 @@ python3 main.py --max-pages-per-source 2
 - 先观察 `robots_report.jsonl` 和 `fetch_results.jsonl`，确认站点允许且返回的是公开页面。
 - 真正用于后续微调的数据应以 `data/parsed/training_samples.jsonl` 为准，不要直接把全部抓取日志送去训练。
 - 对动态站点、首页跳转站点和 PDF 站点，后续再补专门解析器。
+- 对扫描版图片 PDF，当前仍不做 OCR。
 
 ## 7. 当前已知限制
 
 - 目前主要支持首页和首页发现的第一层政策链接。
 - 还没有做 Playwright 动态渲染。
-- 还没有做 PDF 深解析和 OCR。
+- 已支持公开 PDF 的下载和文本抽取，但扫描版图片 PDF 仍不支持 OCR。
 - 还没有做更细的站点级规则模板。

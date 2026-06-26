@@ -94,10 +94,15 @@ class Fetcher:
 
         try:
             response_data = self._request_with_available_client(url, headers)
-            redirect_target = self._extract_client_side_redirect(
-                current_url=url,
-                html_text=str(response_data["text"]),
-            )
+            redirect_target = ""
+            if self._is_html_response(
+                content_type=str(response_data["content_type"]),
+                url=str(response_data["final_url"]),
+            ):
+                redirect_target = self._extract_client_side_redirect(
+                    current_url=url,
+                    html_text=str(response_data["text"]),
+                )
             if redirect_target:
                 response_data = self._request_with_available_client(redirect_target, headers)
         except Exception as exc:
@@ -112,6 +117,7 @@ class Fetcher:
                 robots_allowed=robots_decision.allowed,
                 robots_reason=robots_decision.reason,
                 failure_reason=f"请求失败: {exc}",
+                body_bytes=b"",
             )
 
         if response_data["status_code"] in {403, 429, 503}:
@@ -126,6 +132,7 @@ class Fetcher:
                 robots_allowed=robots_decision.allowed,
                 robots_reason=robots_decision.reason,
                 failure_reason=f"服务端拒绝访问，状态码 {response_data['status_code']}",
+                body_bytes=bytes(response_data["body_bytes"]),
             )
 
         return FetchResult(
@@ -139,13 +146,21 @@ class Fetcher:
             robots_allowed=robots_decision.allowed,
             robots_reason=robots_decision.reason,
             failure_reason="" if 200 <= response_data["status_code"] < 300 else f"HTTP {response_data['status_code']}",
+            body_bytes=bytes(response_data["body_bytes"]),
         )
+
+    def _is_html_response(self, content_type: str, url: str) -> bool:
+        """判断响应是否应按 HTML 处理。"""
+
+        lowered_type = content_type.lower()
+        lowered_url = url.lower()
+        return "html" in lowered_type or lowered_url.endswith((".html", ".htm", "/"))
 
     def _request_with_available_client(
         self,
         url: str,
         headers: dict[str, str],
-    ) -> dict[str, str | int]:
+    ) -> dict[str, str | int | bytes]:
         """优先使用 httpx，请求库缺失时退回到 urllib。
 
         这样可以减少环境依赖带来的运行失败，尤其适合第一版原型。
@@ -156,24 +171,63 @@ class Fetcher:
 
             with httpx.Client(timeout=20.0, follow_redirects=True, headers=headers) as client:
                 response = client.get(url)
+            content_type = response.headers.get("Content-Type", "")
+            body_bytes = response.content
+            text = self._decode_response_body(
+                body_bytes=body_bytes,
+                content_type=content_type,
+                final_url=str(response.url),
+                apparent_encoding=response.encoding,
+            )
             return {
                 "status_code": response.status_code,
-                "content_type": response.headers.get("Content-Type", ""),
-                "text": response.text,
+                "content_type": content_type,
+                "text": text,
                 "final_url": str(response.url),
+                "body_bytes": body_bytes,
             }
         except ModuleNotFoundError:
             request = Request(url, headers=headers)
             with urlopen(request, timeout=20.0) as response:
                 raw_body = response.read()
-                charset = response.headers.get_content_charset() or "utf-8"
-                text = raw_body.decode(charset, errors="replace")
+                content_type = response.headers.get("Content-Type", "")
+                text = self._decode_response_body(
+                    body_bytes=raw_body,
+                    content_type=content_type,
+                    final_url=response.geturl(),
+                    apparent_encoding=response.headers.get_content_charset(),
+                )
                 return {
                     "status_code": response.status,
-                    "content_type": response.headers.get("Content-Type", ""),
+                    "content_type": content_type,
                     "text": text,
-                "final_url": response.geturl(),
-            }
+                    "final_url": response.geturl(),
+                    "body_bytes": raw_body,
+                }
+
+    def _decode_response_body(
+        self,
+        body_bytes: bytes,
+        content_type: str,
+        final_url: str,
+        apparent_encoding: str | None,
+    ) -> str:
+        """根据响应类型决定是否解码正文。
+
+        HTML 和纯文本正文会被解码后继续进入链接发现与页面解析。
+        PDF 等二进制内容保留原始字节，由后续专门解析器处理。
+        """
+
+        lowered_type = content_type.lower()
+        lowered_url = final_url.lower()
+        if "pdf" in lowered_type or lowered_url.endswith(".pdf"):
+            return ""
+
+        if not body_bytes:
+            return ""
+
+        charset = apparent_encoding or "utf-8"
+        return body_bytes.decode(charset, errors="replace")
 
     def _extract_client_side_redirect(self, current_url: str, html_text: str) -> str:
         """识别简单的前端跳转脚本或 meta refresh。
