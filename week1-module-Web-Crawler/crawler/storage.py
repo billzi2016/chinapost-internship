@@ -37,6 +37,20 @@ class Storage:
 
         self._append_json_line(self.logs_dir / "fetch_results.jsonl", asdict(result))
 
+    def append_robots_from_fetch_result(self, result: FetchResult) -> None:
+        """从抓取结果中抽出 robots 决策并单独记录。
+
+        这样即使某次抓取后来失败，合规判断也仍然有独立日志可追溯。
+        """
+
+        decision = {
+            "url": result.url,
+            "allowed": result.robots_allowed,
+            "checked_at": result.fetched_at.isoformat(),
+            "reason": result.robots_reason,
+        }
+        self._append_json_line(self.logs_dir / "robots_report.jsonl", decision)
+
     def append_policy_record(self, record: PolicyRecord) -> None:
         """记录解析后的政策结果。"""
 
