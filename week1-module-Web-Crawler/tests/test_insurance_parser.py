@@ -22,3 +22,17 @@ def test_parse_insurance_terms_extracts_core_fields() -> None:
     assert "价值证明" in result["requirements"]
     assert "签收证明" in result["requirements"]
     assert "破损照片" in result["requirements"]
+
+
+def test_parse_insurance_terms_skips_homepage_like_text() -> None:
+    """首页导航词里的“保险”不应直接触发保险结构化字段。"""
+
+    text = (
+        "首页 个人服务 企业服务 国际服务 保险服务 立即下单 运单查询 "
+        "网点查询 关于我们 联系我们 新闻中心"
+    )
+
+    result = parse_insurance_terms(text)
+
+    assert result["insurance_available"] is False
+    assert result["insurance_type"] == "未知"

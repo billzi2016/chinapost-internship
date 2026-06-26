@@ -15,9 +15,7 @@ from crawler.dedupe import canonicalize_url
 POLICY_HINT_KEYWORDS = [
     "policy",
     "terms",
-    "claim",
     "insurance",
-    "liability",
     "customs",
     "dangerous-goods",
     "hazmat",
@@ -28,8 +26,6 @@ POLICY_HINT_KEYWORDS = [
     "rules",
     "保价",
     "保险",
-    "理赔",
-    "赔付",
     "寄件",
     "须知",
     "禁寄",
@@ -82,7 +78,6 @@ NEGATIVE_HINT_KEYWORDS = [
     "查询",
     "下单",
     "contact",
-    "support",
     "customer-service",
     "service-alert",
     "news",
@@ -95,6 +90,31 @@ NEGATIVE_HINT_KEYWORDS = [
     "关于我们",
     "新闻中心",
     "通知公告",
+]
+
+PATH_POLICY_HINT_KEYWORDS = [
+    "terms",
+    "insurance",
+    "customs",
+    "dangerous-goods",
+    "hazmat",
+    "restricted",
+    "prohibited",
+    "rules",
+    "policy",
+    "保价",
+    "保险",
+    "寄件",
+    "须知",
+    "禁寄",
+    "限寄",
+    "规则",
+    "条款",
+    "协议",
+    "海关",
+    "清关",
+    "冷链",
+    "危险品",
 ]
 
 
@@ -138,14 +158,31 @@ def is_policy_like_url(source_base_url: str, url: str, anchor_text: str) -> bool
     if any(keyword in anchor_lower for keyword in NEGATIVE_HINT_KEYWORDS):
         return False
 
-    if is_pdf:
-        return any(keyword in lowered for keyword in POLICY_HINT_KEYWORDS) or any(
-            keyword in anchor_lower for keyword in POLICY_HINT_KEYWORDS
-        )
-
-    return any(keyword in lowered for keyword in POLICY_HINT_KEYWORDS) or any(
-        keyword in anchor_lower for keyword in POLICY_HINT_KEYWORDS
+    path_has_policy_hint = any(keyword in lowered for keyword in PATH_POLICY_HINT_KEYWORDS)
+    anchor_has_policy_hint = any(keyword in anchor_lower for keyword in POLICY_HINT_KEYWORDS)
+    hard_anchor_hit = any(
+        keyword in anchor_lower
+        for keyword in [
+            "条款",
+            "协议",
+            "禁寄",
+            "限寄",
+            "规则",
+            "须知",
+            "dangerous goods",
+            "restricted",
+            "prohibited",
+            "customs",
+        ]
     )
+
+    if is_pdf:
+        return path_has_policy_hint or anchor_has_policy_hint
+
+    if path_has_policy_hint:
+        return True
+
+    return hard_anchor_hit and anchor_has_policy_hint
 
 
 def discover_policy_links(source_base_url: str, html_text: str) -> list[str]:

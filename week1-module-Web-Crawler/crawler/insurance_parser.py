@@ -10,6 +10,23 @@ from __future__ import annotations
 import re
 
 
+INSURANCE_CONTEXT_KEYWORDS = [
+    "保价",
+    "声明价值",
+    "insured",
+    "insurance coverage",
+    "shipment insurance",
+    "赔偿",
+    "赔付",
+    "理赔",
+    "索赔",
+    "免责",
+    "损失",
+    "丢失",
+    "破损",
+]
+
+
 def _extract_first_match(text: str, patterns: list[str]) -> str:
     """按顺序匹配多个正则，返回第一条命中的文本。"""
 
@@ -31,26 +48,39 @@ def parse_insurance_terms(text: str) -> dict[str, object]:
     """
 
     lowered = text.lower()
-    insurance_available = any(
-        keyword in lowered
-        for keyword in [
-            "保价",
-            "保险",
-            "声明价值",
-            "declared value",
-            "shipment insurance",
-            "liability",
-        ]
+    insurance_context_hits = sum(
+        1
+        for keyword in INSURANCE_CONTEXT_KEYWORDS
+        if keyword.lower() in lowered
+    )
+    liability_in_context = "liability" in lowered and any(
+        token in lowered
+        for token in ["loss", "damage", "claim", "compensation", "赔偿", "理赔", "索赔"]
+    )
+    generic_insurance_in_context = "保险" in text and any(
+        token in text
+        for token in ["赔偿", "赔付", "理赔", "索赔", "声明价值", "保价", "丢失", "破损"]
+    )
+    insurance_available = (
+        insurance_context_hits >= 2
+        or "保价" in text
+        or "声明价值" in text
+        or "declared value" in lowered
+        or "shipment insurance" in lowered
+        or liability_in_context
+        or generic_insurance_in_context
     )
 
     insurance_type = "未知"
-    if "声明价值" in text or "declared value" in lowered:
+    if not insurance_available:
+        insurance_type = "未知"
+    elif "声明价值" in text or "declared value" in lowered:
         insurance_type = "声明价值"
     elif "保价" in text:
         insurance_type = "保价"
-    elif "保险" in text or "shipment insurance" in lowered:
+    elif generic_insurance_in_context or "shipment insurance" in lowered:
         insurance_type = "运输保险"
-    elif "liability" in lowered:
+    elif liability_in_context:
         insurance_type = "承运商责任"
 
     compensation_limit = _extract_first_match(

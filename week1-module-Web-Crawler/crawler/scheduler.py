@@ -187,10 +187,8 @@ def _run_single_source(
         if filtered_record is not None:
             storage.append_filtered_page(filtered_record)
             emit(f"[FILTER] {task.company}: {filtered_record.filter_reason} -> {task.url}")
-            continue
-        if policy_record is None:
-            continue
-        storage.append_policy_record(policy_record)
+        elif policy_record is not None:
+            storage.append_policy_record(policy_record)
 
         if task.depth >= discovery_depth:
             continue
