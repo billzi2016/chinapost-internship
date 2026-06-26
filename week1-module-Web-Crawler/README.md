@@ -47,8 +47,9 @@ tests/
 - 本地任务调度入口。
 - robots 规则检查。
 - 限速与请求头组装。
-- 原始结果持久化到 `data/` 目录。
+- 原始结果、过滤日志和训练样本持久化到 `data/` 目录。
 - 保险/保价规则的关键词解析示例。
+- 训练样本质量过滤，避免把明显噪声页面混进微调数据。
 
 当前版本尚未提供：
 
@@ -91,3 +92,16 @@ python3 main.py --full-run
 - 清空旧的 `data/` 输出目录。
 - 将每个来源的页面上限提高到 `20`。
 - 将候选链接发现深度提高到 `2`。
+- 将终端输出同时保存到 `data/logs/full_run_YYYYMMDD_HHMMSS.log`。
+
+最终用于微调的数据文件是：
+
+```text
+data/parsed/training_samples.jsonl
+```
+
+被过滤掉但保留审计记录的页面会写到：
+
+```text
+data/logs/filtered_pages.jsonl
+```

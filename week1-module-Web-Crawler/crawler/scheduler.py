@@ -157,7 +157,13 @@ def _run_single_source(
         if "html" not in result.content_type.lower():
             continue
 
-        policy_record = parse_policy_page(source, task.url, result.text)
+        policy_record, filtered_record = parse_policy_page(source, task.url, result.text)
+        if filtered_record is not None:
+            storage.append_filtered_page(filtered_record)
+            emit(f"[FILTER] {task.company}: {filtered_record.filter_reason} -> {task.url}")
+            continue
+        if policy_record is None:
+            continue
         storage.append_policy_record(policy_record)
 
         if task.depth >= discovery_depth:

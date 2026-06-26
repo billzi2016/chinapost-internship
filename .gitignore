@@ -37,6 +37,7 @@ week1/filter/outputs/llm_filter/
 week1/filter/outputs/llm_filter/postal_filter_results.json
 week1/第二版/01_分类效果评估与边界case分析/outputs/*.json
 week1/第二版/01_分类效果评估与边界case分析/outputs/*.jsonl
+week1-module-Web-Crawler/data/
 
 # ----------------------------------------------------------------------
 # week2 data and outputs

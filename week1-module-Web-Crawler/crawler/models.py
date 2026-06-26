@@ -93,3 +93,15 @@ class PolicyRecord:
     claim_deadline: str
     requirements: list[str] = field(default_factory=list)
     insurance_exclusions: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class FilteredPageRecord:
+    """记录被过滤掉的页面，便于人工审计但不进入训练样本。"""
+
+    source_id: str
+    company: str
+    url: str
+    title: str
+    filter_reason: str
+    summary: str

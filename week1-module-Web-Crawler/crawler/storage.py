@@ -8,7 +8,7 @@ import threading
 from dataclasses import asdict
 from pathlib import Path
 
-from crawler.models import FetchResult, PolicyRecord, RobotsDecision
+from crawler.models import FetchResult, FilteredPageRecord, PolicyRecord, RobotsDecision
 
 
 class Storage:
@@ -69,6 +69,12 @@ class Storage:
         """记录解析后的政策结果。"""
 
         self._append_json_line(self.parsed_dir / "policies.jsonl", asdict(record))
+        self._append_json_line(self.parsed_dir / "training_samples.jsonl", asdict(record))
+
+    def append_filtered_page(self, record: FilteredPageRecord) -> None:
+        """记录被过滤掉的页面，不进入训练样本。"""
+
+        self._append_json_line(self.logs_dir / "filtered_pages.jsonl", asdict(record))
 
     def _append_json_line(self, path: Path, payload: dict[str, object]) -> None:
         """以 JSONL 形式追加写入单条记录。"""
