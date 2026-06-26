@@ -13,7 +13,8 @@ from crawler.dedupe import canonicalize_url
 from crawler.fetcher import Fetcher
 from crawler.link_discovery import discover_policy_links
 from crawler.models import CrawlTask, SourceConfig
-from crawler.parser import parse_policy_page
+from crawler.parser import parse_policy_page, parse_policy_pdf
+from crawler.pdf_parser import extract_pdf_text
 from crawler.progress import ProgressReporter
 from crawler.reporting import write_crawl_report
 from crawler.storage import Storage
@@ -154,7 +155,33 @@ def _run_single_source(
 
         if not result.success:
             continue
-        if "html" not in result.content_type.lower():
+        content_type = result.content_type.lower()
+        if "pdf" in content_type or result.final_url.lower().endswith(".pdf"):
+            pdf_title = result.final_url.rsplit("/", 1)[-1] or f"{task.company} PDF"
+            storage.save_pdf_bytes(
+                source_id=task.source_id,
+                company=task.company,
+                url=result.final_url,
+                title=pdf_title,
+                body_bytes=result.body_bytes,
+            )
+            try:
+                pdf_text = extract_pdf_text(result.body_bytes)
+            except Exception as exc:
+                emit(f"[PDF-ERROR] {task.company}: {result.final_url} -> {exc}")
+                continue
+
+            policy_record, filtered_record = parse_policy_pdf(source, result.final_url, pdf_text)
+            if filtered_record is not None:
+                storage.append_filtered_page(filtered_record)
+                emit(f"[FILTER][PDF] {task.company}: {filtered_record.filter_reason} -> {result.final_url}")
+                continue
+            if policy_record is not None:
+                storage.append_policy_record(policy_record)
+                emit(f"[PDF] {task.company}: parsed -> {result.final_url}")
+            continue
+
+        if "html" not in content_type:
             continue
 
         policy_record, filtered_record = parse_policy_page(source, task.url, result.text)

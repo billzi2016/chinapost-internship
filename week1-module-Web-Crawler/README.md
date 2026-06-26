@@ -50,6 +50,7 @@ tests/
 - 原始结果、过滤日志和训练样本持久化到 `data/` 目录。
 - 保险/保价规则的关键词解析示例。
 - 训练样本质量过滤，避免把明显噪声页面混进微调数据。
+- 对公开 PDF 规则文件的发现、下载和文本抽取。
 
 当前版本尚未提供：
 
@@ -104,4 +105,11 @@ data/parsed/training_samples.jsonl
 
 ```text
 data/logs/filtered_pages.jsonl
+```
+
+如果来源页面里发现了公开 PDF 规则文件，程序还会额外生成：
+
+```text
+data/raw_pdfs/
+data/logs/pdf_downloads.jsonl
 ```

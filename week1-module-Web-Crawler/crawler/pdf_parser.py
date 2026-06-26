@@ -1,16 +1,34 @@
 """处理 PDF 文档解析。
 
-当前阶段先保留接口，后续在确认依赖和样本 PDF 后再补充真正的文本提取。
-保持独立文件是为了避免 HTML 和 PDF 解析逻辑混杂。
+PDF 经常是规则、条款、禁限寄目录等真实政策文本的主要载体，
+因此这里提供一个尽量轻依赖但可落地的正文提取实现。
 """
 
 from __future__ import annotations
 
+from io import BytesIO
 
-def extract_pdf_text(_: bytes) -> str:
+
+def extract_pdf_text(pdf_bytes: bytes) -> str:
     """提取 PDF 文本。
 
-    当前返回空字符串，提醒调用方该能力尚未实现。
+    当前优先使用 `pypdf` 做逐页抽取。
+    如果运行环境未安装依赖，会直接抛出明确错误，避免静默吞掉 PDF。
     """
 
-    return ""
+    if not pdf_bytes:
+        return ""
+
+    try:
+        from pypdf import PdfReader
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("缺少 pypdf 依赖，无法解析 PDF") from exc
+
+    reader = PdfReader(BytesIO(pdf_bytes))
+    text_parts: list[str] = []
+    for page in reader.pages:
+        page_text = page.extract_text() or ""
+        page_text = " ".join(page_text.split())
+        if page_text:
+            text_parts.append(page_text)
+    return "\n".join(text_parts)
