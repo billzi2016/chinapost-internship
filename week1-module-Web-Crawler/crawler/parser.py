@@ -51,6 +51,42 @@ NOISE_HINTS = [
     "register",
     "sign in",
     "track",
+    "联系我们",
+    "关于我们",
+    "新闻中心",
+    "加入我们",
+    "个人服务",
+    "企业服务",
+    "运单查询",
+    "网点查询",
+    "价格时效",
+    "快递服务",
+    "快运服务",
+    "解决方案",
+    "customer service",
+    "contact us",
+    "help & support",
+    "our company",
+    "careers",
+    "support",
+    "locations",
+]
+
+HARD_POLICY_TITLE_HINTS = [
+    "条款",
+    "协议",
+    "禁寄",
+    "限寄",
+    "restricted",
+    "prohibited",
+    "dangerous goods",
+    "hazmat",
+    "customs",
+    "claim",
+    "liability",
+    "赔付",
+    "理赔",
+    "保价",
 ]
 
 
@@ -139,6 +175,39 @@ def _is_noise_page(title: str, summary: str) -> bool:
     return noise_hits >= 3
 
 
+def _has_hard_policy_title(title: str) -> bool:
+    """标题中是否包含强政策语义。"""
+
+    lowered = title.lower()
+    return any(keyword.lower() in lowered for keyword in HARD_POLICY_TITLE_HINTS)
+
+
+def _looks_like_navigation_page(text: str, summary: str) -> bool:
+    """通过重复菜单词判断页面是否更像导航聚合页。"""
+
+    combined = f"{text[:1500]} {summary}".lower()
+    menu_tokens = [
+        "首页",
+        "产品与服务",
+        "个人服务",
+        "企业服务",
+        "在线寄件",
+        "运单查询",
+        "网点查询",
+        "价格时效",
+        "登录",
+        "注册",
+        "home",
+        "services",
+        "support",
+        "menu",
+        "contact",
+        "locations",
+    ]
+    hits = sum(1 for token in menu_tokens if token.lower() in combined)
+    return hits >= 6
+
+
 def _build_filtered_record(
     source: SourceConfig,
     url: str,
@@ -181,6 +250,12 @@ def parse_policy_page(
 
     if _is_noise_page(title, summary):
         return None, _build_filtered_record(source, url, title, "页面噪声过高", summary)
+
+    if _looks_like_navigation_page(plain_text, summary) and not _has_hard_policy_title(title):
+        return None, _build_filtered_record(source, url, title, "导航页特征过强", summary)
+
+    if policy_signals < 3 and not _has_hard_policy_title(title):
+        return None, _build_filtered_record(source, url, title, "政策信号不足", summary)
 
     if policy_signals < 2 and policy_categories == ["服务条款"]:
         return None, _build_filtered_record(source, url, title, "政策信号不足", summary)
