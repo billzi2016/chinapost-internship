@@ -42,7 +42,7 @@ python3 main.py --dry-run --max-pages-per-source 3
 
 ## 3. 小批量真实抓取
 
-每个来源先抓少量页面，验证 robots、请求器、落盘和解析：
+每个来源先抓少量页面，验证请求器、落盘和解析：
 
 ```bash
 python3 main.py --max-pages-per-source 2
@@ -64,14 +64,13 @@ python3 main.py --max-pages-per-source 2
 - 对当前配置里的所有来源启动抓取。
 - 将每个来源页面上限设为 `20`。
 - 将候选链接发现深度设为 `2`。
-- 保留 robots 校验、进度提示和结果落盘。
+- 保留进度提示和结果落盘。
 - 将终端输出同时保存到 `data/logs/full_run_YYYYMMDD_HHMMSS.log`。
 
 ## 4. 输出目录
 
 运行后会生成：
 
-- `data/logs/robots_report.jsonl`：robots 校验结果。
 - `data/logs/fetch_results.jsonl`：抓取结果和失败原因。
 - `data/logs/filtered_pages.jsonl`：被过滤掉的低质量页面，只用于审计，不进入训练样本。
 - `data/logs/full_run_YYYYMMDD_HHMMSS.log`：完整运行日志，同时也会在屏幕显示。
@@ -100,9 +99,9 @@ python3 main.py --max-pages-per-source 2
 
 - 先检查 `configs/sources.yaml`，按你的目标公司继续补来源。
 - 先用小值验证 `--max-pages-per-source`，确认过滤没有误抓静态资源。
-- 先观察 `robots_report.jsonl` 和 `fetch_results.jsonl`，确认站点允许且返回的是公开页面。
+- 先观察 `fetch_results.jsonl`，确认返回的是公开页面而不是首页、跳转页或错误页。
 - 真正用于后续微调的数据应以 `data/parsed/training_samples.jsonl` 为准，不要直接把全部抓取日志送去训练。
-- 对动态站点、首页跳转站点和 PDF 站点，后续再补专门解析器。
+- 对动态站点、首页跳转站点和扫描版图片 PDF，后续再补更细的处理策略。
 - 对扫描版图片 PDF，当前仍不做 OCR。
 
 ## 7. 当前已知限制

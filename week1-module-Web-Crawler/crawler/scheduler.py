@@ -136,7 +136,6 @@ def _run_single_source(
             continue
 
         result = fetcher.fetch(task.url)
-        storage.append_robots_from_fetch_result(result)
         storage.append_fetch_result(result)
         completed += 1
         emit(

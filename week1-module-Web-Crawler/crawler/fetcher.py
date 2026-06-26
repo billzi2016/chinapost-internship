@@ -1,6 +1,6 @@
-"""统一处理 HTTP 请求、限速和 robots 校验。
+"""统一处理 HTTP 请求和限速控制。
 
-所有外部页面访问都应通过本模块进入，避免出现某些调用绕过合规控制。
+所有外部页面访问都应通过本模块进入，避免出现某些调用绕过统一请求控制。
 当前版本只提供同步请求能力，后续如果要扩展异步抓取，也应保留相同的合规入口。
 """
 
@@ -15,19 +15,16 @@ from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from crawler.models import FetchResult, RateLimitConfig
-from crawler.robots import RobotsManager
 
 
 class Fetcher:
-    """带有 robots 和限速控制的统一请求器。"""
+    """带有限速控制的统一请求器。"""
 
     def __init__(
         self,
-        robots_manager: RobotsManager,
         default_rate_limit: RateLimitConfig,
         domain_rate_limits: dict[str, RateLimitConfig],
     ) -> None:
-        self.robots_manager = robots_manager
         self.default_rate_limit = default_rate_limit
         self.domain_rate_limits = domain_rate_limits
         self._last_request_at: dict[str, float] = {}
@@ -65,25 +62,10 @@ class Fetcher:
         """抓取单个公开页面。
 
         返回:
-        - 无论成功、失败还是被 robots 拒绝，都会返回 `FetchResult`。
+        - 无论成功、失败还是被限流拒绝，都会返回 `FetchResult`。
         """
 
         rate_limit = self._resolve_rate_limit(url)
-        robots_decision = self.robots_manager.is_allowed(url, rate_limit.user_agent)
-        if not robots_decision.allowed:
-            return FetchResult(
-                url=url,
-                status_code=None,
-                content_type="",
-                text="",
-                final_url=url,
-                fetched_at=datetime.utcnow(),
-                success=False,
-                robots_allowed=robots_decision.allowed,
-                robots_reason=robots_decision.reason,
-                failure_reason=robots_decision.reason,
-            )
-
         self._respect_rate_limit(url, rate_limit)
 
         headers = {
@@ -114,8 +96,6 @@ class Fetcher:
                 final_url=url,
                 fetched_at=datetime.utcnow(),
                 success=False,
-                robots_allowed=robots_decision.allowed,
-                robots_reason=robots_decision.reason,
                 failure_reason=f"请求失败: {exc}",
                 body_bytes=b"",
             )
@@ -129,8 +109,6 @@ class Fetcher:
                 final_url=response_data["final_url"],
                 fetched_at=datetime.utcnow(),
                 success=False,
-                robots_allowed=robots_decision.allowed,
-                robots_reason=robots_decision.reason,
                 failure_reason=f"服务端拒绝访问，状态码 {response_data['status_code']}",
                 body_bytes=bytes(response_data["body_bytes"]),
             )
@@ -143,8 +121,6 @@ class Fetcher:
             final_url=response_data["final_url"],
             fetched_at=datetime.utcnow(),
             success=200 <= response_data["status_code"] < 300,
-            robots_allowed=robots_decision.allowed,
-            robots_reason=robots_decision.reason,
             failure_reason="" if 200 <= response_data["status_code"] < 300 else f"HTTP {response_data['status_code']}",
             body_bytes=bytes(response_data["body_bytes"]),
         )

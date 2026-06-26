@@ -46,20 +46,10 @@ class CrawlTask:
 
 
 @dataclass(slots=True)
-class RobotsDecision:
-    """记录 robots 校验结果，便于后续审计和落盘。"""
-
-    url: str
-    allowed: bool
-    checked_at: datetime
-    reason: str
-
-
-@dataclass(slots=True)
 class FetchResult:
     """封装单次请求结果。
 
-    当页面被 robots 拒绝、请求失败或被限流时，也通过该结构返回，
+    当页面请求失败或被限流时，也通过该结构返回，
     这样调度层就不需要在多个异常分支里重复判断。
     """
 
@@ -70,8 +60,6 @@ class FetchResult:
     final_url: str
     fetched_at: datetime
     success: bool
-    robots_allowed: bool
-    robots_reason: str
     failure_reason: str = ""
     body_bytes: bytes = b""
 
