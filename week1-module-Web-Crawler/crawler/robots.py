@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import threading
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 from urllib.robotparser import RobotFileParser
 
 from crawler.models import RobotsDecision
@@ -32,6 +34,7 @@ class RobotsManager:
 
     def __init__(self) -> None:
         self._cache: dict[str, RobotsEntry] = {}
+        self._lock = threading.Lock()
 
     def _build_robots_url(self, url: str) -> str:
         """根据目标 URL 生成对应的 robots.txt 地址。"""
@@ -55,15 +58,33 @@ class RobotsManager:
 
         parsed = urlparse(url)
         domain = parsed.netloc
-        cached = self._cache.get(domain)
-        if cached is not None:
-            return cached.parser
+        with self._lock:
+            cached = self._cache.get(domain)
+            if cached is not None:
+                return cached.parser
 
-        parser = RobotFileParser()
-        parser.set_url(self._build_robots_url(url))
-        parser.read()
-        self._cache[domain] = RobotsEntry(parser=parser, loaded_at=datetime.utcnow())
-        return parser
+            parser = RobotFileParser()
+            robots_url = self._build_robots_url(url)
+            parser.set_url(robots_url)
+            robots_text = self._fetch_robots_text(robots_url)
+            parser.parse(robots_text.splitlines())
+            self._cache[domain] = RobotsEntry(parser=parser, loaded_at=datetime.utcnow())
+            return parser
+
+    def _fetch_robots_text(self, robots_url: str) -> str:
+        """以显式超时方式抓取 robots.txt。
+
+        标准库自带的 `RobotFileParser.read()` 不方便设置超时。
+        全量扫描时如果少数站点握手很慢，会拖住整个流程，因此这里自行请求。
+        """
+
+        request = Request(
+            robots_url,
+            headers={"User-Agent": "PolicyCrawler/0.1 (+policy-crawler@example.com)"},
+        )
+        with urlopen(request, timeout=10.0) as response:
+            charset = response.headers.get_content_charset() or "utf-8"
+            return response.read().decode(charset, errors="replace")
 
     def is_allowed(self, url: str, user_agent: str) -> RobotsDecision:
         """判断 URL 是否允许抓取。

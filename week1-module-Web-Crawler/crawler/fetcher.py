@@ -7,9 +7,12 @@
 from __future__ import annotations
 
 import random
+import re
+import threading
 import time
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
+from urllib.request import Request, urlopen
 
 from crawler.models import FetchResult, RateLimitConfig
 from crawler.robots import RobotsManager
@@ -28,6 +31,7 @@ class Fetcher:
         self.default_rate_limit = default_rate_limit
         self.domain_rate_limits = domain_rate_limits
         self._last_request_at: dict[str, float] = {}
+        self._rate_limit_lock = threading.Lock()
 
     def _resolve_rate_limit(self, url: str) -> RateLimitConfig:
         """根据 URL 域名选择限速配置。"""
@@ -42,19 +46,20 @@ class Fetcher:
         """
 
         domain = urlparse(url).netloc
-        now = time.monotonic()
-        delay_seconds = random.uniform(
-            rate_limit.min_interval_seconds,
-            rate_limit.max_interval_seconds,
-        )
-        previous = self._last_request_at.get(domain)
+        with self._rate_limit_lock:
+            now = time.monotonic()
+            delay_seconds = random.uniform(
+                rate_limit.min_interval_seconds,
+                rate_limit.max_interval_seconds,
+            )
+            previous = self._last_request_at.get(domain)
 
-        if previous is not None:
-            elapsed = now - previous
-            if elapsed < delay_seconds:
-                time.sleep(delay_seconds - elapsed)
+            if previous is not None:
+                elapsed = now - previous
+                if elapsed < delay_seconds:
+                    time.sleep(delay_seconds - elapsed)
 
-        self._last_request_at[domain] = time.monotonic()
+            self._last_request_at[domain] = time.monotonic()
 
     def fetch(self, url: str) -> FetchResult:
         """抓取单个公开页面。
@@ -81,22 +86,6 @@ class Fetcher:
 
         self._respect_rate_limit(url, rate_limit)
 
-        try:
-            import httpx
-        except ModuleNotFoundError as exc:
-            return FetchResult(
-                url=url,
-                status_code=None,
-                content_type="",
-                text="",
-                final_url=url,
-                fetched_at=datetime.utcnow(),
-                success=False,
-                robots_allowed=robots_decision.allowed,
-                robots_reason=robots_decision.reason,
-                failure_reason=f"缺少 httpx 依赖: {exc}",
-            )
-
         headers = {
             "User-Agent": rate_limit.user_agent,
             "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
@@ -104,8 +93,13 @@ class Fetcher:
         }
 
         try:
-            with httpx.Client(timeout=20.0, follow_redirects=True, headers=headers) as client:
-                response = client.get(url)
+            response_data = self._request_with_available_client(url, headers)
+            redirect_target = self._extract_client_side_redirect(
+                current_url=url,
+                html_text=str(response_data["text"]),
+            )
+            if redirect_target:
+                response_data = self._request_with_available_client(redirect_target, headers)
         except Exception as exc:
             return FetchResult(
                 url=url,
@@ -120,29 +114,90 @@ class Fetcher:
                 failure_reason=f"请求失败: {exc}",
             )
 
-        if response.status_code in {403, 429, 503}:
+        if response_data["status_code"] in {403, 429, 503}:
             return FetchResult(
                 url=url,
-                status_code=response.status_code,
-                content_type=response.headers.get("Content-Type", ""),
+                status_code=response_data["status_code"],
+                content_type=response_data["content_type"],
                 text="",
-                final_url=str(response.url),
+                final_url=response_data["final_url"],
                 fetched_at=datetime.utcnow(),
                 success=False,
                 robots_allowed=robots_decision.allowed,
                 robots_reason=robots_decision.reason,
-                failure_reason=f"服务端拒绝访问，状态码 {response.status_code}",
+                failure_reason=f"服务端拒绝访问，状态码 {response_data['status_code']}",
             )
 
         return FetchResult(
             url=url,
-            status_code=response.status_code,
-            content_type=response.headers.get("Content-Type", ""),
-            text=response.text,
-            final_url=str(response.url),
+            status_code=response_data["status_code"],
+            content_type=response_data["content_type"],
+            text=response_data["text"],
+            final_url=response_data["final_url"],
             fetched_at=datetime.utcnow(),
-            success=response.is_success,
+            success=200 <= response_data["status_code"] < 300,
             robots_allowed=robots_decision.allowed,
             robots_reason=robots_decision.reason,
-            failure_reason="" if response.is_success else f"HTTP {response.status_code}",
+            failure_reason="" if 200 <= response_data["status_code"] < 300 else f"HTTP {response_data['status_code']}",
         )
+
+    def _request_with_available_client(
+        self,
+        url: str,
+        headers: dict[str, str],
+    ) -> dict[str, str | int]:
+        """优先使用 httpx，请求库缺失时退回到 urllib。
+
+        这样可以减少环境依赖带来的运行失败，尤其适合第一版原型。
+        """
+
+        try:
+            import httpx
+
+            with httpx.Client(timeout=20.0, follow_redirects=True, headers=headers) as client:
+                response = client.get(url)
+            return {
+                "status_code": response.status_code,
+                "content_type": response.headers.get("Content-Type", ""),
+                "text": response.text,
+                "final_url": str(response.url),
+            }
+        except ModuleNotFoundError:
+            request = Request(url, headers=headers)
+            with urlopen(request, timeout=20.0) as response:
+                raw_body = response.read()
+                charset = response.headers.get_content_charset() or "utf-8"
+                text = raw_body.decode(charset, errors="replace")
+                return {
+                    "status_code": response.status,
+                    "content_type": response.headers.get("Content-Type", ""),
+                    "text": text,
+                "final_url": response.geturl(),
+            }
+
+    def _extract_client_side_redirect(self, current_url: str, html_text: str) -> str:
+        """识别简单的前端跳转脚本或 meta refresh。
+
+        某些首页返回 200，但实际正文只是一个跳转脚本。
+        这里先处理最常见的几种写法，避免首页内容为空。
+        """
+
+        js_patterns = [
+            r"""window\.location\.replace\(['"]([^'"]+)['"]\)""",
+            r"""window\.location\.href\s*=\s*['"]([^'"]+)['"]""",
+            r"""location\.href\s*=\s*['"]([^'"]+)['"]""",
+        ]
+        for pattern in js_patterns:
+            match = re.search(pattern, html_text, flags=re.IGNORECASE)
+            if match:
+                return urljoin(current_url, match.group(1))
+
+        meta_match = re.search(
+            r"""http-equiv=["']refresh["'][^>]*content=["'][^;]+;\s*url=([^"']+)["']""",
+            html_text,
+            flags=re.IGNORECASE,
+        )
+        if meta_match:
+            return urljoin(current_url, meta_match.group(1).strip())
+
+        return ""

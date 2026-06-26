@@ -1,14 +1,21 @@
 """提供任务生成与批量调度能力。
 
-第一版只处理来源入口页，不扩展页面内链接发现。
-后续如果增加候选链接提取，应继续在调度层组装任务，不把控制逻辑塞进请求器。
+当前版本会先抓取入口页，再从成功页面中发现少量候选政策链接。
+链接提取细节被拆到独立模块中，这里只负责任务队列、去重和执行顺序。
 """
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+
+from crawler.dedupe import canonicalize_url
 from crawler.fetcher import Fetcher
+from crawler.link_discovery import discover_policy_links
 from crawler.models import CrawlTask, SourceConfig
 from crawler.parser import parse_policy_page
+from crawler.progress import ProgressReporter
+from crawler.reporting import write_crawl_report
 from crawler.storage import Storage
 
 
@@ -24,6 +31,7 @@ def build_seed_tasks(sources: list[SourceConfig]) -> list[CrawlTask]:
                     company=source.company,
                     url=entry_url,
                     topic_hints=source.allowed_topics,
+                    depth=0,
                 )
             )
     return tasks
@@ -34,35 +42,141 @@ def run_seed_tasks(
     fetcher: Fetcher,
     storage: Storage,
     dry_run: bool = False,
+    max_pages_per_source: int = 3,
+    discovery_depth: int = 1,
+    max_workers: int = 4,
 ) -> list[str]:
     """执行第一批种子任务。
 
-    返回:
-    - 任务执行日志摘要，方便入口脚本直接打印。
+    当前实现采用“跨来源并发、来源内串行”的方式：
+    - 不会并发抓同一个来源的页面。
+    - 可以同时抓多个不同来源，加快整体扫描速度。
     """
 
-    tasks = build_seed_tasks(sources)
-    source_map = {source.source_id: source for source in sources}
     summaries: list[str] = []
+    summary_lock = threading.Lock()
+    reporter = ProgressReporter()
 
-    for task in tasks:
+    def emit(line: str) -> None:
+        with summary_lock:
+            summaries.append(line)
+            print(line, flush=True)
+
+    worker_count = max(1, min(max_workers, len(sources)))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = [
+            executor.submit(
+                _run_single_source,
+                source=source,
+                fetcher=fetcher,
+                storage=storage,
+                reporter=reporter,
+                dry_run=dry_run,
+                max_pages_per_source=max_pages_per_source,
+                discovery_depth=discovery_depth,
+                emit=emit,
+            )
+            for source in sources
+        ]
+        for future in as_completed(futures):
+            future.result()
+
+    report_path = write_crawl_report(storage.data_dir)
+    emit(f"[REPORT] generated={report_path}")
+    return summaries
+
+
+def _run_single_source(
+    source: SourceConfig,
+    fetcher: Fetcher,
+    storage: Storage,
+    reporter: ProgressReporter,
+    dry_run: bool,
+    max_pages_per_source: int,
+    discovery_depth: int,
+    emit,
+) -> None:
+    """串行处理单个来源的抓取队列。"""
+
+    tasks = [
+        CrawlTask(
+            source_id=source.source_id,
+            company=source.company,
+            url=url,
+            topic_hints=source.allowed_topics,
+            depth=0,
+        )
+        for url in source.entry_urls
+    ]
+    visited: set[str] = set()
+    completed = 0
+
+    while tasks:
+        task = tasks.pop(0)
+        normalized_url = canonicalize_url(task.url)
+        if normalized_url in visited:
+            continue
+        if completed >= max_pages_per_source:
+            continue
+        visited.add(normalized_url)
+
         if dry_run:
-            summaries.append(f"[DRY-RUN] {task.company}: {task.url}")
+            completed += 1
+            emit(f"[DRY-RUN][depth={task.depth}] {task.company}: {task.url}")
+            emit(
+                reporter.report(
+                    stage="dry-run",
+                    company=task.company,
+                    url=task.url,
+                    completed=0,
+                    queued=len(tasks),
+                )
+            )
             continue
 
         result = fetcher.fetch(task.url)
         storage.append_robots_from_fetch_result(result)
         storage.append_fetch_result(result)
-        summaries.append(
-            f"[FETCH] {task.company}: {task.url} -> "
+        completed += 1
+        emit(
+            f"[FETCH][depth={task.depth}] {task.company}: {task.url} -> "
             f"{result.status_code if result.status_code is not None else 'SKIP'}"
+        )
+        emit(
+            reporter.report(
+                stage="fetch",
+                company=task.company,
+                url=task.url,
+                completed=0,
+                queued=len(tasks),
+            )
         )
 
         if not result.success:
             continue
+        if "html" not in result.content_type.lower():
+            continue
 
-        source = source_map[task.source_id]
         policy_record = parse_policy_page(source, task.url, result.text)
         storage.append_policy_record(policy_record)
 
-    return summaries
+        if task.depth >= discovery_depth:
+            continue
+
+        discovered_links = discover_policy_links(task.url, result.text)
+        for link in discovered_links:
+            if completed >= max_pages_per_source:
+                break
+            if link in visited:
+                continue
+            tasks.append(
+                CrawlTask(
+                    source_id=task.source_id,
+                    company=task.company,
+                    url=link,
+                    topic_hints=task.topic_hints,
+                    depth=task.depth + 1,
+                )
+            )
+        if discovered_links:
+            emit(f"[DISCOVER] {task.company}: discovered={len(discovered_links)} from {task.url}")

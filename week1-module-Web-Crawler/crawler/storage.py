@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import threading
 from dataclasses import asdict
 from pathlib import Path
 
@@ -17,6 +19,7 @@ class Storage:
         self.raw_dir = data_dir / "raw"
         self.parsed_dir = data_dir / "parsed"
         self.logs_dir = data_dir / "logs"
+        self._write_lock = threading.Lock()
 
     def ensure_directories(self) -> None:
         """创建数据目录。
@@ -26,6 +29,17 @@ class Storage:
 
         for path in [self.data_dir, self.raw_dir, self.parsed_dir, self.logs_dir]:
             path.mkdir(parents=True, exist_ok=True)
+
+    def reset_data_dir(self) -> None:
+        """清空并重建数据目录。
+
+        这个操作只作用于项目自己的 `data/` 输出目录，
+        用于开始一轮新的完整抓取，避免旧结果混入新结果。
+        """
+
+        if self.data_dir.exists():
+            shutil.rmtree(self.data_dir)
+        self.ensure_directories()
 
     def append_robots_decision(self, decision: RobotsDecision) -> None:
         """记录 robots 校验结果。"""
@@ -59,6 +73,7 @@ class Storage:
     def _append_json_line(self, path: Path, payload: dict[str, object]) -> None:
         """以 JSONL 形式追加写入单条记录。"""
 
-        with path.open("a", encoding="utf-8") as file:
-            file.write(json.dumps(payload, ensure_ascii=False, default=str))
-            file.write("\n")
+        with self._write_lock:
+            with path.open("a", encoding="utf-8") as file:
+                file.write(json.dumps(payload, ensure_ascii=False, default=str))
+                file.write("\n")

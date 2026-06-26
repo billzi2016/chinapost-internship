@@ -42,6 +42,7 @@ class CrawlTask:
     company: str
     url: str
     topic_hints: list[str] = field(default_factory=list)
+    depth: int = 0
 
 
 @dataclass(slots=True)
@@ -82,6 +83,7 @@ class PolicyRecord:
     company: str
     url: str
     title: str
+    published_at: str
     policy_categories: list[str]
     summary: str
     evidence_text: str
