@@ -26,11 +26,13 @@ step1 当前包含：
 4. `week1/第一版/filter/outputs/report.md`
 5. `week1/第二版/01_分类效果评估与边界case分析/outputs/report.md`
 6. `week1/第二版/04_可视化聚类与标签优化/outputs/report.md`
+7. `week1-module-Web-Crawler/report/training_samples_report.md`
 
 step2 当前包含：
 
 1. `week3/reports/qwen2.5_mlx_sft_full_experiment_report.md`
 2. `week3/reports/qwen2.5-3b_rank_sweep_report.md`
+3. `week3/reports/qwen2.5-7b_rank_sweep_report.md`
 
 ## 2. 导出方式
 
@@ -56,6 +58,25 @@ python reports/build_reports.py
 python build_reports.py
 ```
 
+列出所有可渲染报告：
+
+```bash
+python reports/build_reports.py --list
+```
+
+只渲染指定报告：
+
+```bash
+python reports/build_reports.py --only week1-training-samples
+python reports/build_reports.py --only week3-qwen25-7b-rank-sweep
+```
+
+一次渲染多个指定报告：
+
+```bash
+python reports/build_reports.py --only week1-training-samples week3-qwen25-7b-rank-sweep
+```
+
 脚本会自动：
 
 1. 检查 Playwright Chromium 运行时
@@ -74,8 +95,10 @@ python build_reports.py
 - `reports/step1_模型选型与数据集分析/邮政相关对话筛选与向量空间可视化结果报告.pdf`
 - `reports/step1_模型选型与数据集分析/分类效果评估与边界case分析报告.pdf`
 - `reports/step1_模型选型与数据集分析/可视化聚类与标签优化报告.pdf`
+- `reports/step1_模型选型与数据集分析/邮政FAQ爬虫训练样本构建报告.pdf`
 - `reports/step2_lora微调/基于AppleMLX的Qwen2.5邮政客服模型微调完整实验报告.pdf`
 - `reports/step2_lora微调/Qwen2.5-3B邮政客服LoRA RankSweep实验报告.pdf`
+- `reports/step2_lora微调/Qwen2.5-7B邮政客服LoRA RankSweep实验报告.pdf`
 
 ## 5. 维护规则
 

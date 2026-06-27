@@ -13,7 +13,7 @@
 - 对 Markdown 风格文档来说，整体观感通常优于 LaTeX 硬排
 
 当前脚本会导出：
-- step1：模型选型与数据集分析
+- step1：模型选型、数据集分析与网页爬虫训练样本
 - step2：LoRA 微调
 
 输出 PDF 会落盘到 reports/step1_模型选型与数据集分析 和 reports/step2_lora微调。
@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import html
+import argparse
 import shutil
 import sys
 import tempfile
@@ -35,6 +36,7 @@ from playwright.sync_api import sync_playwright
 REPORTS_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = REPORTS_DIR.parent
 WEEK1_DIR = PROJECT_DIR / "week1"
+WEB_CRAWLER_DIR = PROJECT_DIR / "week1-module-Web-Crawler"
 WEEK3_DIR = PROJECT_DIR / "week3"
 STEP1_DIR = REPORTS_DIR / "step1_模型选型与数据集分析"
 STEP2_DIR = REPORTS_DIR / "step2_lora微调"
@@ -44,44 +46,64 @@ STEP2_DIR = REPORTS_DIR / "step2_lora微调"
 # 后面如果要继续增加报告，只需要往这个列表里加一项即可。
 REPORT_SPECS = [
     {
+        "id": "week1-model-selection",
         "source": WEEK1_DIR / "第一版" / "docs" / "模型选型报告.md",
         "output": STEP1_DIR / "中文邮政客服任务开源大模型选型研究报告.pdf",
         "title": "中文邮政客服任务开源大模型选型研究报告",
     },
     {
+        "id": "week1-sft-risk",
         "source": WEEK1_DIR / "第一版" / "docs" / "SFT训练与风险控制.md",
         "output": STEP1_DIR / "中文邮政客服任务SFT训练方案与风险控制报告.pdf",
         "title": "中文邮政客服任务SFT训练方案与风险控制报告",
     },
     {
+        "id": "week1-csds-stats",
         "source": WEEK1_DIR / "第一版" / "stats" / "outputs" / "report.md",
         "output": STEP1_DIR / "CSDS数据集统计分析与关键词提取结果报告.pdf",
         "title": "CSDS数据集统计分析与关键词提取结果报告",
     },
     {
+        "id": "week1-postal-filter",
         "source": WEEK1_DIR / "第一版" / "filter" / "outputs" / "report.md",
         "output": STEP1_DIR / "邮政相关对话筛选与向量空间可视化结果报告.pdf",
         "title": "邮政相关对话筛选与向量空间可视化结果报告",
     },
     {
+        "id": "week1-classification-cases",
         "source": WEEK1_DIR / "第二版" / "01_分类效果评估与边界case分析" / "outputs" / "report.md",
         "output": STEP1_DIR / "分类效果评估与边界case分析报告.pdf",
         "title": "分类效果评估与边界 case 分析报告",
     },
     {
+        "id": "week1-cluster-labels",
         "source": WEEK1_DIR / "第二版" / "04_可视化聚类与标签优化" / "outputs" / "report.md",
         "output": STEP1_DIR / "可视化聚类与标签优化报告.pdf",
         "title": "可视化聚类与标签优化报告",
     },
     {
+        "id": "week1-training-samples",
+        "source": WEB_CRAWLER_DIR / "report" / "training_samples_report.md",
+        "output": STEP1_DIR / "邮政FAQ爬虫训练样本构建报告.pdf",
+        "title": "邮政 FAQ 爬虫训练样本构建报告",
+    },
+    {
+        "id": "week3-qwen25-full",
         "source": WEEK3_DIR / "reports" / "qwen2.5_mlx_sft_full_experiment_report.md",
         "output": STEP2_DIR / "基于AppleMLX的Qwen2.5邮政客服模型微调完整实验报告.pdf",
         "title": "基于 Apple MLX 的 Qwen2.5 邮政客服模型微调完整实验报告",
     },
     {
+        "id": "week3-qwen25-3b-rank-sweep",
         "source": WEEK3_DIR / "reports" / "qwen2.5-3b_rank_sweep_report.md",
         "output": STEP2_DIR / "Qwen2.5-3B邮政客服LoRA RankSweep实验报告.pdf",
         "title": "Qwen2.5-3B 邮政客服 LoRA Rank Sweep 实验报告",
+    },
+    {
+        "id": "week3-qwen25-7b-rank-sweep",
+        "source": WEEK3_DIR / "reports" / "qwen2.5-7b_rank_sweep_report.md",
+        "output": STEP2_DIR / "Qwen2.5-7B邮政客服LoRA RankSweep实验报告.pdf",
+        "title": "Qwen2.5-7B 邮政客服 LoRA Rank Sweep 实验报告",
     },
 ]
 
@@ -355,7 +377,50 @@ def convert_one_report(browser, source: Path, output: Path, title: str) -> None:
         temp_html_path.unlink(missing_ok=True)
 
 
-def main() -> int:
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    """解析命令行参数。"""
+
+    parser = argparse.ArgumentParser(
+        description="将项目 Markdown 报告导出为 PDF。",
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="列出可渲染报告的 id，不生成 PDF。",
+    )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        metavar="ID",
+        help="只渲染指定 id 的报告；不传则渲染全部。",
+    )
+    return parser.parse_args(argv)
+
+
+def select_report_specs(only_ids: list[str] | None) -> list[dict[str, object]]:
+    """根据 --only 参数选择要渲染的报告。"""
+
+    if not only_ids:
+        return REPORT_SPECS
+
+    specs_by_id = {str(spec["id"]): spec for spec in REPORT_SPECS}
+    unknown_ids = [report_id for report_id in only_ids if report_id not in specs_by_id]
+    if unknown_ids:
+        available = "\n".join(f"- {report_id}" for report_id in specs_by_id)
+        unknown = ", ".join(unknown_ids)
+        raise ValueError(f"未知报告 id：{unknown}\n\n可用 id：\n{available}")
+
+    return [specs_by_id[report_id] for report_id in only_ids]
+
+
+def print_report_specs() -> None:
+    """打印可渲染报告清单。"""
+
+    for spec in REPORT_SPECS:
+        print(f"{spec['id']}\t{spec['title']}")
+
+
+def main(argv: list[str] | None = None) -> int:
     """主入口。
 
     执行流程：
@@ -366,11 +431,18 @@ def main() -> int:
     """
 
     try:
+        args = parse_args(sys.argv[1:] if argv is None else argv)
+
+        if args.list:
+            print_report_specs()
+            return 0
+
+        selected_specs = select_report_specs(args.only)
         ensure_dependencies()
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             try:
-                for spec in REPORT_SPECS:
+                for spec in selected_specs:
                     source = Path(spec["source"])
                     output = Path(spec["output"])
                     title = str(spec["title"])
@@ -380,7 +452,7 @@ def main() -> int:
             finally:
                 browser.close()
 
-        print("\n全部 PDF 已生成完成。")
+        print(f"\nPDF 已生成完成，共 {len(selected_specs)} 份。")
         return 0
     except Exception as exc:  # noqa: BLE001
         print(f"\n生成失败：{exc}", file=sys.stderr)
