@@ -49,6 +49,7 @@ week2/data/sft_training/
 week2/post-service-agent/artifacts/faiss/
 week2/post-service-agent/artifacts/faiss/postal.faiss
 week2/post-service-agent/artifacts/faiss/postal_metadata.json
+week2/post-service-agent/.docker/
 *.faiss
 
 # ----------------------------------------------------------------------
