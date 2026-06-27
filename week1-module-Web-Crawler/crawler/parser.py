@@ -30,6 +30,14 @@ POLICY_SIGNAL_KEYWORDS = [
     "锂电池",
     "冷链",
     "包装",
+    "产品介绍",
+    "产品服务",
+    "时限",
+    "资费",
+    "收费",
+    "费用",
+    "承诺服务",
+    "服务范围",
     "寄件须知",
     "prohibited",
     "restricted",
@@ -122,6 +130,9 @@ def _guess_categories(text: str, allowed_topics: list[str]) -> list[str]:
         "保价赔付": ["赔付", "理赔", "索赔", "赔偿", "免责条款"],
         "服务条款": ["服务条款", "使用条款", "terms", "conditions", "agreement", "协议"],
         "包装要求": ["包装要求", "包装规范", "包装须知", "packaging"],
+        "产品服务": ["产品介绍", "产品服务", "产品范围", "承诺服务", "开办范围"],
+        "时限标准": ["时限", "时效", "当日送达", "次日递", "承诺服务"],
+        "资费规则": ["资费", "收费", "费用", "价格", "报价"],
     }
 
     for category in allowed_topics:
@@ -254,6 +265,47 @@ def _looks_like_homepage(url: str, title: str, summary: str) -> bool:
     return homepage_path and (homepage_title or menu_heavy)
 
 
+def _looks_like_blocked_or_utility_page(url: str, title: str, plain_text: str) -> str:
+    """识别安全阻断、登录、报价和客服导航等工具页。"""
+
+    lowered_url = url.lower()
+    combined = f"{title} {plain_text[:2500]}".lower()
+
+    waf_markers = [
+        "访问的url有可能对网站造成安全威胁",
+        "your request has been blocked",
+        "potential threats to the server",
+        "attack.jinxibei.com",
+    ]
+    if any(marker.lower() in combined for marker in waf_markers):
+        return "WAF阻断页"
+
+    login_markers = ["个人登录", "法人/经办人登录", "用户名", "密码", "验证码", "忘记密码"]
+    if "login" in lowered_url or sum(1 for marker in login_markers if marker in combined) >= 4:
+        return "登录页"
+
+    quote_markers = ["报价查询", "发件人省份", "寄达国", "业务产品", "总资费", "首重资费"]
+    if "toquoteindex" in lowered_url or sum(1 for marker in quote_markers if marker in combined) >= 4:
+        return "报价工具页"
+
+    service_nav_markers = [
+        "11183在线客服",
+        "欢迎使用11183在线客服中心",
+        "扫描二维码关注",
+        "自助服务",
+        "查邮件",
+        "寄快递",
+        "查时限",
+        "查资费",
+        "查邮编",
+        "自提点",
+    ]
+    if sum(1 for marker in service_nav_markers if marker.lower() in combined) >= 6:
+        return "客服导航页"
+
+    return ""
+
+
 def _has_meaningful_policy_category(categories: list[str]) -> bool:
     """判断是否命中了非回退型主题。"""
 
@@ -276,8 +328,11 @@ def _looks_like_policy_content(
         plain_text,
         ["保价", "声明价值", "shipment insurance", "declared value", "liability", "claim"],
     )
+    utility_reason = _looks_like_blocked_or_utility_page(url, title, plain_text)
+    if utility_reason:
+        return False, utility_reason
 
-    if len(plain_text) < 120 and policy_signals < 4 and not has_hard_title:
+    if len(plain_text) < 120 and policy_signals < 4 and not has_hard_title and not meaningful_category:
         return False, "正文过短"
 
     if _looks_like_homepage(url, title, summary) and not has_hard_title:

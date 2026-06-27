@@ -1,384 +1,89 @@
 sources:
-  - source_id: chinapost_policy
-    company: 中国邮政
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.chinapost.com.cn
-    entry_urls:
-      - https://www.chinapost.com.cn/
-    allowed_topics:
-      - 禁限寄
-      - 国际清关
-      - 服务条款
-    parser_hint: generic
-
-  - source_id: ems_policy
+  - source_id: ems_policy_network
     company: 中国邮政 EMS
-    source_type: 企业官网
+    source_type: 官方服务网络
     country_region: 中国
     base_url: https://www.ems.com.cn
+    allowed_domains:
+      - ems.com.cn
+      - nmc.ems.com.cn
+      - my.ems.com.cn
+      - int.ems.com.cn
     entry_urls:
       - https://www.ems.com.cn/
+      - https://www.ems.com.cn/insured
+      - https://www.ems.com.cn/mail_compensation
+      - https://www.ems.com.cn/Taboo_items
+      - https://www.ems.com.cn/services_support
+      - https://www.ems.com.cn/complaints
+      - https://www.ems.com.cn/freight_prescription
+      - http://nmc.ems.com.cn:9096/imcloud/static/lead.html
+      - https://my.ems.com.cn/pcp-web/f/pcp/indexController/toquoteindex
+      - http://int.ems.com.cn/mailtax
+    api_endpoints:
+      - name: 11183_online_service_faq_channel_0
+        url: http://nmc.ems.com.cn:9096/imcloud/commonFAQ/getListByChannel
+        method: POST
+        json:
+          channel: 0
+      - name: 11183_online_service_faq_channel_1
+        url: http://nmc.ems.com.cn:9096/imcloud/commonFAQ/getListByChannel
+        method: POST
+        json:
+          channel: 1
+      - name: 11183_online_service_faq_channel_3
+        url: http://nmc.ems.com.cn:9096/imcloud/commonFAQ/getListByChannel
+        method: POST
+        json:
+          channel: 3
+      - name: 11183_online_service_faq_channel_4
+        url: http://nmc.ems.com.cn:9096/imcloud/commonFAQ/getListByChannel
+        method: POST
+        json:
+          channel: 4
     allowed_topics:
+      - 服务条款
       - 禁限寄
       - 国际清关
       - 邮寄保险
-      - 保价赔付
-    parser_hint: generic
-
-  - source_id: sf_policy
-    company: 顺丰速运
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.sf-express.com
-    entry_urls:
-      - https://www.sf-express.com/chn/sc/
-    allowed_topics:
-      - 禁限寄
-      - 冷链
-      - 邮寄保险
-      - 保价赔付
-      - 国际清关
-    parser_hint: generic
-
-  - source_id: jdl_policy
-    company: 京东物流
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.jdl.com
-    entry_urls:
-      - https://www.jdl.com/express/addValueService/
-      - https://www.jdl.com/coldChain/
-    allowed_topics:
-      - 禁限寄
-      - 冷链
-      - 保价赔付
-      - 服务条款
-    parser_hint: generic
-
-  - source_id: yto_policy
-    company: 圆通速递
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.yto.net.cn
-    entry_urls:
-      - https://www.yto.net.cn/service/standard/
-    allowed_topics:
-      - 禁限寄
-      - 保价赔付
-      - 服务条款
-    parser_hint: generic
-
-  - source_id: sto_policy
-    company: 申通快递
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.sto.cn
-    entry_urls:
-      - https://www.sto.cn/service/express/
-    allowed_topics:
-      - 禁限寄
-      - 保价赔付
-      - 服务条款
-    parser_hint: generic
-
-  - source_id: zto_policy
-    company: 中通快递
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.zto.com
-    entry_urls:
-      - https://www.zto.com/express/standard/
-    allowed_topics:
-      - 禁限寄
-      - 保价赔付
-      - 服务条款
-    parser_hint: generic
-
-  - source_id: yunda_policy
-    company: 韵达速递
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.yundaex.com
-    entry_urls:
-      - https://www.yundaex.com/cn/service/
-    allowed_topics:
-      - 禁限寄
-      - 保价赔付
-      - 服务条款
-    parser_hint: generic
-
-  - source_id: jt_policy
-    company: 极兔速递
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.jtexpress.com.cn
-    entry_urls:
-      - https://www.jtexpress.com.cn/service.html
-      - https://www.jtexpress.com.cn/international.html
-    allowed_topics:
-      - 禁限寄
-      - 保价赔付
-      - 国际清关
-      - 服务条款
-    parser_hint: generic
-
-  - source_id: deppon_policy
-    company: 德邦快递
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.deppon.com
-    entry_urls:
-      - https://www.deppon.com/standard/
-    allowed_topics:
-      - 禁限寄
       - 保价赔付
       - 包装要求
-      - 服务条款
+      - 投诉申诉
+      - 产品服务
+      - 时限标准
+      - 资费规则
     parser_hint: generic
 
-  - source_id: ky_policy
-    company: 跨越速运
-    source_type: 企业官网
+  - source_id: china_post_portal
+    company: 中国邮政
+    source_type: 集团业务门户
     country_region: 中国
-    base_url: https://www.ky-express.com
+    base_url: https://www.11185.cn
+    allowed_domains:
+      - 11185.cn
     entry_urls:
-      - https://www.ky-express.com/serve/service.html
-    allowed_topics:
-      - 禁限寄
-      - 保价赔付
-      - 时效
-      - 服务条款
-    parser_hint: generic
-
-  - source_id: cainiao_policy
-    company: 菜鸟
-    source_type: 企业官网
-    country_region: 中国
-    base_url: https://www.cainiao.com
-    entry_urls:
-      - https://www.cainiao.com/markets/cn/
+      - https://www.11185.cn/
     allowed_topics:
       - 服务条款
-      - 物流规则
       - 禁限寄
+      - 国际清关
+      - 投诉申诉
+      - 包装要求
     parser_hint: generic
 
-  - source_id: spb_policy
+  - source_id: spb_zwfw_portal
     company: 国家邮政局
-    source_type: 监管机构
+    source_type: 政务服务门户
     country_region: 中国
-    base_url: https://www.spb.gov.cn
+    base_url: https://zwfw.spb.gov.cn
+    allowed_domains:
+      - zwfw.spb.gov.cn
     entry_urls:
-      - https://www.spb.gov.cn/gjyzj/c100009/c100012/common_list.shtml
-      - https://www.spb.gov.cn/gjyzj/c100009/c100013/common_list.shtml
+      - https://zwfw.spb.gov.cn/
     allowed_topics:
-      - 禁限寄
+      - 政策法规
       - 服务条款
       - 投诉申诉
-      - 政策法规
-    parser_hint: generic
-
-  - source_id: gacc_policy
-    company: 海关总署
-    source_type: 监管机构
-    country_region: 中国
-    base_url: http://www.customs.gov.cn
-    entry_urls:
-      - http://www.customs.gov.cn/customs/302249/302266/302267/index.html
-    allowed_topics:
-      - 国际清关
-      - 进出口限制
-      - 申报要求
-    parser_hint: generic
-
-  - source_id: caac_policy
-    company: 中国民用航空局
-    source_type: 监管机构
-    country_region: 中国
-    base_url: http://www.caac.gov.cn
-    entry_urls:
-      - http://www.caac.gov.cn/XXGK/XXGK/
-    allowed_topics:
-      - 危险品
-      - 锂电池
-      - 航空限制
-    parser_hint: generic
-
-  - source_id: mot_policy
-    company: 交通运输部
-    source_type: 监管机构
-    country_region: 中国
-    base_url: https://www.mot.gov.cn
-    entry_urls:
-      - https://www.mot.gov.cn/zhengcejiedu/
-    allowed_topics:
-      - 危险品
-      - 冷链
-      - 运输规则
-    parser_hint: generic
-
-  - source_id: samr_policy
-    company: 国家市场监督管理总局
-    source_type: 监管机构
-    country_region: 中国
-    base_url: https://www.samr.gov.cn
-    entry_urls:
-      - https://www.samr.gov.cn/zw/zfxxgk/fdzdgknr/
-    allowed_topics:
-      - 包装要求
-      - 服务条款
+      - 禁限寄
       - 标准规范
-    parser_hint: generic
-
-  - source_id: ups_policy
-    company: UPS
-    source_type: 企业官网
-    country_region: 国际
-    base_url: https://www.ups.com
-    entry_urls:
-      - https://www.ups.com/cn/zh/support/shipping-support/legal-terms-conditions.page
-    allowed_topics:
-      - 危险品
-      - 国际清关
-      - 邮寄保险
-      - 保价赔付
-    parser_hint: generic
-
-  - source_id: fedex_policy
-    company: FedEx
-    source_type: 企业官网
-    country_region: 国际
-    base_url: https://www.fedex.com
-    entry_urls:
-      - https://www.fedex.com/zh-cn/service-guide.html
-    allowed_topics:
-      - 危险品
-      - 国际清关
-      - 邮寄保险
-      - 保价赔付
-    parser_hint: generic
-
-  - source_id: dhl_policy
-    company: DHL Express
-    source_type: 企业官网
-    country_region: 国际
-    base_url: https://www.dhl.com
-    entry_urls:
-      - https://www.dhl.com/cn-zh/home/our-divisions/express/shipping.html
-    allowed_topics:
-      - 危险品
-      - 国际清关
-      - 邮寄保险
-      - 保价赔付
-    parser_hint: generic
-
-  - source_id: usps_policy
-    company: USPS
-    source_type: 企业官网
-    country_region: 美国
-    base_url: https://www.usps.com
-    entry_urls:
-      - https://www.usps.com/ship/shipping-restrictions.htm
-    allowed_topics:
-      - 危险品
-      - 国际清关
-      - 禁限寄
-    parser_hint: generic
-
-  - source_id: royalmail_policy
-    company: Royal Mail
-    source_type: 企业官网
-    country_region: 英国
-    base_url: https://www.royalmail.com
-    entry_urls:
-      - https://www.royalmail.com/sending/restrictions
-      - https://www.royalmail.com/sending/international/country-guides
-    allowed_topics:
-      - 禁限寄
-      - 国际清关
-      - 危险品
-    parser_hint: generic
-
-  - source_id: japanpost_policy
-    company: Japan Post
-    source_type: 企业官网
-    country_region: 日本
-    base_url: https://www.post.japanpost.jp
-    entry_urls:
-      - https://www.post.japanpost.jp/int/use/restriction_en.html
-      - https://www.post.japanpost.jp/int/use/damage_en.html
-    allowed_topics:
-      - 国际清关
-      - 禁限寄
-      - 危险品
-    parser_hint: generic
-
-  - source_id: auspost_policy
-    company: Australia Post
-    source_type: 企业官网
-    country_region: 澳大利亚
-    base_url: https://auspost.com.au
-    entry_urls:
-      - https://auspost.com.au/sending/check-sending-guidelines/dangerous-and-prohibited-goods
-      - https://auspost.com.au/sending/parcels-overseas/international-post-guide
-    allowed_topics:
-      - 国际清关
-      - 禁限寄
-      - 危险品
-    parser_hint: generic
-
-  - source_id: canadapost_policy
-    company: Canada Post
-    source_type: 企业官网
-    country_region: 加拿大
-    base_url: https://www.canadapost-postescanada.ca
-    entry_urls:
-      - https://www.canadapost-postescanada.ca/cpc/en/support/articles/non-mailable-matter/what-is-non-mailable-matter.page
-      - https://www.canadapost-postescanada.ca/cpc/en/support/articles/parcel-services-shipping-in-canada/coverage-options.page
-    allowed_topics:
-      - 禁限寄
-      - 国际清关
-      - 保价赔付
-    parser_hint: generic
-
-  - source_id: singpost_policy
-    company: Singapore Post
-    source_type: 企业官网
-    country_region: 新加坡
-    base_url: https://www.singpost.com
-    entry_urls:
-      - https://www.singpost.com/send-receive/sending-overseas/conditions-for-posting
-      - https://www.singpost.com/send-receive/sending-overseas/prohibited-items
-    allowed_topics:
-      - 禁限寄
-      - 国际清关
-      - 危险品
-    parser_hint: generic
-
-  - source_id: upu_policy
-    company: UPU
-    source_type: 行业组织
-    country_region: 国际
-    base_url: https://www.upu.int
-    entry_urls:
-      - https://www.upu.int/en/Postal-Solutions/Programmes-Services/EMS
-      - https://www.upu.int/en/Postal-Solutions/Programmes-Services/Customs
-    allowed_topics:
-      - 国际清关
-      - 禁限寄
-      - 服务条款
-    parser_hint: generic
-
-  - source_id: iata_policy
-    company: IATA
-    source_type: 行业组织
-    country_region: 国际
-    base_url: https://www.iata.org
-    entry_urls:
-      - https://www.iata.org/en/programs/cargo/dgr/
-    allowed_topics:
-      - 危险品
-      - 锂电池
-      - 航空限制
     parser_hint: generic

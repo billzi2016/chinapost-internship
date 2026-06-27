@@ -60,3 +60,71 @@ def test_parse_policy_page_accepts_policy_detail_page() -> None:
     assert record is not None
     assert "禁限寄" in record.policy_categories
     assert record.insurance_available is True
+
+
+def test_parse_policy_page_filters_ems_waf_block_page() -> None:
+    """EMS WAF 阻断页不能进入训练样本。"""
+
+    html = """
+    <html>
+      <head><title>405</title></head>
+      <body>很抱歉，由于您访问的URL有可能对网站造成安全威胁，您的访问被阻断。</body>
+    </html>
+    """
+
+    record, filtered = parse_policy_page(
+        _build_source(),
+        "https://www.ems.com.cn/insured",
+        html,
+    )
+
+    assert record is None
+    assert filtered is not None
+    assert filtered.filter_reason == "WAF阻断页"
+
+
+def test_parse_policy_page_filters_ems_quote_tool() -> None:
+    """报价查询表单不是 policy 语料。"""
+
+    html = """
+    <html>
+      <head><title>报价查询</title></head>
+      <body>
+        报价查询 发件人省份 寄达国 业务产品 总资费 标准资费 首重资费 查询
+      </body>
+    </html>
+    """
+
+    record, filtered = parse_policy_page(
+        _build_source(),
+        "https://my.ems.com.cn/pcp-web/f/pcp/indexController/toquoteindex",
+        html,
+    )
+
+    assert record is None
+    assert filtered is not None
+    assert filtered.filter_reason == "报价工具页"
+
+
+def test_parse_policy_page_filters_11183_service_navigation() -> None:
+    """11183 客服入口页只是导航壳，不应因关键词入库。"""
+
+    html = """
+    <html>
+      <head><title>11183在线客服</title></head>
+      <body>
+        欢迎使用11183在线客服中心 扫描二维码关注 EMS微信公众号 自助服务
+        查邮件 寄快递 查时限 查资费 查邮编 保价保险 邮件赔偿 禁寄物品 海关业务 自提点
+      </body>
+    </html>
+    """
+
+    record, filtered = parse_policy_page(
+        _build_source(),
+        "http://nmc.ems.com.cn:9096/imcloud/static/lead.html",
+        html,
+    )
+
+    assert record is None
+    assert filtered is not None
+    assert filtered.filter_reason == "客服导航页"
