@@ -89,6 +89,35 @@ def read_jsonl(path: Path, limit: int) -> list[dict[str, Any]]:
     return records
 
 
+def normalize_text(value: Any) -> str:
+    """归一化文本，供 exact match 和 overlap 计算。"""
+    text = str(value or "")
+    text = re.sub(r"\s+", "", text)
+    return text.strip().lower()
+
+
+def rouge_l_f1(reference: str, prediction: str) -> float:
+    """计算轻量字符级 ROUGE-L F1。"""
+    ref = list(normalize_text(reference))
+    pred = list(normalize_text(prediction))
+    if not ref or not pred:
+        return 0.0
+
+    dp = [[0] * (len(pred) + 1) for _ in range(len(ref) + 1)]
+    for i, ref_char in enumerate(ref, start=1):
+        for j, pred_char in enumerate(pred, start=1):
+            if ref_char == pred_char:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+            else:
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+    lcs = dp[-1][-1]
+    precision = lcs / len(pred)
+    recall = lcs / len(ref)
+    if precision + recall == 0:
+        return 0.0
+    return 2 * precision * recall / (precision + recall)
+
+
 def run_generate(model: str, adapter_path: str, prompt: str, max_tokens: int) -> str:
     """调用 mlx_lm.generate 生成答案。"""
     command = ["mlx_lm.generate", "--model", model, "--max-tokens", str(max_tokens), "--prompt", prompt]
@@ -127,6 +156,22 @@ def extract_json(text: str) -> Any:
         raise
 
 
+def extract_choice_answer(text: str) -> str:
+    """从生成文本中提取 A/B/C/D 选项。"""
+    cleaned = clean_generation_text(text)
+    patterns = [
+        r"答案[:：]?\s*([ABCD])\b",
+        r"选项[:：]?\s*([ABCD])\b",
+        r"^\s*([ABCD])\b",
+        r"\b([ABCD])\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, cleaned, flags=re.I | re.M)
+        if match:
+            return match.group(1).upper()
+    return ""
+
+
 def has_required_json_keys(parsed: Any, required: list[str]) -> bool:
     """检查 JSON 字段是否满足要求，支持中英文字段别名。
 
@@ -141,6 +186,28 @@ def has_required_json_keys(parsed: Any, required: list[str]) -> bool:
         if not any(alias in actual_keys for alias in aliases):
             return False
     return True
+
+
+def lookup_json_value(parsed: dict[str, Any], key: str) -> Any:
+    """按字段别名从 JSON 中取值。"""
+    aliases = JSON_KEY_ALIASES.get(key, (key,))
+    for alias in aliases:
+        if alias in parsed:
+            return parsed[alias]
+    return None
+
+
+def compare_expected_json(parsed: Any, answer: Any) -> tuple[float, bool]:
+    """比较 JSON 参考答案，返回字段命中率和是否完全匹配。"""
+    if not isinstance(parsed, dict) or not isinstance(answer, dict) or not answer:
+        return 0.0, False
+    matches = 0
+    for key, expected_value in answer.items():
+        actual_value = lookup_json_value(parsed, key)
+        if normalize_text(actual_value) == normalize_text(expected_value):
+            matches += 1
+    rate = matches / len(answer)
+    return rate, matches == len(answer)
 
 
 def is_negated_risk(text: str, match: re.Match[str]) -> bool:
@@ -183,6 +250,7 @@ def score_record(record: dict[str, Any], output: str) -> dict[str, Any]:
     postal_hits = sum(1 for term in POSTAL_TERMS if term in cleaned_output)
     next_step_hits = sum(1 for term in NEXT_STEP_TERMS if term in cleaned_output)
     risk_hits = count_risk_hits(output)
+    answer = record.get("answer")
 
     metrics: dict[str, Any] = {
         "output_chars": output_len,
@@ -197,9 +265,22 @@ def score_record(record: dict[str, Any], output: str) -> dict[str, Any]:
             required = record.get("required_keys") or []
             metrics["json_valid"] = isinstance(parsed, dict)
             metrics["json_required_keys_ok"] = has_required_json_keys(parsed, required)
+            if answer is not None:
+                value_match_rate, json_exact_match = compare_expected_json(parsed, answer)
+                metrics["json_value_match_rate"] = value_match_rate
+                metrics["json_exact_match"] = json_exact_match
         except Exception:
             metrics["json_valid"] = False
             metrics["json_required_keys_ok"] = False
+            if answer is not None:
+                metrics["json_value_match_rate"] = 0.0
+                metrics["json_exact_match"] = False
+
+    answer_type = str(record.get("answer_type", "")).strip().lower()
+    if answer and (task == "ceval_choice" or answer_type == "choice"):
+        predicted_choice = extract_choice_answer(output)
+        metrics["predicted_choice"] = predicted_choice
+        metrics["choice_correct"] = predicted_choice == str(answer).strip().upper()
 
     if task in {"math", "summary", "extract", "rewrite", "code", "logic", "bilingual", "instruction"}:
         prompt = str(record.get("prompt", ""))
@@ -208,6 +289,19 @@ def score_record(record: dict[str, Any], output: str) -> dict[str, Any]:
             and "快递" not in prompt
             and not is_allowed_postal_translation(record, output)
         )
+
+    if answer is not None and task != "ceval_choice" and answer_type != "choice":
+        if isinstance(answer, dict):
+            try:
+                parsed = extract_json(output)
+            except Exception:
+                parsed = None
+            value_match_rate, json_exact_match = compare_expected_json(parsed, answer)
+            metrics.setdefault("json_value_match_rate", value_match_rate)
+            metrics.setdefault("json_exact_match", json_exact_match)
+        else:
+            metrics["exact_match"] = normalize_text(cleaned_output) == normalize_text(answer)
+            metrics["rouge_l_f1"] = rouge_l_f1(str(answer), cleaned_output)
 
     return metrics
 
@@ -230,10 +324,24 @@ def aggregate(results: list[dict[str, Any]]) -> dict[str, Any]:
             task_summary["json_required_keys_rate"] = mean(
                 1 if item.get("json_required_keys_ok") else 0 for item in metrics_list
             )
+        if any("json_value_match_rate" in item for item in metrics_list):
+            task_summary["avg_json_value_match_rate"] = mean(
+                float(item.get("json_value_match_rate", 0.0)) for item in metrics_list
+            )
+        if any("json_exact_match" in item for item in metrics_list):
+            task_summary["json_exact_match_rate"] = mean(
+                1 if item.get("json_exact_match") else 0 for item in metrics_list
+            )
         if any("postal_pollution" in item for item in metrics_list):
             task_summary["postal_pollution_rate"] = mean(
                 1 if item.get("postal_pollution") else 0 for item in metrics_list
             )
+        if any("exact_match" in item for item in metrics_list):
+            task_summary["exact_match_rate"] = mean(1 if item.get("exact_match") else 0 for item in metrics_list)
+        if any("rouge_l_f1" in item for item in metrics_list):
+            task_summary["avg_rouge_l_f1"] = mean(float(item.get("rouge_l_f1", 0.0)) for item in metrics_list)
+        if any("choice_correct" in item for item in metrics_list):
+            task_summary["choice_accuracy"] = mean(1 if item.get("choice_correct") else 0 for item in metrics_list)
         summary["tasks"][task] = task_summary
     return summary
 

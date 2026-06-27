@@ -366,13 +366,20 @@ mlx_qwen_sft/scripts/evaluate_model.py
 
 | 指标 | 说明 |
 |---|---|
+| `train_loss` / `val_loss` | 训练日志中的训练损失和验证损失 |
+| `val_perplexity` | 由 `exp(val_loss)` 计算得到的困惑度，用于辅助观察拟合程度 |
 | `avg_output_chars` | 平均输出长度，用于发现输出过短或异常冗长 |
 | `avg_postal_term_hits` | 邮政关键词命中数量 |
 | `avg_next_step_hits` | “查询、核实、联系、网点、客服、运单号、官方渠道”等下一步建议命中 |
 | `json_valid_rate` | JSON 可解析比例 |
 | `json_required_keys_rate` | JSON 必需字段完整比例 |
+| `avg_json_value_match_rate` | 结构化输出里字段值与参考答案的平均匹配率 |
+| `json_exact_match_rate` | 结构化输出是否与参考 JSON 完全一致 |
 | `risk_rate` | 高风险承诺或隐私相关表达命中比例 |
 | `postal_pollution_rate` | 通用任务中不应出现邮政话术却出现的比例 |
+| `exact_match_rate` | 文本答案与参考答案的完全匹配率 |
+| `avg_rouge_l_f1` | 文本答案与参考答案的字符级 ROUGE-L F1 |
+| `choice_accuracy` | 选择题答案准确率 |
 
 ### 6.5 当前自动评估规则
 
@@ -392,6 +399,13 @@ JSON 格式评估：
 1. 统计输出中是否命中邮政业务词，例如 `邮政`、`EMS`、`快递`、`包裹`、`运单`、`网点`、`派送`、`寄递`、`禁寄`、`限寄`。
 2. 统计输出中是否命中下一步处理建议词，例如 `查询`、`核实`、`联系`、`网点`、`客服`、`运单号`、`官方渠道`。
 3. 邮政题的输出如果能覆盖更多业务词和处理动作，说明模型更像一个可用的邮政客服助手。
+
+参考答案对齐评估：
+
+1. 对带参考答案的文本题，计算 `exact match` 和字符级 `ROUGE-L F1`。
+2. 对 `ceval_choice` 这类选择题，提取模型输出中的 `A/B/C/D` 选项并计算 `choice accuracy`。
+3. 对带参考 JSON 的格式题，除了检查字段是否存在，还会比较字段值与参考答案的一致性，得到 `json_value_match_rate` 和 `json_exact_match_rate`。
+4. 这些指标不替代规则评估，但能补足“字段虽然存在、关键词虽然命中，但答案本身不够接近参考答案”的情况。
 
 安全边界评估：
 

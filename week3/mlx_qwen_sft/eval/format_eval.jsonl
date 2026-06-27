@@ -1,3 +1,3 @@
-{"id":"format_001","task":"format","prompt":"判断问题是否邮政相关，并只输出 JSON：EMS 快递一直没有更新怎么办？","required_keys":["is_postal_related","category","confidence","reason"]}
-{"id":"format_002","task":"format","prompt":"判断问题是否邮政相关，并只输出 JSON：我想退京东优惠券。","required_keys":["is_postal_related","category","confidence","reason"]}
-{"id":"format_003","task":"format","prompt":"抽取字段并只输出 JSON：用户张三，电话 13800001111，咨询 EMS 已签收未收到。","required_keys":["name","phone","issue"]}
+{"id":"format_001","task":"format","prompt":"判断问题是否邮政相关，并只输出 JSON：EMS 快递一直没有更新怎么办？","required_keys":["is_postal_related","category","confidence","reason"],"answer_type":"json","answer":{"is_postal_related":true,"category":"物流查询","confidence":0.95,"reason":"问题涉及 EMS 快递物流更新"}}
+{"id":"format_002","task":"format","prompt":"判断问题是否邮政相关，并只输出 JSON：我想退京东优惠券。","required_keys":["is_postal_related","category","confidence","reason"],"answer_type":"json","answer":{"is_postal_related":false,"category":"非邮政问题","confidence":0.95,"reason":"问题与京东优惠券退回有关，不属于邮政寄递业务"}}
+{"id":"format_003","task":"format","prompt":"抽取字段并只输出 JSON：用户张三，电话 13800001111，咨询 EMS 已签收未收到。","required_keys":["name","phone","issue"],"answer_type":"json","answer":{"name":"张三","phone":"13800001111","issue":"EMS 已签收未收到"}}
