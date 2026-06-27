@@ -43,12 +43,49 @@ class Storage:
             shutil.rmtree(self.data_dir)
         self.ensure_directories()
 
-    def append_fetch_result(self, result: FetchResult) -> None:
+    def reset_parsed_outputs(self) -> None:
+        """清空离线解析输出，保留已抓取的 raw 和 fetch 日志。"""
+
+        for path in [
+            self.parsed_dir / "policies.jsonl",
+            self.parsed_dir / "training_samples.jsonl",
+            self.logs_dir / "filtered_pages.jsonl",
+        ]:
+            if path.exists():
+                path.unlink()
+
+    def append_fetch_result(
+        self,
+        result: FetchResult,
+        source_id: str = "",
+        company: str = "",
+        parser_kind: str = "html",
+    ) -> None:
         """记录页面抓取结果。"""
 
         payload = asdict(result)
+        text = result.text
+        raw_text_path = ""
+        if text:
+            raw_text_path = str(self._write_raw_text(result.final_url or result.url, text, parser_kind))
+        payload["source_id"] = source_id
+        payload["company"] = company
+        payload["parser_kind"] = parser_kind
+        payload["raw_text_path"] = raw_text_path
+        payload["text"] = text[:1000]
+        payload["text_truncated"] = len(text) > 1000
         payload["body_bytes"] = f"<bytes:{len(result.body_bytes)}>"
         self._append_json_line(self.logs_dir / "fetch_results.jsonl", payload)
+
+    def _write_raw_text(self, url: str, text: str, parser_kind: str) -> Path:
+        """保存完整文本响应，供离线 parse/filter 反复使用。"""
+
+        digest = sha1(f"{parser_kind}:{url}:{text[:200]}".encode("utf-8")).hexdigest()
+        suffix = "json" if parser_kind == "faq_json" else "html"
+        raw_path = self.raw_dir / f"{digest}.{suffix}"
+        with self._write_lock:
+            raw_path.write_text(text, encoding="utf-8")
+        return raw_path
 
     def append_policy_record(self, record: PolicyRecord) -> None:
         """记录解析后的政策结果。"""

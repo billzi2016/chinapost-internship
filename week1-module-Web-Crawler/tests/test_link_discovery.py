@@ -21,6 +21,27 @@ def test_discover_policy_links_keeps_same_domain_policy_urls() -> None:
     assert "https://example.com/product/list" not in links
 
 
+def test_discover_policy_links_keeps_allowed_cross_subdomain_links() -> None:
+    """允许在同一业务体系的白名单子域之间继续发现政策链接。"""
+
+    html = """
+    <a href="https://www.ems.com.cn/insured">保价保险</a>
+    <a href="https://int.ems.com.cn/mailtax">海关业务</a>
+    <a href="https://external.example.com/policy">外部链接</a>
+    """
+
+    links = discover_policy_links(
+        "http://nmc.ems.com.cn:9096/imcloud/static/lead.html",
+        html,
+        allowed_domains=["ems.com.cn", "nmc.ems.com.cn", "int.ems.com.cn"],
+    )
+
+    assert "https://www.ems.com.cn/insured" in links
+    assert "http://int.ems.com.cn/mailtax" not in links
+    assert "https://int.ems.com.cn/mailtax" in links
+    assert "https://external.example.com/policy" not in links
+
+
 def test_discover_policy_links_skips_static_assets() -> None:
     """静态资源路径不应被误认为政策页面。"""
 

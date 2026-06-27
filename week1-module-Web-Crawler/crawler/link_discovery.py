@@ -135,12 +135,43 @@ def extract_links(base_url: str, html_text: str) -> list[tuple[str, str]]:
     return extracted
 
 
-def is_policy_like_url(source_base_url: str, url: str, anchor_text: str) -> bool:
+def _is_allowed_domain(url: str, allowed_domains: list[str]) -> bool:
+    """判断链接是否落在允许域名范围内。"""
+
+    target_domain = urlparse(url).netloc.lower()
+    if not target_domain:
+        return False
+
+    normalized_domains = [domain.lower() for domain in allowed_domains if domain]
+    if not normalized_domains:
+        return True
+
+    return any(
+        target_domain == domain or target_domain.endswith(f".{domain}")
+        for domain in normalized_domains
+    )
+
+
+def is_policy_like_url(
+    source_base_url: str,
+    url: str,
+    anchor_text: str,
+    allowed_domains: list[str] | None = None,
+) -> bool:
     """根据 URL 和锚文本联合判断候选页面。"""
 
-    source_domain = urlparse(source_base_url).netloc.lower()
-    parsed = urlparse(url)
-    if parsed.netloc.lower() != source_domain:
+    source_domain = urlparse(source_base_url).hostname or ""
+    target_domain = urlparse(url).hostname or ""
+    if allowed_domains is None:
+        if target_domain.lower() != source_domain.lower():
+            return False
+        allowed_domain_list = [source_domain]
+    else:
+        allowed_domain_list = list(allowed_domains)
+        if source_domain and source_domain not in allowed_domain_list:
+            allowed_domain_list.append(source_domain)
+
+    if not _is_allowed_domain(url, allowed_domain_list):
         return False
 
     lowered = url.lower()
@@ -169,6 +200,11 @@ def is_policy_like_url(source_base_url: str, url: str, anchor_text: str) -> bool
             "限寄",
             "规则",
             "须知",
+            "保价",
+            "保险",
+            "赔偿",
+            "海关",
+            "清关",
             "dangerous goods",
             "restricted",
             "prohibited",
@@ -185,7 +221,11 @@ def is_policy_like_url(source_base_url: str, url: str, anchor_text: str) -> bool
     return hard_anchor_hit and anchor_has_policy_hint
 
 
-def discover_policy_links(source_base_url: str, html_text: str) -> list[str]:
+def discover_policy_links(
+    source_base_url: str,
+    html_text: str,
+    allowed_domains: list[str] | None = None,
+) -> list[str]:
     """提取并过滤候选政策链接。"""
 
     discovered: list[str] = []
@@ -193,7 +233,7 @@ def discover_policy_links(source_base_url: str, html_text: str) -> list[str]:
     for link, anchor_text in extract_links(source_base_url, html_text):
         if link in seen:
             continue
-        if not is_policy_like_url(source_base_url, link, anchor_text):
+        if not is_policy_like_url(source_base_url, link, anchor_text, allowed_domains):
             continue
         seen.add(link)
         discovered.append(link)

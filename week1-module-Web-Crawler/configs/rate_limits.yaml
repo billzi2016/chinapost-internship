@@ -1,16 +1,16 @@
 defaults:
-  min_interval_seconds: 5
-  max_interval_seconds: 15
+  min_interval_seconds: 8
+  max_interval_seconds: 18
   max_concurrency: 1
-  user_agent: PolicyCrawler/0.1 (+policy-crawler@example.com)
+  user_agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36
 
 domains:
   ems.com.cn:
-    min_interval_seconds: 8
-    max_interval_seconds: 15
-  sf-express.com:
-    min_interval_seconds: 8
-    max_interval_seconds: 15
+    min_interval_seconds: 15
+    max_interval_seconds: 30
+  11185.cn:
+    min_interval_seconds: 10
+    max_interval_seconds: 20
   spb.gov.cn:
-    min_interval_seconds: 5
-    max_interval_seconds: 10
+    min_interval_seconds: 10
+    max_interval_seconds: 20

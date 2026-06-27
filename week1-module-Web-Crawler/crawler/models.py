@@ -21,6 +21,8 @@ class SourceConfig:
     base_url: str
     entry_urls: list[str]
     allowed_topics: list[str]
+    allowed_domains: list[str] = field(default_factory=list)
+    api_endpoints: list[dict[str, object]] = field(default_factory=list)
     parser_hint: str = "generic"
 
 

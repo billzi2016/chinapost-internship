@@ -58,6 +58,8 @@ def load_sources(config_dir: Path) -> list[SourceConfig]:
             base_url=item["base_url"],
             entry_urls=item["entry_urls"],
             allowed_topics=item["allowed_topics"],
+            allowed_domains=item.get("allowed_domains", []),
+            api_endpoints=item.get("api_endpoints", []),
             parser_hint=item.get("parser_hint", "generic"),
         )
         for item in sources

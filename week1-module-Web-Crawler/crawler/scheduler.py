@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
 from crawler.dedupe import canonicalize_url
+from crawler.faq_parser import parse_faq_json
 from crawler.fetcher import Fetcher
 from crawler.link_discovery import discover_policy_links
 from crawler.models import CrawlTask, SourceConfig
@@ -46,6 +47,7 @@ def run_seed_tasks(
     max_pages_per_source: int = 3,
     discovery_depth: int = 1,
     max_workers: int = 4,
+    parse_during_crawl: bool = True,
 ) -> list[str]:
     """执行第一批种子任务。
 
@@ -75,6 +77,7 @@ def run_seed_tasks(
                 dry_run=dry_run,
                 max_pages_per_source=max_pages_per_source,
                 discovery_depth=discovery_depth,
+                parse_during_crawl=parse_during_crawl,
                 emit=emit,
             )
             for source in sources
@@ -95,6 +98,7 @@ def _run_single_source(
     dry_run: bool,
     max_pages_per_source: int,
     discovery_depth: int,
+    parse_during_crawl: bool,
     emit,
 ) -> None:
     """串行处理单个来源的抓取队列。"""
@@ -110,7 +114,57 @@ def _run_single_source(
         for url in source.entry_urls
     ]
     visited: set[str] = set()
+    stored_policy_urls: set[str] = set()
+    stored_policy_fingerprints: set[tuple[str, str]] = set()
     completed = 0
+
+    for endpoint in source.api_endpoints:
+        if completed >= max_pages_per_source:
+            break
+        endpoint_url = str(endpoint["url"])
+        method = str(endpoint.get("method", "GET")).upper()
+        payload = endpoint.get("json", {})
+        if dry_run:
+            completed += 1
+            emit(f"[DRY-RUN][api] {source.company}: {endpoint_url}")
+            continue
+        if method != "POST":
+            emit(f"[API-SKIP] {source.company}: unsupported method={method} -> {endpoint_url}")
+            continue
+        result = fetcher.post_json(endpoint_url, dict(payload) if isinstance(payload, dict) else {})
+        storage.append_fetch_result(
+            result,
+            source_id=source.source_id,
+            company=source.company,
+            parser_kind="faq_json",
+        )
+        completed += 1
+        emit(
+            f"[API][depth=0] {source.company}: {endpoint_url} -> "
+            f"{result.status_code if result.status_code is not None else 'SKIP'}"
+        )
+        if not result.success or not parse_during_crawl:
+            continue
+        try:
+            policy_records, filtered_records = parse_faq_json(source, endpoint_url, result.text)
+        except Exception as exc:
+            emit(f"[API-ERROR] {source.company}: {endpoint_url} -> {exc}")
+            continue
+        saved_count = 0
+        for record in policy_records:
+            fingerprint = (record.title, record.summary)
+            if record.url in stored_policy_urls or fingerprint in stored_policy_fingerprints:
+                continue
+            stored_policy_urls.add(record.url)
+            stored_policy_fingerprints.add(fingerprint)
+            storage.append_policy_record(record)
+            saved_count += 1
+        for filtered_record in filtered_records:
+            storage.append_filtered_page(filtered_record)
+        emit(
+            f"[API-PARSE] {source.company}: policies={saved_count} "
+            f"filtered={len(filtered_records)} -> {endpoint_url}"
+        )
 
     while tasks:
         task = tasks.pop(0)
@@ -136,7 +190,12 @@ def _run_single_source(
             continue
 
         result = fetcher.fetch(task.url)
-        storage.append_fetch_result(result)
+        storage.append_fetch_result(
+            result,
+            source_id=task.source_id,
+            company=task.company,
+            parser_kind="html",
+        )
         completed += 1
         emit(
             f"[FETCH][depth={task.depth}] {task.company}: {task.url} -> "
@@ -164,6 +223,9 @@ def _run_single_source(
                 title=pdf_title,
                 body_bytes=result.body_bytes,
             )
+            if not parse_during_crawl:
+                continue
+
             try:
                 pdf_text = extract_pdf_text(result.body_bytes)
             except Exception as exc:
@@ -176,6 +238,14 @@ def _run_single_source(
                 emit(f"[FILTER][PDF] {task.company}: {filtered_record.filter_reason} -> {result.final_url}")
                 continue
             if policy_record is not None:
+                fingerprint = (policy_record.title, policy_record.summary)
+                if (
+                    policy_record.url in stored_policy_urls
+                    or fingerprint in stored_policy_fingerprints
+                ):
+                    continue
+                stored_policy_urls.add(policy_record.url)
+                stored_policy_fingerprints.add(fingerprint)
                 storage.append_policy_record(policy_record)
                 emit(f"[PDF] {task.company}: parsed -> {result.final_url}")
             continue
@@ -183,17 +253,27 @@ def _run_single_source(
         if "html" not in content_type:
             continue
 
-        policy_record, filtered_record = parse_policy_page(source, task.url, result.text)
-        if filtered_record is not None:
-            storage.append_filtered_page(filtered_record)
-            emit(f"[FILTER] {task.company}: {filtered_record.filter_reason} -> {task.url}")
-        elif policy_record is not None:
-            storage.append_policy_record(policy_record)
+        if parse_during_crawl:
+            policy_record, filtered_record = parse_policy_page(source, task.url, result.text)
+            if filtered_record is not None:
+                storage.append_filtered_page(filtered_record)
+                emit(f"[FILTER] {task.company}: {filtered_record.filter_reason} -> {task.url}")
+            elif policy_record is not None:
+                fingerprint = (policy_record.title, policy_record.summary)
+                if policy_record.url in stored_policy_urls or fingerprint in stored_policy_fingerprints:
+                    continue
+                stored_policy_urls.add(policy_record.url)
+                stored_policy_fingerprints.add(fingerprint)
+                storage.append_policy_record(policy_record)
 
         if task.depth >= discovery_depth:
             continue
 
-        discovered_links = discover_policy_links(task.url, result.text)
+        discovered_links = discover_policy_links(
+            task.url,
+            result.text,
+            allowed_domains=source.allowed_domains,
+        )
         for link in discovered_links:
             if completed >= max_pages_per_source:
                 break

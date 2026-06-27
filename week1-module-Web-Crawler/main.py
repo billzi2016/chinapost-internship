@@ -16,6 +16,7 @@ from pathlib import Path
 
 from crawler.config_loader import load_rate_limits, load_sources
 from crawler.fetcher import Fetcher
+from crawler.offline_parser import parse_stored_fetches
 from crawler.scheduler import run_seed_tasks
 from crawler.storage import Storage
 
@@ -62,6 +63,16 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=4,
         help="跨来源并发 worker 数，默认 4；同一来源内部仍保持串行",
     )
+    parser.add_argument(
+        "--crawl-only",
+        action="store_true",
+        help="只抓取并保存原始响应，不执行 parse/filter",
+    )
+    parser.add_argument(
+        "--parse-only",
+        action="store_true",
+        help="不发起网络请求，只从 data/raw 和 fetch_results.jsonl 离线生成样本",
+    )
     return parser
 
 
@@ -88,13 +99,19 @@ def main() -> int:
     max_pages_per_source, discovery_depth, reset_output, max_workers = resolve_runtime_options(args)
 
     sources = load_sources(config_dir)
-    default_rate_limit, domain_rate_limits = load_rate_limits(config_dir)
 
     storage = Storage(data_dir)
     if reset_output:
         storage.reset_data_dir()
     else:
         storage.ensure_directories()
+
+    if args.parse_only:
+        policy_count, filtered_count = parse_stored_fetches(sources, storage)
+        print(f"[PARSE] policies={policy_count} filtered={filtered_count}")
+        return 0
+
+    default_rate_limit, domain_rate_limits = load_rate_limits(config_dir)
 
     fetcher = Fetcher(
         default_rate_limit=default_rate_limit,
@@ -109,6 +126,7 @@ def main() -> int:
         max_pages_per_source=max_pages_per_source,
         discovery_depth=discovery_depth,
         max_workers=max_workers,
+        parse_during_crawl=not args.crawl_only,
     )
     return 0
 
