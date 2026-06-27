@@ -25,6 +25,7 @@ db.sqlite3
 .env
 *.env.local
 *.log
+*.pdf
 
 # Jupyter
 .ipynb_checkpoints/
