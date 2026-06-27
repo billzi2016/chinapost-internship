@@ -19,8 +19,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import pty
+import re
 import shutil
 import subprocess
 import sys
@@ -173,6 +175,21 @@ def run_command(command: list[str], log_path: Path, cwd: Path) -> None:
         return_code = process.wait()
     if return_code != 0:
         raise RuntimeError(f"命令失败，查看日志：{log_path}")
+
+
+def parse_loss_metrics(log_path: Path) -> dict[str, float]:
+    """从 chunk 训练日志提取最后一次 train/val loss 和 perplexity。"""
+    text = log_path.read_text(encoding="utf-8", errors="ignore")
+    train_matches = re.findall(r"Train loss ([0-9]+(?:\.[0-9]+)?)", text)
+    val_matches = re.findall(r"Val loss ([0-9]+(?:\.[0-9]+)?)", text)
+    metrics: dict[str, float] = {}
+    if train_matches:
+        metrics["train_loss"] = float(train_matches[-1])
+    if val_matches:
+        val_loss = float(val_matches[-1])
+        metrics["val_loss"] = val_loss
+        metrics["val_perplexity"] = math.exp(val_loss)
+    return metrics
 
 
 def run_plot(args: argparse.Namespace, monitor_path: Path) -> str:
@@ -382,6 +399,7 @@ def main() -> None:
             "chunk_iters": chunk_iters,
             "train_log": str(train_log),
         }
+        record.update(parse_loss_metrics(train_log))
 
         if not args.skip_eval:
             metrics = evaluate(args, base_config["model"], base_config["adapter_path"], completed)

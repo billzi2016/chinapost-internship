@@ -1,11 +1,11 @@
-{"id":"general_math_001","task":"math","prompt":"如果一个包裹 3 天走了 240 公里，平均每天走多少公里？"}
-{"id":"general_summary_001","task":"summary","prompt":"把下面内容总结成一句话：今天上午下雨，下午转晴，快递员延迟派送，但用户已经收到取件通知。"}
-{"id":"general_extract_001","task":"extract","prompt":"从文本中抽取姓名、电话、地址，输出 JSON：张三，13800001111，北京市朝阳区示例路 8 号。"}
-{"id":"general_rewrite_001","task":"rewrite","prompt":"把这句话改写得更正式：这个东西现在还没到，你再等等。"}
-{"id":"general_code_001","task":"code","prompt":"解释这段 Python 代码的作用：items=[1,2,3]; print(sum(items))"}
-{"id":"general_logic_001","task":"logic","prompt":"小李比小王高，小王比小张高。谁最高？"}
-{"id":"general_bilingual_001","task":"bilingual","prompt":"把 'Please provide the tracking number.' 翻译成自然中文。"}
-{"id":"general_instruction_001","task":"instruction","prompt":"用三条编号列表说明如何备份一个重要文件。"}
+{"id":"general_math_001","task":"math","prompt":"请选择正确选项，并简要说明理由。\n题目：如果一个包裹 3 天走了 240 公里，平均每天走多少公里？\nA. 60 公里\nB. 70 公里\nC. 80 公里\nD. 90 公里","answer_type":"choice","answer":"C"}
+{"id":"general_summary_001","task":"summary","prompt":"请选择最合适的概括，并简要说明理由。\n原文：今天上午下雨，下午转晴，快递员延迟派送，但用户已经收到取件通知。\nA. 今天全天暴雨，快递已丢失。\nB. 天气由雨转晴，快递延迟派送，但用户已收到取件通知。\nC. 用户取消了快递，取件通知失效。\nD. 快递已按时送达，天气无变化。","answer_type":"choice","answer":"B"}
+{"id":"general_extract_001","task":"extract","prompt":"从文本中抽取姓名、电话、地址，输出 JSON：张三，13800001111，北京市朝阳区示例路 8 号。","answer":{"name":"张三","phone":"13800001111","address":"北京市朝阳区示例路 8 号"}}
+{"id":"general_rewrite_001","task":"rewrite","prompt":"请选择更正式的改写，并简要说明理由。\n原句：这个东西现在还没到，你再等等。\nA. 这玩意儿还没到，先别急。\nB. 该物品目前尚未送达，烦请您再耐心等待一段时间。\nC. 我也不知道什么时候到。\nD. 东西丢了，等也没用。","answer_type":"choice","answer":"B"}
+{"id":"general_code_001","task":"code","prompt":"请选择最准确的代码解释，并简要说明理由。\n代码：items=[1,2,3]; print(sum(items))\nA. 定义一个列表，然后计算列表元素之和并打印 6。\nB. 删除列表中的所有元素。\nC. 把列表转换成字符串后打印。\nD. 对列表做降序排序。","answer_type":"choice","answer":"A"}
+{"id":"general_logic_001","task":"logic","prompt":"请选择正确选项，并简要说明理由。\n题目：小李比小王高，小王比小张高。谁最高？\nA. 小张\nB. 小王\nC. 小李\nD. 无法判断","answer_type":"choice","answer":"C"}
+{"id":"general_bilingual_001","task":"bilingual","prompt":"请选择最自然的中文翻译，并简要说明理由。\n原句：Please provide the tracking number.\nA. 请提供运单号。\nB. 请把所有邮政政策发给我。\nC. 请保证明天一定送达。\nD. 请关闭这个号码。","answer_type":"choice","answer":"A"}
+{"id":"general_instruction_001","task":"instruction","prompt":"请选择最符合要求的回答，并简要说明理由。\n要求：用三条编号列表说明如何备份一个重要文件。\nA. 备份文件很重要，大家都应该重视。\nB. 1. 先复制原文件到另一个本地目录。 2. 再备份到云盘或移动硬盘。 3. 最后检查备份文件能否正常打开。\nC. 文件没必要备份。\nD. 只要把文件删掉就行。","answer_type":"choice","answer":"B"}
 {"id":"ceval_computer_network_0000","task":"ceval_choice","prompt":"请选择正确选项，并用一句话说明理由。\n题目：使用位填充方法，以01111110为位首flag，数据为011011111111111111110010，求问传送时要添加几个0____\nA. 1\nB. 2\nC. 3\nD. 4","source":"ceval/ceval-exam/computer_network","answer":"C"}
 {"id":"ceval_computer_network_0001","task":"ceval_choice","prompt":"请选择正确选项，并用一句话说明理由。\n题目：在802.3标准中，发送帧之前需要____\nA. 等待冲突\nB. 等待令牌\nC. 监听介质\nD. 接受一个帧","source":"ceval/ceval-exam/computer_network","answer":"C"}
 {"id":"ceval_computer_network_0002","task":"ceval_choice","prompt":"请选择正确选项，并用一句话说明理由。\n题目：TCP端对端通信作用于____\nA. 主机之间\nB. 网络之间\nC. 进程之间\nD. 主机到网络","source":"ceval/ceval-exam/computer_network","answer":"C"}

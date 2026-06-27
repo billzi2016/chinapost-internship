@@ -23,6 +23,31 @@ tmux attach -t qwen25_7b_lora
 
 Detach: `Ctrl-b` then `d`.
 
+## Chat
+
+7B rank 2:
+
+```bash
+python3 scripts/chat_with_adapter.py \
+  --model Qwen/Qwen2.5-7B-Instruct \
+  --adapter-path runs/20260625_233007_qwen2.5-7b-lora_rank_sweep/rank_2/best_adapter/qwen2.5-7b-lora-r2
+```
+
+3B rank 4:
+
+```bash
+python3 scripts/chat_with_adapter.py \
+  --model Qwen/Qwen2.5-3B-Instruct \
+  --adapter-path runs/20260623_224112_3b_rank_sweep/rank_4/best_adapter/qwen2.5-3b-lora-r4
+```
+
+Commands:
+
+```text
+/reset  清空对话历史
+/exit   退出聊天
+```
+
 ## Rank Sweep
 
 Outputs are grouped under `runs/<timestamp>_<run-name>/`. Rank logs, eval outputs and adapters stay in `rank_<rank>/`; all JPG plots are saved in the top-level `plots/`.
