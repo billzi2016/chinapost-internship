@@ -65,3 +65,10 @@ week3/mlx_qwen_sft/logs/
 week3/mlx_qwen_sft/eval_outputs/
 week3/mlx_qwen_sft/plots/
 week3/mlx_qwen_sft/runs/
+# Only keep plots for this specific 3B rank sweep run.
+!week3/mlx_qwen_sft/runs/
+week3/mlx_qwen_sft/runs/*
+!week3/mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/
+week3/mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/*
+!week3/mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/plots/
+!week3/mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/plots/**

@@ -509,17 +509,15 @@ scale = rank * 2
 本次实验目录：
 
 ```text
-../mlx_qwen_sft/runs/20260623_224112_3b_rank_sweep/
+../mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/
 ```
 
-横向对比图：
-
-![Rank comparison](../mlx_qwen_sft/runs/20260623_224112_3b_rank_sweep/plots/rank_comparison.jpg)
+这次重跑保留的是每个 rank 的 `training_dashboard` 和 `latest_output_length` 图，未额外保留 `rank_comparison.jpg` 汇总图。
 
 每个 rank 的训练监控图也统一保存在：
 
 ```text
-../mlx_qwen_sft/runs/20260623_224112_3b_rank_sweep/plots/
+../mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/plots/
 ```
 
 ## 8. 结果分析
@@ -528,20 +526,20 @@ scale = rank * 2
 
 | Rank | Best Step | Best Score | Final Score | JSON Valid | JSON Keys | Safety Risk | Postal Terms | Next Steps |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 300 | 3.1188 | 2.8375 | 1.0000 | 0.3333 | 0.0000 | 2.1250 | 1.5000 |
-| 2 | 100 | 3.0750 | 0.7375 | 1.0000 | 0.3333 | 0.0000 | 2.0000 | 1.3750 |
-| 4 | 100 | 3.1188 | 2.7813 | 1.0000 | 0.3333 | 0.0000 | 2.1250 | 1.5000 |
-| 8 | 100 | 3.0438 | 0.8750 | 1.0000 | 0.3333 | 0.0000 | 2.1250 | 1.1250 |
-| 16 | 200 | 0.7938 | 0.7563 | 1.0000 | 0.3333 | 0.0000 | 1.1250 | 0.6250 |
-| 32 | 700 | 1.6396 | -1.8313 | 0.6667 | 0.0000 | 0.0000 | 0.8750 | 0.8750 |
+| 1 | 500 | 3.6313 | 3.4000 | 1.0000 | 0.3333 | 0.0000 | 2.0000 | 3.0000 |
+| 2 | 400 | 3.4063 | 2.6875 | 1.0000 | 0.3333 | 0.2000 | 1.2500 | 3.0000 |
+| 4 | 200 | 3.2750 | 2.6500 | 1.0000 | 0.3333 | 0.0000 | 0.0000 | 0.7500 |
+| 8 | 100 | 3.4000 | 2.6750 | 1.0000 | 0.3333 | 0.0000 | 0.0000 | 0.8750 |
+| 16 | 400 | 3.1125 | 2.5938 | 1.0000 | 0.3333 | 0.2000 | 1.1250 | 2.6250 |
+| 32 | 500 | 2.9063 | 0.3875 | 0.0000 | 0.0000 | 0.0000 | 0.7500 | 1.3750 |
 
 ### 8.2 主要观察
 
-第一，rank 不是越大越好。rank 1 和 rank 4 的 best score 并列最高，且 final score 也保持在较高水平。rank 16 和 rank 32 没有体现出更强的业务收益，rank 32 反而出现明显格式退化。
+第一，rank 不是越大越好，但这次最优点已经从旧结论里的 rank 4 转成了 rank 1。rank 1 拿到本轮最高 `best_score` 和最高 `final_score`，说明当前数据和训练设置下，小 rank LoRA 依旧最稳。
 
-第二，中间 step 往往比 final step 更好。rank 2、rank 8、rank 32 都出现 best step 明显早于最终 step 的情况。如果只保存最后一个 adapter，可能会选到已经退化的模型。
+第二，中间 step 仍然经常优于最终 step，但 rank 2、8、16 的后期稳定性较上一轮都有明显改善。尤其是 rank 2 和 rank 8，不再是“前期能用、后期崩掉”的典型例子。
 
-第三，JSON schema 是当前短板。多数 rank 的 JSON 可解析率较高，但 `json_required_keys_rate` 长期只有 0.3333，说明模型能输出 JSON 外形，却不能稳定补齐必需字段。rank 32 最严重，best 阶段 JSON valid 只有 0.6667，keys 为 0。
+第三，JSON schema 仍然是当前短板。多数 rank 的 `json_required_keys_rate` 还是只有 0.3333。rank 32 仍然最严重，这一轮 final 阶段甚至直接掉到 `json_valid_rate = 0`、`json_required_keys_rate = 0`。
 
 第四，安全风险指标表现较好。本次自动评估中各 rank 的 safety risk 都为 0，说明模型没有明显出现“保证送达”“一定赔付”“直接查手机号地址”等风险表达。但该结论来自小规模自动评估，仍需要人工抽检补充。
 
@@ -552,37 +550,37 @@ scale = rank * 2
 当前推荐 3B 配置为：
 
 ```text
-Qwen2.5-3B-Instruct + LoRA rank 4
+Qwen2.5-3B-Instruct + LoRA rank 1
 ```
 
 推荐 adapter：
 
 ```text
-../mlx_qwen_sft/runs/20260623_224112_3b_rank_sweep/rank_4/best_adapter/qwen2.5-3b-lora-r4/
+../mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/rank_1/best_adapter/qwen2.5-3b-lora-r1/
 ```
 
 理由：
 
-1. best score 与 rank 1 并列最高。
-2. 100 step 即达到最佳点，训练成本低。
-3. final score 仍然较高，没有明显后期崩坏。
-4. 邮政业务词和下一步建议命中表现好。
-5. 相比 rank 8/16/32，行为漂移风险更低。
+1. `best_score` 和 `final_score` 都是本轮最高。
+2. 500 step 达到最佳点，且 800 step 仍保持 3.4 的高分，没有明显后期崩坏。
+3. JSON 可解析率稳定为 1.0，安全风险为 0。
+4. final 阶段的邮政业务词命中和下一步建议命中仍然较强。
+5. 相比 rank 2/8/16/32，综合稳定性最好。
 
-rank 1 可作为更轻量的备选方案：
+rank 2 可作为这轮更强的备选方案：
 
 ```text
-../mlx_qwen_sft/runs/20260623_224112_3b_rank_sweep/rank_1/best_adapter/qwen2.5-3b-lora-r1/
+../mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/rank_2/best_adapter/qwen2.5-3b-lora-r2/
 ```
 
-不建议将 rank 16 或 rank 32 作为当前主配置。
+rank 4 现在更适合作为中等容量参考配置；rank 16 虽然明显改善，但仍不作为首选；rank 32 依旧不建议作为当前主配置。
 
 ## 9. 图表与报告产物
 
 本实验生成两类图：
 
 1. 单个 rank 的训练监控图：`<label>_training_dashboard.jpg`
-2. rank 横向对比图：`rank_comparison.jpg`
+2. 单个 rank 的最新输出长度图：`<label>_latest_output_length.jpg`
 
 单个 rank 的 dashboard 是 2x2 组图，包括：
 
@@ -667,13 +665,13 @@ python3 scripts/plot_rank_comparison.py \
 
 第三，当前报告重点分析 3B。7B 工程入口和配置已经准备好，但还需要按同样流程完成 rank sweep 或单点训练后才能比较 3B 与 7B。
 
-第四，当前缺少 base 模型的完整对照表。后续应该固定同一批评估集，对 base、rank 1、rank 4、7B LoRA 做横向对比，量化 SFT 前后的真实收益。
+第四，当前缺少 base 模型的完整对照表。后续应该固定同一批评估集，对 base、rank 1、rank 2、7B LoRA 做横向对比，量化 SFT 前后的真实收益。
 
 第五，JSON schema 对齐需要进一步优化。当前模型能较稳定输出 JSON，但必需字段完整率不高。后续应增加格式专项训练数据，或在流程中加入规则校验、GPT-OSS JSON 修复节点。
 
 ## 12. 后续计划
 
-1. 对 rank 4 做更细 step sweep，例如 50、100、150、200 step，确认最佳点是否稳定。
+1. 对 rank 1 做更细 step sweep，例如 400、500、600 step，确认最佳点是否稳定。
 2. 增加格式专项 SFT 数据，重点解决 JSON 必需字段缺失问题。
 3. 对 base Qwen2.5-3B-Instruct 做同评估集对照，补充 SFT 前后变化。
 4. 对 Qwen2.5-7B-Instruct 复用同一套训练与评估流程。
@@ -682,6 +680,6 @@ python3 scripts/plot_rank_comparison.py \
 
 ## 13. 总结
 
-本实验完成了从邮政客服数据整理、MLX LoRA 工程搭建、训练中自动评估、best adapter 保留、rank sweep、图表归档到实验报告的完整闭环。结果表明，在当前数据和训练设置下，Qwen2.5-3B-Instruct 更适合使用小 rank LoRA；rank 4 是当前最均衡的选择，rank 1 是轻量备选，rank 16 和 rank 32 暂不适合作为主配置。
+本实验完成了从邮政客服数据整理、MLX LoRA 工程搭建、训练中自动评估、best adapter 保留、rank sweep、图表归档到实验报告的完整闭环。结果表明，在当前数据和训练设置下，Qwen2.5-3B-Instruct 仍然更适合使用小 rank LoRA；但在这次重跑结果里，rank 1 已经成为当前最优主配置，rank 2 是更强备选，rank 4 退居中等容量参考位，rank 32 仍不适合作为主配置。
 
 更重要的是，实验验证了训练过程不能只看 loss 或最终 step。通过分段评估、gate 和 best adapter 机制，可以及时发现 SFT 后模型格式能力下降、通用任务污染和后期退化等问题，从而避免把已经训练坏的 adapter 当成最终结果。
