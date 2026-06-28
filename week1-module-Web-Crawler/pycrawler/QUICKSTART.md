@@ -76,7 +76,7 @@ python3 main.py --max-pages-per-source 2
 - `data/logs/full_run_YYYYMMDD_HHMMSS.log`：完整运行日志，同时也会在屏幕显示。
 - `data/logs/pdf_downloads.jsonl`：公开 PDF 文件的下载记录。
 - `data/parsed/policies.jsonl`：结构化政策记录。
-- `data/parsed/training_samples.jsonl`：最终保留下来的微调样本文件。
+- `data/parsed/training_samples.jsonl`：程序运行时生成的微调样本文件。
 - `data/logs/crawl_report.md`：抓取汇总报告。
 - `data/raw_pdfs/`：保存下来的原始 PDF 文件。
 
@@ -101,6 +101,7 @@ python3 main.py --max-pages-per-source 2
 - 先用小值验证 `--max-pages-per-source`，确认过滤没有误抓静态资源。
 - 先观察 `fetch_results.jsonl`，确认返回的是公开页面而不是首页、跳转页或错误页。
 - 真正用于后续微调的数据应以 `data/parsed/training_samples.jsonl` 为准，不要直接把全部抓取日志送去训练。
+- 如果你需要保留一份人工确认后的最终版本，可以再手动整理到 `../final-result/`。
 - 对动态站点、首页跳转站点和扫描版图片 PDF，后续再补更细的处理策略。
 - 对扫描版图片 PDF，当前仍不做 OCR。
 

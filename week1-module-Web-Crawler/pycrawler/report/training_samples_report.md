@@ -2,7 +2,7 @@
 
 ## 1. 报告目标
 
-本报告分析 `week1-module-Web-Crawler/data/parsed/training_samples.jsonl` 中已经抽取完成的邮政 FAQ 训练样本。该文件由网页爬虫和解析流程生成，目标是把中国邮政 EMS 公开 FAQ 页面中的问答内容整理成结构化样本，作为后续邮政客服模型 SFT、评估集构造和知识库入库的基础数据。
+本报告分析 `week1-module-Web-Crawler/pycrawler/data/parsed/training_samples.jsonl` 中已经抽取完成的邮政 FAQ 训练样本。该文件由网页爬虫和解析流程生成，目标是把中国邮政 EMS 公开 FAQ 页面中的问答内容整理成结构化样本，作为后续邮政客服模型 SFT、评估集构造和知识库入库的基础数据。
 
 这份报告不只记录样本条数，而是完整说明：
 
@@ -17,7 +17,7 @@
 输入文件：
 
 ```text
-week1-module-Web-Crawler/data/parsed/training_samples.jsonl
+week1-module-Web-Crawler/pycrawler/data/parsed/training_samples.jsonl
 ```
 
 文件格式为 JSON Lines，一行是一条训练样本。当前共包含 11 条样本，全部来自中国邮政 EMS FAQ 网络页面。

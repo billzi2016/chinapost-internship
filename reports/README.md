@@ -26,7 +26,7 @@ step1 当前包含：
 4. `week1/第一版/filter/outputs/report.md`
 5. `week1/第二版/01_分类效果评估与边界case分析/outputs/report.md`
 6. `week1/第二版/04_可视化聚类与标签优化/outputs/report.md`
-7. `week1-module-Web-Crawler/report/training_samples_report.md`
+7. `week1-module-Web-Crawler/pycrawler/report/training_samples_report.md`
 
 step2 当前包含：
 
