@@ -92,10 +92,16 @@ python3 main.py --full-run
 - 将候选链接发现深度提高到 `2`。
 - 将终端输出同时保存到 `data/logs/full_run_YYYYMMDD_HHMMSS.log`。
 
-最终用于微调的数据文件是：
+程序运行时最终用于微调的数据文件是：
 
 ```text
 data/parsed/training_samples.jsonl
+```
+
+如果你要保留一份人工整理后的最终版本，可以另外手动复制到：
+
+```text
+../final-result/training_samples.jsonl
 ```
 
 被过滤掉但保留审计记录的页面会写到：

@@ -221,28 +221,31 @@
 
 ```text
 week1-module-Web-Crawler/
-  PRD.md
-  README.md
-  configs/
-    sources.yaml
-    categories.yaml
-    rate_limits.yaml
-  crawler/
-    fetcher.py
-    parser.py
-    pdf_parser.py
-    insurance_parser.py
-    scheduler.py
-    storage.py
-    dedupe.py
-  data/
-    raw/
-    text/
-    parsed/
-    logs/
-  tests/
-    test_parser.py
-    test_dedupe.py
+  final-result/
+    training_samples.jsonl
+  pycrawler/
+    PRD.md
+    README.md
+    configs/
+      sources.yaml
+      categories.yaml
+      rate_limits.yaml
+    crawler/
+      fetcher.py
+      parser.py
+      pdf_parser.py
+      insurance_parser.py
+      scheduler.py
+      storage.py
+      dedupe.py
+    data/
+      raw/
+      text/
+      parsed/
+      logs/
+    tests/
+      test_parser.py
+      test_dedupe.py
 ```
 
 ### 8.2 推荐技术栈
@@ -352,10 +355,11 @@ week1-module-Web-Crawler/
 
 ### 11.1 数据文件
 
-- `data/parsed/pages.jsonl`：页面级清洗结果。
-- `data/parsed/policies.jsonl`：规则级结构化结果。
-- `data/parsed/policies.csv`：便于表格查看的结果。
-- `data/logs/crawl_report.md`：采集报告。
+- `pycrawler/data/parsed/pages.jsonl`：页面级清洗结果。
+- `pycrawler/data/parsed/policies.jsonl`：规则级结构化结果。
+- `pycrawler/data/parsed/policies.csv`：便于表格查看的结果。
+- `pycrawler/data/logs/crawl_report.md`：采集报告。
+- `final-result/training_samples.jsonl`：最终保留的训练样本。
 ### 11.2 报告内容
 
 - 各来源采集数量。
