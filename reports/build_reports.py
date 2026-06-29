@@ -36,7 +36,7 @@ from playwright.sync_api import sync_playwright
 REPORTS_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = REPORTS_DIR.parent
 WEEK1_DIR = PROJECT_DIR / "week1"
-WEB_CRAWLER_DIR = PROJECT_DIR / "week1-module-Web-Crawler" / "pycrawler"
+WEB_CRAWLER_DIR = PROJECT_DIR / "week1-module-Web-Crawler"
 WEEK3_DIR = PROJECT_DIR / "week3"
 STEP1_DIR = REPORTS_DIR / "step1_模型选型与数据集分析"
 STEP2_DIR = REPORTS_DIR / "step2_lora微调"
