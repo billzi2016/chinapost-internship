@@ -6,11 +6,13 @@ from __future__ import annotations
 import json
 from collections import Counter
 from pathlib import Path
+from markdown import markdown as render_markdown
 
 
 BASE_DIR = Path(__file__).resolve().parent
 DATASET_PATH = BASE_DIR.parent / "final-result" / "dataset.jsonl"
 OUTPUT_PATH = BASE_DIR / "training_samples_report.md"
+FINAL_RESULT_DIR = BASE_DIR.parent / "final-result"
 
 
 def load_rows() -> list[dict[str, object]]:
@@ -34,6 +36,23 @@ def format_summary(text: str) -> str:
     return text
 
 
+def extract_answer_text(row: dict[str, object]) -> str:
+    candidates = [
+        str(row.get("summary", "") or "").strip(),
+        str(row.get("evidence_text", "") or "").strip(),
+    ]
+
+    for text in candidates:
+        if not text:
+            continue
+        if "答案：" in text:
+            answer = text.split("答案：", 1)[1].strip()
+            return answer or text
+        return text
+
+    return "（空）"
+
+
 def format_value(value: object) -> str:
     if isinstance(value, list):
         return "、".join(str(item) for item in value) if value else "无"
@@ -43,6 +62,78 @@ def format_value(value: object) -> str:
         return "否"
     text = str(value).strip()
     return text or "无"
+
+
+def split_markdown_sections(text: str) -> list[tuple[str, list[str]]]:
+    sections: list[tuple[str, list[str]]] = []
+    current_title = ""
+    current_lines: list[str] = []
+
+    for raw_line in text.splitlines():
+        if raw_line.startswith("### "):
+            if current_title:
+                sections.append((current_title, current_lines))
+            current_title = raw_line[4:].strip()
+            current_lines = []
+            continue
+        if raw_line.startswith("## "):
+            if current_title:
+                sections.append((current_title, current_lines))
+                current_title = ""
+                current_lines = []
+            continue
+        if current_title:
+            current_lines.append(raw_line)
+
+    if current_title:
+        sections.append((current_title, current_lines))
+    return sections
+
+
+def strip_section_separators(lines: list[str]) -> list[str]:
+    stripped = list(lines)
+    while stripped and not stripped[-1].strip():
+        stripped.pop()
+    while stripped and stripped[-1].strip() in {"---", "***", "___"}:
+        stripped.pop()
+        while stripped and not stripped[-1].strip():
+            stripped.pop()
+    return stripped
+
+
+def render_playwright_original(row: dict[str, object]) -> str:
+    locator = get_locator(row)
+    if not locator or "#" not in locator:
+        return f"> {format_summary(str(row.get('evidence_text', '')))}"
+
+    relative_path, _anchor = locator.split("#", 1)
+    source_path = FINAL_RESULT_DIR / relative_path
+    if not source_path.exists():
+        return f"> {format_summary(str(row.get('evidence_text', '')))}"
+
+    source_text = source_path.read_text(encoding="utf-8")
+    target_title = str(row.get("title", "")).strip()
+
+    for section_title, lines in split_markdown_sections(source_text):
+        if section_title.strip() != target_title:
+            continue
+
+        body = "\n".join(strip_section_separators(lines)).strip()
+        if not body:
+            return f"> {format_summary(str(row.get('evidence_text', '')))}"
+
+        body_html = render_markdown(
+            body,
+            extensions=[
+                "tables",
+                "fenced_code",
+                "codehilite",
+            ],
+        )
+        body_html = body_html.replace("<hr />", "").replace("<hr>", "")
+        return f"<blockquote>\n{body_html}\n</blockquote>"
+
+    return f"> {format_summary(str(row.get('evidence_text', '')))}"
 
 
 def build_overview(rows: list[dict[str, object]]) -> str:
@@ -204,6 +295,7 @@ def build_samples_section(rows: list[dict[str, object]]) -> str:
     ]
 
     for idx, row in enumerate(rows, start=1):
+        source_id = str(row.get("source_id", ""))
         lines.extend(
             [
                 f"### 样本 {idx}：{format_value(row.get('title', ''))}",
@@ -217,16 +309,31 @@ def build_samples_section(rows: list[dict[str, object]]) -> str:
                 f"| 标题 | {format_value(row.get('title'))} |",
                 f"| 定位 | `{format_value(get_locator(row))}` |",
                 "",
-                "摘要：",
-                "",
-                f"> {format_summary(str(row.get('summary', '')))}",
-                "",
-                "证据：",
-                "",
-                f"> {format_summary(str(row.get('evidence_text', '')))}",
-                "",
             ]
         )
+
+        if source_id == "ems_policy_network":
+            lines.extend(
+                [
+                    "问题：",
+                    "",
+                    f"> {format_summary(str(row.get('title', '')))}",
+                    "",
+                    "答案：",
+                    "",
+                    f"> {format_summary(extract_answer_text(row))}",
+                    "",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "原文：",
+                    "",
+                    render_playwright_original(row),
+                    "",
+                ]
+            )
 
     return "\n".join(lines)
 

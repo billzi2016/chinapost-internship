@@ -26,6 +26,8 @@ def clean_line(line: str) -> str:
     line = line.strip()
     if not line:
         return ""
+    if line in {"---", "***", "___"}:
+        return ""
     if line.startswith(">"):
         line = line[1:].strip()
     line = re.sub(r"^\s*[-*]\s+", "", line)
@@ -50,6 +52,12 @@ def split_sections(text: str) -> list[tuple[str, list[str]]]:
                 sections.append((current_title, current_lines))
             current_title = raw_line[4:].strip()
             current_lines = []
+            continue
+        if raw_line.startswith("## "):
+            if current_title:
+                sections.append((current_title, current_lines))
+                current_title = ""
+                current_lines = []
             continue
         if current_title:
             current_lines.append(raw_line)
