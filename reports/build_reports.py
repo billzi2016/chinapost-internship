@@ -13,10 +13,11 @@
 - 对 Markdown 风格文档来说，整体观感通常优于 LaTeX 硬排
 
 当前脚本会导出：
-- step1：模型选型、数据集分析与网页爬虫训练样本
-- step2：LoRA 微调
+- step1：模型选型与数据集分析
+- step2：收集数据集和框架搭建
+- step3：LoRA 微调
 
-输出 PDF 会落盘到 reports/step1_模型选型与数据集分析 和 reports/step2_lora微调。
+输出 PDF 会落盘到 reports/step1_模型选型与数据集分析、reports/step2_收集数据集和框架搭建 和 reports/step3_lora微调。
 """
 
 from __future__ import annotations
@@ -39,7 +40,8 @@ WEEK1_DIR = PROJECT_DIR / "week1"
 WEB_CRAWLER_DIR = PROJECT_DIR / "week1-module-Web-Crawler"
 WEEK3_DIR = PROJECT_DIR / "week3"
 STEP1_DIR = REPORTS_DIR / "step1_模型选型与数据集分析"
-STEP2_DIR = REPORTS_DIR / "step2_lora微调"
+STEP2_DIR = REPORTS_DIR / "step2_收集数据集和框架搭建"
+STEP3_DIR = REPORTS_DIR / "step3_lora微调"
 
 
 # 这里维护“输入 Markdown -> 输出 PDF”的映射关系。
@@ -84,25 +86,25 @@ REPORT_SPECS = [
     {
         "id": "week1-training-samples",
         "source": WEB_CRAWLER_DIR / "report" / "training_samples_report.md",
-        "output": STEP1_DIR / "邮政FAQ爬虫训练样本构建报告.pdf",
+        "output": STEP2_DIR / "邮政FAQ爬虫训练样本构建报告.pdf",
         "title": "邮政 FAQ 爬虫训练样本构建报告",
     },
     {
         "id": "week3-qwen25-full",
         "source": WEEK3_DIR / "reports" / "qwen2.5_mlx_sft_full_experiment_report.md",
-        "output": STEP2_DIR / "基于AppleMLX的Qwen2.5邮政客服模型微调完整实验报告.pdf",
+        "output": STEP3_DIR / "基于AppleMLX的Qwen2.5邮政客服模型微调完整实验报告.pdf",
         "title": "基于 Apple MLX 的 Qwen2.5 邮政客服模型微调完整实验报告",
     },
     {
         "id": "week3-qwen25-3b-rank-sweep",
         "source": WEEK3_DIR / "reports" / "qwen2.5-3b_rank_sweep_report.md",
-        "output": STEP2_DIR / "Qwen2.5-3B邮政客服LoRA RankSweep实验报告.pdf",
+        "output": STEP3_DIR / "Qwen2.5-3B邮政客服LoRA RankSweep实验报告.pdf",
         "title": "Qwen2.5-3B 邮政客服 LoRA Rank Sweep 实验报告",
     },
     {
         "id": "week3-qwen25-7b-rank-sweep",
         "source": WEEK3_DIR / "reports" / "qwen2.5-7b_rank_sweep_report.md",
-        "output": STEP2_DIR / "Qwen2.5-7B邮政客服LoRA RankSweep实验报告.pdf",
+        "output": STEP3_DIR / "Qwen2.5-7B邮政客服LoRA RankSweep实验报告.pdf",
         "title": "Qwen2.5-7B 邮政客服 LoRA Rank Sweep 实验报告",
     },
 ]
