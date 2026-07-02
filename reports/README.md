@@ -5,7 +5,7 @@
 当前阶段目录：
 
 - `step1_模型选型与数据集分析/`
-- `step2_lora微调/`
+- `step3_lora微调/`
 
 ## 1. 当前脚本
 
@@ -15,7 +15,7 @@
 
 ```text
 reports/step1_模型选型与数据集分析/
-reports/step2_lora微调/
+reports/step3_lora微调/
 ```
 
 step1 当前包含：
@@ -28,7 +28,7 @@ step1 当前包含：
 6. `week1/第二版/04_可视化聚类与标签优化/outputs/report.md`
 7. `week1-module-Web-Crawler/pycrawler/report/training_samples_report.md`
 
-step2 当前包含：
+step3 当前包含：
 
 1. `week3/reports/qwen2.5_mlx_sft_full_experiment_report.md`
 2. `week3/reports/qwen2.5-3b_rank_sweep_report.md`
@@ -96,9 +96,9 @@ python reports/build_reports.py --only week1-training-samples week3-qwen25-7b-ra
 - `reports/step1_模型选型与数据集分析/分类效果评估与边界case分析报告.pdf`
 - `reports/step1_模型选型与数据集分析/可视化聚类与标签优化报告.pdf`
 - `reports/step1_模型选型与数据集分析/邮政FAQ爬虫训练样本构建报告.pdf`
-- `reports/step2_lora微调/基于AppleMLX的Qwen2.5邮政客服模型微调完整实验报告.pdf`
-- `reports/step2_lora微调/Qwen2.5-3B邮政客服LoRA RankSweep实验报告.pdf`
-- `reports/step2_lora微调/Qwen2.5-7B邮政客服LoRA RankSweep实验报告.pdf`
+- `reports/step3_lora微调/基于AppleMLX的Qwen2.5邮政客服模型微调完整实验报告.pdf`
+- `reports/step3_lora微调/Qwen2.5-3B邮政客服LoRA RankSweep实验报告.pdf`
+- `reports/step3_lora微调/Qwen2.5-7B邮政客服LoRA RankSweep实验报告.pdf`
 
 ## 5. 维护规则
 
