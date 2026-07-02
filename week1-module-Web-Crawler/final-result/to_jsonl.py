@@ -10,7 +10,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 INPUT_DIR = BASE_DIR / "dataset-playwright" / "MCP-raw"
-OUTPUT_PATH = BASE_DIR / "training_playwright_samples.jsonl"
+OUTPUT_PATH = BASE_DIR / "raw-josnl" / "training_playwright_samples.jsonl"
 
 SOURCE_ID = "playwright_mcp"
 COMPANY = "playwright_mcp"
