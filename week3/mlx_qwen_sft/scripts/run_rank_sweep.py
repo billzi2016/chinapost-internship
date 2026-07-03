@@ -84,6 +84,16 @@ def build_command(args: argparse.Namespace, rank: int, rank_dir: Path, start_ste
     return command
 
 
+def rank_label(args: argparse.Namespace, rank: int) -> str:
+    """当前 rank 的训练 label。"""
+    return f"{args.label_prefix}-r{rank}"
+
+
+def rank_adapter_path(args: argparse.Namespace, rank: int) -> str:
+    """当前 rank 的 adapter 输出路径。"""
+    return f"{args.adapter_prefix}-r{rank}"
+
+
 def read_run_config(run_dir: Path) -> dict[str, Any]:
     """读取已有 sweep 的总配置。"""
     config_path = run_dir / "run_config.json"
@@ -189,23 +199,35 @@ def main() -> None:
         run_dir = args.runs_dir / run_id
     print(f"[rank-sweep] run_dir={run_dir}", flush=True)
     total_iters = total_iters_from_config(args, root)
+    print("[rank-sweep] ranks=" + " ".join(str(rank) for rank in args.ranks), flush=True)
+    print(f"[rank-sweep] target_iters={total_iters}", flush=True)
     if not args.dry_run and not args.resume_run_dir:
         write_run_config(args, run_id, run_dir, run_name)
-    for rank in args.ranks:
+    total_ranks = len(args.ranks)
+    for rank_index, rank in enumerate(args.ranks, start=1):
+        prefix = f"[rank-sweep-r{rank}]"
         rank_dir = run_dir / f"rank_{rank}"
         start_step = last_completed_step(rank_dir) if args.resume_run_dir else 0
+        print(f"{prefix} rank {rank_index}/{total_ranks}", flush=True)
+        print(f"{prefix} rank_dir={rank_dir}", flush=True)
+        print(f"{prefix} label={rank_label(args, rank)}", flush=True)
+        print(f"{prefix} adapter_path={rank_adapter_path(args, rank)}", flush=True)
         if start_step >= total_iters:
-            print(f"[rank-sweep] skip rank {rank}: completed {start_step}/{total_iters}", flush=True)
+            print(f"{prefix} status=skip completed={start_step}/{total_iters}", flush=True)
             continue
         if start_step:
-            print(f"[rank-sweep] resume rank {rank}: completed {start_step}/{total_iters}", flush=True)
+            print(f"{prefix} status=resume completed={start_step}/{total_iters}", flush=True)
+        else:
+            print(f"{prefix} status=start completed=0/{total_iters}", flush=True)
         command = build_command(args, rank, rank_dir, start_step=start_step)
-        print("[rank-sweep]", " ".join(command), flush=True)
+        print(f"{prefix} command=" + " ".join(command), flush=True)
         if args.dry_run:
             continue
         result = subprocess.run(command, cwd=root, check=False)
         if result.returncode != 0:
+            print(f"{prefix} status=failed returncode={result.returncode}", flush=True)
             raise SystemExit(result.returncode)
+        print(f"{prefix} status=finished", flush=True)
 
 
 if __name__ == "__main__":
