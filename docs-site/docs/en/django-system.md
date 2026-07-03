@@ -236,4 +236,8 @@ The formal path uses PostgreSQL + pgvector. The database stores conversations, m
 
 The repository may still contain `db.sqlite3`, but that is local development residue, not the formal database shape for this phase. PostgreSQL is the main path for persistence and vector retrieval.
 
+From an architecture perspective, the Django + PostgreSQL + pgvector setup already meets the basic requirements for a larger deployment. PostgreSQL is mainly responsible for conversations, messages, citations, tickets, and vector-related data management. It is not expected to handle extremely heavy high-frequency writes in this system. For internal use or demonstration workloads at the scale of hundreds to around a thousand users, this database layer is a reasonable fit.
+
+The main pressure point is not SQLite versus PostgreSQL, but model inference. With local model serving, the system needs more work around vLLM instances, GPU resources, nginx routing, and later Ingress-based load balancing. With external model APIs, the key concerns shift to API security, access control, rate limits, and failure fallback.
+
 Security in this version mainly covers basic CSRF, XSS handling, and frontend Markdown sanitization. Authentication, permission tiers, audit logs, and stricter production configuration can be extended later. The page and deployment chain focus on carrying the RAG and model capabilities and providing a system entry point that can be demonstrated, compared, and analyzed.

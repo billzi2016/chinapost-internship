@@ -509,7 +509,7 @@ scale = rank * 2
 本次实验目录：
 
 ```text
-../mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/
+../mlx_qwen_sft/runs/20260703_021130_qwen2.5-3b-lora_rank_sweep/
 ```
 
 这次重跑保留的是每个 rank 的 `training_dashboard` 和 `latest_output_length` 图，未额外保留 `rank_comparison.jpg` 汇总图。
@@ -517,7 +517,7 @@ scale = rank * 2
 每个 rank 的训练监控图也统一保存在：
 
 ```text
-../mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/plots/
+../mlx_qwen_sft/runs/20260703_021130_qwen2.5-3b-lora_rank_sweep/plots/
 ```
 
 ## 8. 结果分析
@@ -526,12 +526,12 @@ scale = rank * 2
 
 | Rank | Best Step | Best Score | Final Score | JSON Valid | JSON Keys | Safety Risk | Postal Terms | Next Steps |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 500 | 3.6313 | 3.4000 | 1.0000 | 0.3333 | 0.0000 | 2.0000 | 3.0000 |
-| 2 | 400 | 3.4063 | 2.6875 | 1.0000 | 0.3333 | 0.2000 | 1.2500 | 3.0000 |
-| 4 | 200 | 3.2750 | 2.6500 | 1.0000 | 0.3333 | 0.0000 | 0.0000 | 0.7500 |
-| 8 | 100 | 3.4000 | 2.6750 | 1.0000 | 0.3333 | 0.0000 | 0.0000 | 0.8750 |
-| 16 | 400 | 3.1125 | 2.5938 | 1.0000 | 0.3333 | 0.2000 | 1.1250 | 2.6250 |
-| 32 | 500 | 2.9063 | 0.3875 | 0.0000 | 0.0000 | 0.0000 | 0.7500 | 1.3750 |
+| 1 | 500 | 3.6313 | 3.4000 | 1.0000 | 0.3333 | 0.0000 | 2.8750 | 3.5000 |
+| 2 | 400 | 3.4062 | 2.6875 | 1.0000 | 0.3333 | 0.0000 | 1.8750 | 3.1250 |
+| 4 | 200 | 3.2750 | 2.6500 | 1.0000 | 0.3333 | 0.0000 | 1.5000 | 2.7500 |
+| 8 | 100 | 3.4000 | 2.6750 | 1.0000 | 0.3333 | 0.0000 | 2.0000 | 3.0000 |
+| 16 | 400 | 3.1125 | 2.5938 | 1.0000 | 0.3333 | 0.0000 | 1.2500 | 2.1250 |
+| 32 | 500 | 2.9062 | 0.3875 | 1.0000 | 0.3333 | 0.0000 | 0.8750 | 1.3750 |
 
 ### 8.2 主要观察
 
@@ -556,7 +556,7 @@ Qwen2.5-3B-Instruct + LoRA rank 1
 推荐 adapter：
 
 ```text
-../mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/rank_1/best_adapter/qwen2.5-3b-lora-r1/
+../mlx_qwen_sft/runs/20260703_021130_qwen2.5-3b-lora_rank_sweep/rank_1/best_adapter/qwen2.5-3b-lora-r1/
 ```
 
 理由：
@@ -570,7 +570,7 @@ Qwen2.5-3B-Instruct + LoRA rank 1
 rank 2 可作为这轮更强的备选方案：
 
 ```text
-../mlx_qwen_sft/runs/20260626_185212_qwen2.5-3b-lora_rank_sweep/rank_2/best_adapter/qwen2.5-3b-lora-r2/
+../mlx_qwen_sft/runs/20260703_021130_qwen2.5-3b-lora_rank_sweep/rank_2/best_adapter/qwen2.5-3b-lora-r2/
 ```
 
 rank 4 现在更适合作为中等容量参考配置；rank 16 虽然明显改善，但仍不作为首选；rank 32 依旧不建议作为当前主配置。
@@ -603,6 +603,13 @@ qwen2.5-3b_rank_sweep_report.md
 
 ```text
 qwen2.5_mlx_sft_full_experiment_report.md
+```
+
+全局 3B/7B 对比报告与图表：
+
+```text
+../mlx_qwen_sft/global_compare/global_compare_report.md
+../mlx_qwen_sft/global_compare/plots/
 ```
 
 ## 10. 复现流程
@@ -663,9 +670,9 @@ python3 scripts/plot_rank_comparison.py \
 
 第二，评估集规模偏小。当前邮政专项题 8 条、格式题 3 条、安全题 5 条，适合作为训练中快速护栏，但还不足以作为最终上线评测。
 
-第三，当前报告重点分析 3B。7B 工程入口和配置已经准备好，但还需要按同样流程完成 rank sweep 或单点训练后才能比较 3B 与 7B。
+第三，当前自动评估集规模仍然偏小，3B/7B 的全局对比应作为工程筛选依据，而不是最终上线结论。后续仍需要人工抽检和更大评估集验证。
 
-第四，当前缺少 base 模型的完整对照表。后续应该固定同一批评估集，对 base、rank 1、rank 2、7B LoRA 做横向对比，量化 SFT 前后的真实收益。
+第四，当前缺少 base 模型的完整对照表。后续应该固定同一批评估集，对 base、3B rank 1、7B rank 2 做横向对比，量化 SFT 前后的真实收益。
 
 第五，JSON schema 对齐需要进一步优化。当前模型能较稳定输出 JSON，但必需字段完整率不高。后续应增加格式专项训练数据，或在流程中加入规则校验、GPT-OSS JSON 修复节点。
 
@@ -674,12 +681,12 @@ python3 scripts/plot_rank_comparison.py \
 1. 对 rank 1 做更细 step sweep，例如 400、500、600 step，确认最佳点是否稳定。
 2. 增加格式专项 SFT 数据，重点解决 JSON 必需字段缺失问题。
 3. 对 base Qwen2.5-3B-Instruct 做同评估集对照，补充 SFT 前后变化。
-4. 对 Qwen2.5-7B-Instruct 复用同一套训练与评估流程。
-5. 增加人工抽检样本，重点检查过度承诺、政策边界、非邮政问题拒答和客服语气。
-6. 将推荐 adapter 用于下游流程节点，与 regex、GPT-OSS JSON 节点做流程级对比。
+4. 增加人工抽检样本，重点检查过度承诺、政策边界、非邮政问题拒答和客服语气。
+5. 将推荐 adapter 用于下游流程节点，与 regex、GPT-OSS JSON 节点做流程级对比。
+6. 继续维护 `global_compare/`，用结构化 monitor 数据生成 3B/7B 全局对比图，而不是从图片反推指标。
 
 ## 13. 总结
 
-本实验完成了从邮政客服数据整理、MLX LoRA 工程搭建、训练中自动评估、best adapter 保留、rank sweep、图表归档到实验报告的完整闭环。结果表明，在当前数据和训练设置下，Qwen2.5-3B-Instruct 仍然更适合使用小 rank LoRA；但在这次重跑结果里，rank 1 已经成为当前最优主配置，rank 2 是更强备选，rank 4 退居中等容量参考位，rank 32 仍不适合作为主配置。
+本实验完成了从邮政客服数据整理、MLX LoRA 工程搭建、训练中自动评估、best adapter 保留、rank sweep、图表归档到实验报告的完整闭环。结果表明，在当前数据和训练设置下，Qwen2.5-3B-Instruct 仍然更适合使用小 rank LoRA；但在这次重跑结果里，rank 1 已经成为当前最优主配置，rank 2 是更强备选。7B 当前推荐 rank 2，rank 32 虽有较高瞬时 best 分，但 final 阶段字段完整性退化明显，不适合作为推荐配置。
 
 更重要的是，实验验证了训练过程不能只看 loss 或最终 step。通过分段评估、gate 和 best adapter 机制，可以及时发现 SFT 后模型格式能力下降、通用任务污染和后期退化等问题，从而避免把已经训练坏的 adapter 当成最终结果。
