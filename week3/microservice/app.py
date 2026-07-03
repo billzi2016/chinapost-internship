@@ -33,6 +33,7 @@ class ModelConfig(BaseModel):
     model_path: str
     runs_root: str
     run_id: str
+    knowledge_cutoff_date: str | None = None
     system_prompt: str = (
         "你是一个专业、准确、克制的邮政客服助手。"
         "你可以帮助用户理解 EMS、中国邮政、包裹寄递、网点咨询、物流异常、禁限寄、时效和资费等问题。"
@@ -69,6 +70,27 @@ def chunk_text(text: str, chunk_size: int = 32) -> list[str]:
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> AppConfig:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     return AppConfig.model_validate(raw)
+
+
+def build_system_prompt(config: AppConfig) -> str:
+    prompt = config.model.system_prompt.strip()
+    extras: list[str] = []
+
+    if config.model.knowledge_cutoff_date:
+        extras.append(
+            f"知识库可用信息的时间边界截至 {config.model.knowledge_cutoff_date}。"
+            "凡是明显依赖当前时间、当前日期、当前天气、当前物流状态、当前网点状态"
+            "或该日期之后可能变化的信息，不要把知识库内容当作最新事实直接回答。"
+        )
+
+    extras.append(
+        "如果有工具结果，优先依据工具结果回答；如果没有实时结果，"
+        "应明确说明需要进一步查询或通过官方渠道、运单号、网点或人工客服核实。"
+    )
+
+    if not extras:
+        return prompt
+    return " ".join([prompt, *extras])
 
 
 def resolve_best_adapter(config: AppConfig) -> Path:
@@ -139,7 +161,7 @@ def clean_generation_text(text: str) -> str:
 def build_messages(config: AppConfig, request: ChatCompletionRequest) -> list[dict[str, str]]:
     messages = [message.model_dump() for message in request.messages]
     if not any(message["role"] == "system" for message in messages):
-        messages.insert(0, {"role": "system", "content": config.model.system_prompt})
+        messages.insert(0, {"role": "system", "content": build_system_prompt(config)})
     return messages
 
 
