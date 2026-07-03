@@ -18,11 +18,16 @@
 ```text
 week3/microservice/
 ├── app.py
+├── config_3b_base.yaml
 ├── config_3b.yaml
+├── config_7b_base.yaml
 ├── config_7b.yaml
 ├── requirements.txt
 ├── scripts/
+│   ├── QUICK_START.md
+│   ├── start_3b_base.sh
 │   ├── start_3b_lora.sh
+│   ├── start_7b_base.sh
 │   └── start_7b_lora.sh
 ├── src/
 │   ├── __init__.py
@@ -54,16 +59,23 @@ week3/microservice/
 
 ## 配置文件
 
-默认 3B 配置文件：
+3B LoRA 配置文件：
 
 ```text
 week3/microservice/config_3b.yaml
 ```
 
-7B 配置文件：
+7B LoRA 配置文件：
 
 ```text
 week3/microservice/config_7b.yaml
+```
+
+Base 对照配置文件：
+
+```text
+week3/microservice/config_3b_base.yaml
+week3/microservice/config_7b_base.yaml
 ```
 
 主要配置项：
@@ -72,6 +84,7 @@ week3/microservice/config_7b.yaml
 - `server.port`
 - `model.model_id`
 - `model.model_path`
+- `model.use_lora`
 - `model.runs_root`
 - `model.run_id`
 - `model.rank`
@@ -85,6 +98,8 @@ week3/microservice/config_7b.yaml
 
 - `config_3b.yaml` 当前指向 3B 最优配置：`qwen2.5-3b-lora-r1`
 - `config_7b.yaml` 当前指向 7B 最优配置：`qwen2.5-7b-lora-r2`
+- `config_3b_base.yaml` 和 `config_7b_base.yaml` 使用原始基座模型，不加载 LoRA
+- `model.use_lora: false` 时服务不会解析 adapter，也不会向 `mlx_lm.generate` 传 `--adapter-path`
 - `model.adapter_path` 会显式指定当前服务加载的 LoRA adapter
 - 如果删除 `model.adapter_path`，服务会按 `model.runs_root/model.run_id` 和 `model.rank` 从 `best_adapter_*.json` 中解析 adapter
 - 如果连 `model.rank` 也不填，服务会从该 run 下所有 rank 的 `best_adapter_*.json` 中按 `best_score` 选择最高分 adapter
@@ -129,18 +144,32 @@ pip install -r requirements.txt
 
 ## 启动服务
 
-启动 3B：
+启动 3B LoRA：
 
 ```bash
 cd /Users/bizi/Desktop/邮政实习/week3/microservice
 ./scripts/start_3b_lora.sh
 ```
 
-启动 7B：
+启动 7B LoRA：
 
 ```bash
 cd /Users/bizi/Desktop/邮政实习/week3/microservice
 ./scripts/start_7b_lora.sh
+```
+
+启动 3B Base 对照：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+./scripts/start_3b_base.sh
+```
+
+启动 7B Base 对照：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+./scripts/start_7b_base.sh
 ```
 
 也可以直接用 `uvicorn` 启动默认 3B：

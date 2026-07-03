@@ -20,7 +20,7 @@ from src.schemas import AppConfig, ChatCompletionRequest
 class AppState:
     config: AppConfig
     config_path: Path
-    adapter_path: Path
+    adapter_path: Path | None
     tokenizer: Any | None
     generator: MlxGenerator
     request_logger: RequestLogger
@@ -82,7 +82,7 @@ def create_app(state: AppState) -> FastAPI:
                 "created": created,
                 "model": state.config.model.model_id,
                 "config_path": str(state.config_path),
-                "adapter_path": str(state.adapter_path),
+                "adapter_path": str(state.adapter_path) if state.adapter_path is not None else None,
                 "stream": request.stream,
                 "temperature": temperature,
                 "top_p": top_p,
@@ -150,7 +150,7 @@ def create_app(state: AppState) -> FastAPI:
             "service": "mlx-openai-compatible",
             "model": state.config.model.model_id,
             "config_path": str(state.config_path),
-            "adapter_path": str(state.adapter_path),
+            "adapter_path": str(state.adapter_path) if state.adapter_path is not None else None,
             "log_dir": str(state.request_logger.log_dir),
         }
 
