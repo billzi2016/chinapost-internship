@@ -30,6 +30,7 @@ plugins:
             - Django 系统与接口: django-system.md
             - RAG 方案: rag-architecture.md
             - 推理部署: inference-serving.md
+            - 报告索引: reports-index.md
             - 重建说明: rebuild-note.md
             - 模型微调结论: model-training.md
         - locale: en
@@ -41,6 +42,7 @@ plugins:
             - Django System and APIs: django-system.md
             - RAG Architecture: rag-architecture.md
             - Inference Serving: inference-serving.md
+            - Reports Index: reports-index.md
             - Rebuild Notes: rebuild-note.md
             - LoRA Summary: model-training.md
 
