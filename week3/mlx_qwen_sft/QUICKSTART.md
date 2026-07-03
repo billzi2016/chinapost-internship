@@ -1,5 +1,13 @@
 # Quickstart
 
+## Final Commands
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/mlx_qwen_sft
+./train_3b_tmux.sh
+./train_7b_tmux.sh
+```
+
 ## 3B
 
 ```bash
@@ -70,4 +78,30 @@ python3 scripts/run_rank_sweep.py \
   --label-prefix qwen2.5-7b-lora \
   --adapter-prefix ./adapters/qwen2.5-7b \
   --ranks 1 2 4 8 16 32
+```
+
+## Current Sweep Resume
+
+Current 3B:
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/mlx_qwen_sft
+python3 scripts/run_rank_sweep.py \
+  --config configs/qwen2.5-3b-lora.yaml \
+  --label-prefix qwen2.5-3b-lora \
+  --adapter-prefix ./adapters/qwen2.5-3b \
+  --ranks 1 2 4 8 16 32 \
+  --resume-run-dir runs/20260703_021130_qwen2.5-3b-lora_rank_sweep
+```
+
+Current 7B:
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/mlx_qwen_sft
+python3 scripts/run_rank_sweep.py \
+  --config configs/qwen2.5-7b-lora.yaml \
+  --label-prefix qwen2.5-7b-lora \
+  --adapter-prefix ./adapters/qwen2.5-7b \
+  --ranks 1 2 4 8 16 32 \
+  --resume-run-dir runs/20260703_045302_qwen2.5-7b-lora_rank_sweep
 ```

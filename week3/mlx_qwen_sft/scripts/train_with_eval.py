@@ -50,6 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--label", required=True, help="运行标签，如 qwen2.5-7b-lora。")
     parser.add_argument("--total-iters", type=int, default=0, help="总训练步数；0 表示使用配置里的 iters。")
     parser.add_argument("--chunk-iters", type=int, default=100, help="每段训练多少步。")
+    parser.add_argument("--start-step", type=int, default=0, help="续跑起始 step；用于断点恢复时避免覆盖已有评估结果。")
     parser.add_argument("--eval-limit", type=int, default=20, help="每个评估文件每轮最多评估多少条。")
     parser.add_argument("--max-tokens", type=int, default=256, help="评估生成最大 token 数。")
     parser.add_argument("--rank", type=int, default=0, help="运行时覆盖 LoRA rank，0 表示使用配置文件。")
@@ -369,6 +370,10 @@ def main() -> None:
     total_iters = args.total_iters or int(base_config.get("iters", 0))
     if total_iters <= 0:
         raise ValueError("total iters 必须大于 0。")
+    if args.start_step < 0:
+        raise ValueError("start step 不能小于 0。")
+    if args.start_step > total_iters:
+        raise ValueError("start step 不能大于 total iters。")
 
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = args.logs_dir / f"{args.label}_{run_id}"
@@ -381,8 +386,8 @@ def main() -> None:
     best_score: float | None = None
     best_metadata: dict[str, Any] | None = None
 
-    completed = 0
-    chunk_index = 0
+    completed = args.start_step
+    chunk_index = completed // args.chunk_iters
     while completed < total_iters:
         chunk_index += 1
         chunk_iters = min(args.chunk_iters, total_iters - completed)
