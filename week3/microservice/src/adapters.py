@@ -6,7 +6,10 @@ from pathlib import Path
 from src.schemas import AppConfig
 
 
-def resolve_adapter_path(config: AppConfig) -> Path:
+def resolve_adapter_path(config: AppConfig) -> Path | None:
+    if not config.model.use_lora:
+        return None
+
     if config.model.adapter_path:
         adapter_path = Path(config.model.adapter_path).expanduser()
         if not adapter_path.exists():

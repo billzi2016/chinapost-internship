@@ -27,6 +27,7 @@ class GenerationConfig(BaseModel):
 class ModelConfig(BaseModel):
     model_id: str
     model_path: str
+    use_lora: bool = True
     runs_root: str
     run_id: str
     rank: int | None = None

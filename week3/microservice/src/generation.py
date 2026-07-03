@@ -10,7 +10,7 @@ from src.schemas import AppConfig
 
 
 class MlxGenerator:
-    def __init__(self, config: AppConfig, adapter_path: Path) -> None:
+    def __init__(self, config: AppConfig, adapter_path: Path | None) -> None:
         self._config = config
         self._adapter_path = adapter_path
 
@@ -33,9 +33,9 @@ class MlxGenerator:
             str(top_p),
             "--prompt",
             prompt,
-            "--adapter-path",
-            str(self._adapter_path),
         ]
+        if self._adapter_path is not None:
+            command.extend(["--adapter-path", str(self._adapter_path)])
 
         result = subprocess.run(command, text=True, capture_output=True, check=False)
         if result.returncode != 0:
