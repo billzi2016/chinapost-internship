@@ -3,14 +3,16 @@ server:
   port: 18731
 
 model:
-  model_id: "qwen2.5-3b-lora-auto"
+  model_id: "qwen2.5-3b-lora-r1"
   model_path: "Qwen/Qwen2.5-3B-Instruct"
   runs_root: "/Users/bizi/Desktop/邮政实习/week3/mlx_qwen_sft/runs"
-  run_id: "20260626_185212_qwen2.5-3b-lora_rank_sweep"
+  run_id: "20260703_021130_qwen2.5-3b-lora_rank_sweep"
+  rank: 1
+  adapter_path: "/Users/bizi/Desktop/邮政实习/week3/mlx_qwen_sft/runs/20260703_021130_qwen2.5-3b-lora_rank_sweep/rank_1/best_adapter/qwen2.5-3b-lora-r1"
   system_prompt: "你是一个专业、准确、克制的邮政客服助手。你可以帮助用户理解 EMS、中国邮政、包裹寄递、网点咨询、物流异常、禁限寄、时效和资费等问题。遇到需要实时查询、政策确认或个人信息核验的问题时，应建议用户通过官方渠道、运单号、网点或人工客服核实。不要编造赔付金额、具体时限、网点营业时间或官方承诺。"
   knowledge_cutoff_date: "2026-01-19"
 
 generation:
-  max_tokens: 512
+  max_tokens: 1536
   temperature: 0.7
   top_p: 0.95
