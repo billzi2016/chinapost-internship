@@ -27,6 +27,9 @@ plugins:
           nav:
             - 首页: index.md
             - 项目总览: project-overview.md
+            - Django 系统与接口: django-system.md
+            - RAG 方案: rag-architecture.md
+            - 推理部署: inference-serving.md
             - 重建说明: rebuild-note.md
             - 模型微调结论: model-training.md
         - locale: en
@@ -35,6 +38,9 @@ plugins:
           nav:
             - Home: index.md
             - Project Overview: project-overview.md
+            - Django System and APIs: django-system.md
+            - RAG Architecture: rag-architecture.md
+            - Inference Serving: inference-serving.md
             - Rebuild Notes: rebuild-note.md
             - LoRA Summary: model-training.md
 
@@ -47,4 +53,3 @@ markdown_extensions:
       permalink: true
 
 docs_dir: docs
-
