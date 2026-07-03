@@ -8,6 +8,8 @@ Model inference used `vLLM`, running on an `A100` machine with a single-node `8-
 
 This layer existed to provide a stable online inference endpoint for the upper Django system.
 
+`vLLM` was chosen because it is built for serving large language models, not just loading them in a local script. It focuses on throughput, concurrent requests, and service-style access, which fits a Django API calling into model inference. The A100 8-GPU setup provided enough memory and parallel capacity to serve and compare 3B and 7B models.
+
 ## Load Balancing
 
 `nginx` was used in front of the inference layer for load balancing.
@@ -17,6 +19,8 @@ This kept the serving path cleaner:
 1. one unified external entry,
 2. easier backend forwarding,
 3. room for later routing or node expansion.
+
+nginx was used to decouple Django from individual inference processes. Django talks to one stable entry point, while model routing, multiple serving processes, or later model replacement can be handled behind nginx. Since the system was not moved into k8s, nginx was a direct and controllable entry layer.
 
 ## Service Flow
 

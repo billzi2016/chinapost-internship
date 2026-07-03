@@ -1,11 +1,21 @@
 # Project Overview
 
-This project is organized around the postal customer-service domain, but the real core is not the page layer itself. The two main lines are:
+This project is organized around the postal customer-service domain. The goal was not just to build a chat page, but to connect data processing, knowledge retrieval, model adaptation, the web system, and model serving into one complete chain.
+
+The two main lines are:
 
 1. building a usable RAG workflow for postal knowledge,
 2. adapting the model through LoRA fine-tuning.
 
-The Django UI, APIs, inference serving, and load-balancing layer all exist, but mainly as the system demo and integration layer around those two core tracks.
+The Django UI, APIs, inference serving, and load-balancing layer are not separate side pieces. They turn the RAG and LoRA work into an interactive system that can be tested, compared, and demonstrated.
+
+At the engineering level, the project covers several complete paths:
+
+1. filtering, cleaning, and organizing postal knowledge from customer-service data and public web materials,
+2. turning that knowledge into a retrievable and traceable vector database with citations shown on the page,
+3. adapting the model to the postal customer-service domain through LoRA,
+4. using Django to connect sessions, streaming responses, citations, ticket JSON, and four-mode comparison,
+5. serving model capability through vLLM, an A100 8-card machine, and nginx.
 
 The project can still be read in three major phases.
 
@@ -30,7 +40,7 @@ Main directory:
 
 This phase focused on LoRA adaptation and inference integration for Qwen2.5 in the postal customer-service setting.
 
-At the current documentation level, the project priority can be read very directly:
+The project priority can be read very directly:
 
 1. `RAG` is one core line.
 2. `LoRA` is the other core line.
