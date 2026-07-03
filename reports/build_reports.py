@@ -90,6 +90,12 @@ REPORT_SPECS = [
         "title": "邮政 FAQ 爬虫训练样本构建报告",
     },
     {
+        "id": "week1-llm-system-design",
+        "source": WEB_CRAWLER_DIR / "report" / "llm_system_design_report.md",
+        "output": STEP2_DIR / "邮政客服LLM系统设计报告.pdf",
+        "title": "邮政客服 LLM 系统设计报告",
+    },
+    {
         "id": "week3-qwen25-full",
         "source": WEEK3_DIR / "reports" / "qwen2.5_mlx_sft_full_experiment_report.md",
         "output": STEP3_DIR / "基于AppleMLX的Qwen2.5邮政客服模型微调完整实验报告.pdf",
@@ -224,14 +230,11 @@ pre code {
 img {
   display: block;
   max-width: 100%;
-  max-height: 92vh;
   height: auto;
   margin: 12px auto 18px auto;
   border: 1px solid #d0d7de;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
-  page-break-inside: avoid;
-  break-inside: avoid;
 }
 
 hr {
