@@ -18,6 +18,8 @@ The goal here is not to build a model from scratch. The goal is to adapt an exis
 
 That makes LoRA a practical fit because it keeps training lighter, cheaper, and easier to compare across multiple settings.
 
+Full fine-tuning would raise memory cost, training cost, and experiment time without matching the real need of the task. Postal customer service mostly needs adaptation in answer format, service tone, intent understanding, and how the model organizes retrieved evidence. LoRA keeps that work in the adapter layer, which makes rank sweep experiments and rollback to a stable adapter much easier.
+
 ## Role in This Project
 
 In this project, LoRA is not isolated. Together with RAG, it forms one of the two main capability tracks:
@@ -35,4 +37,3 @@ The current documentation keeps one stable summary:
 
 1. `Qwen2.5-3B` -> `rank 2`
 2. `Qwen2.5-7B` -> `rank 4`
-
