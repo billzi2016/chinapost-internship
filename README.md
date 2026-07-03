@@ -8,6 +8,8 @@ This repository is a reconstructed and organized internship project for China Po
 
 Chinese documentation is available in [README_CN.md](README_CN.md).
 
+Documentation site: <https://billzi2016.github.io/chinapost-internship/>
+
 ## Repository Structure
 
 - `week1/`: postal customer-service data filtering, statistical analysis, keyword extraction, visualization, model selection notes, and classification boundary-case analysis.
