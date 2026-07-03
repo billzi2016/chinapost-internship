@@ -4,7 +4,7 @@ This repository is a reconstructed and organized internship project for China Po
 
 > Note: this is a reconstructed historical internship project. Git commit timestamps represent the time when the files were reorganized into this repository, not the original development timeline. The original remote internship machine is no longer available, so this repository was rebuilt from the available materials and requirements.
 >
-> This repository is also a reconstructed project version. The `week1`, `week2`, `week3`, and later stage names mainly reflect project sequencing rather than exact calendar weeks. Time spent on manual tuning, sample filtering, validation-dataset preparation, onboarding training, and internal meetings has been removed from this staged view, so the week labels should be read as task phases instead of literal natural-week timing.
+> This repository is also a reconstructed project version. The `week1`, `week2`, `week3`, and later stage names reflect project sequencing only and do not correspond to real calendar weeks. Time spent on manual tuning, sample filtering, validation-dataset preparation, onboarding training, and internal meetings has already been removed from this staged view, so the week labels should be read strictly as task phases rather than any natural-week timeline.
 
 Chinese documentation is available in [README_CN.md](README_CN.md).
 

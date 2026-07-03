@@ -10,3 +10,4 @@ This site keeps three things clear:
 2. Why the current repository is presented as a rebuilt version.
 3. The final summary kept for the model fine-tuning work.
 
+In this repository, labels such as `week1`, `week2`, and `week3` should be read strictly as task phases. They do not correspond to real calendar weeks, and the staged naming already excludes time spent on manual tuning, sample filtering, validation-dataset preparation, onboarding training, and internal meetings.
