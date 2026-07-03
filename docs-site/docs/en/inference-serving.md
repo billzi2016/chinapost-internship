@@ -22,6 +22,10 @@ This kept the serving path cleaner:
 
 nginx was used to decouple Django from individual inference processes. Django talks to one stable entry point, while model routing, multiple serving processes, or later model replacement can be handled behind nginx. Since the system was not moved into k8s, nginx was a direct and controllable entry layer.
 
+From the system architecture side, the web and database layers are not the main bottleneck. Django can be replicated, and PostgreSQL + pgvector can handle this type of conversation, citation, ticket, and knowledge-retrieval workload. For workloads at the scale of hundreds to around a thousand users, the main pressure moves to model inference.
+
+If the system uses locally served models, the next work should focus on multiple vLLM instances, GPU utilization, nginx routing, and a higher-level Ingress or container orchestration setup. If the system uses external APIs, the main concerns become API security, access control, traffic walls, rate limiting, and failure fallback.
+
 ## Service Flow
 
 The serving path can be summarized as:

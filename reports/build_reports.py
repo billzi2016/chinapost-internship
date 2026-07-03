@@ -113,6 +113,12 @@ REPORT_SPECS = [
         "output": STEP3_DIR / "Qwen2.5-7B邮政客服LoRA RankSweep实验报告.pdf",
         "title": "Qwen2.5-7B 邮政客服 LoRA Rank Sweep 实验报告",
     },
+    {
+        "id": "week3-qwen25-final-compare",
+        "source": WEEK3_DIR / "reports" / "qwen2.5_final_comparison_report.md",
+        "output": STEP3_DIR / "Qwen2.5邮政客服SFT最终对比报告.pdf",
+        "title": "Qwen2.5 邮政客服 SFT 最终对比报告",
+    },
 ]
 
 

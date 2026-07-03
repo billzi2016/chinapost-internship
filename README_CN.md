@@ -24,6 +24,8 @@
 - `week2/post-service-agent`：正式 Django 项目，集成 Django、Django Ninja、SSE、PostgreSQL、pgvector、Ollama 和独立 `post_ai` 工具包。
 - 当前系统支持左侧会话历史、右侧聊天窗口、RAG 引用展示、工单 JSON 生成、Markdown 渲染、Provider 健康提示，以及 PostgreSQL + pgvector 向量检索。
 - 设计上保留 FAISS/local 和 PostgreSQL-pgvector/microservice 两种模式，便于本地调试和正式服务切换。
+- 正式数据链路使用 PostgreSQL + pgvector；仓库里如果看到本地 `db.sqlite3`，应理解为开发残留，不是正式系统数据库。
+- 从架构上看，Django + PostgreSQL + pgvector 这一层已经具备百人到千人级内部使用或演示验证的部署基础。主要扩展压力不在数据库层，而在大模型推理层：本地模型需要继续围绕 vLLM 实例、GPU 资源、nginx / Ingress 路由和负载均衡展开；外部模型 API 则需要重点考虑接口安全、访问权限、流量墙、限流和异常降级。
 
 配套工具：
 

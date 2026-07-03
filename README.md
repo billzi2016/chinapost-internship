@@ -33,6 +33,8 @@ Documentation site: <https://billzi2016.github.io/chinapost-internship/>
 - `week2/post-service-agent`: the formal Django project using Django, Django Ninja, SSE, PostgreSQL, pgvector, Ollama, and the standalone `post_ai` toolkit.
 - The application supports conversation history, a ChatGPT-style chat panel, RAG citation display, ticket JSON generation, Markdown rendering, provider health indicators, and PostgreSQL + pgvector retrieval.
 - The AI layer keeps both FAISS/local and PostgreSQL-pgvector/microservice modes for easier local debugging and production-style switching.
+- The formal data path is PostgreSQL + pgvector. Any local `db.sqlite3` file should be read as development residue rather than the intended system database.
+- From an architecture perspective, the Django + PostgreSQL + pgvector layer is already suitable for internal or demo workloads at the scale of hundreds to around a thousand users. The main scaling pressure is model inference: local models need more work around vLLM instances, GPU resources, nginx / Ingress routing, and load balancing; external model APIs need stronger API security, access control, traffic walls, rate limiting, and failure fallback.
 
 Supporting tools:
 
