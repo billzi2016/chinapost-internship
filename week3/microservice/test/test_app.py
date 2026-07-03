@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -10,11 +11,13 @@ from fastapi.testclient import TestClient
 
 TEST_DIR = Path(__file__).resolve().parent
 MICROSERVICE_DIR = TEST_DIR.parent
-CONFIG_PATH = MICROSERVICE_DIR / "config.yaml"
+DEFAULT_CONFIG_PATH = MICROSERVICE_DIR / "config_3b.yaml"
 
 
 def load_app_module():
-    assert CONFIG_PATH.exists(), f"Missing config: {CONFIG_PATH}"
+    assert DEFAULT_CONFIG_PATH.exists(), f"Missing config: {DEFAULT_CONFIG_PATH}"
+    os.environ.pop("MICROSERVICE_CONFIG", None)
+    os.environ.pop("MICROSERVICE_MODEL_SIZE", None)
 
     if str(MICROSERVICE_DIR) not in sys.path:
         sys.path.insert(0, str(MICROSERVICE_DIR))
@@ -26,7 +29,7 @@ def load_app_module():
 
 def test_best_adapter_resolution() -> None:
     app_module = load_app_module()
-    best_adapter = app_module.resolve_best_adapter(app_module.CONFIG)
+    best_adapter = app_module.BEST_ADAPTER_PATH
     assert best_adapter.exists()
     assert best_adapter.is_dir()
     assert "best_adapter" in str(best_adapter)

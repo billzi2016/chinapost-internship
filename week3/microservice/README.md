@@ -6,7 +6,7 @@
 
 - 推理后端使用 `mlx_lm.generate`
 - 支持加载基座模型和 LoRA adapter
-- 配置从 `config.yaml` 读取
+- 默认配置从 `config_3b.yaml` 读取，也可以切换到 `config_7b.yaml`
 - 支持 `stream=true` 的 OpenAI 风格 SSE 返回
 - 当前提供：
   - `GET /health`
@@ -18,10 +18,27 @@
 ```text
 week3/microservice/
 ├── app.py
-├── config.yaml
+├── config_3b.yaml
+├── config_7b.yaml
 ├── requirements.txt
+├── scripts/
+│   ├── start_3b_lora.sh
+│   └── start_7b_lora.sh
+├── src/
+│   ├── __init__.py
+│   ├── adapters.py
+│   ├── api.py
+│   ├── api_types.py
+│   ├── app_factory.py
+│   ├── config.py
+│   ├── generation.py
+│   ├── prompts.py
+│   ├── request_logger.py
+│   └── schemas.py
 ├── test/
 │   └── test_app.py
+├── validation/
+│   └── manual_chat.py
 └── README.md
 ```
 
@@ -37,10 +54,16 @@ week3/microservice/
 
 ## 配置文件
 
-配置文件路径：
+默认 3B 配置文件：
 
 ```text
-week3/microservice/config.yaml
+week3/microservice/config_3b.yaml
+```
+
+7B 配置文件：
+
+```text
+week3/microservice/config_7b.yaml
 ```
 
 主要配置项：
@@ -51,6 +74,8 @@ week3/microservice/config.yaml
 - `model.model_path`
 - `model.runs_root`
 - `model.run_id`
+- `model.rank`
+- `model.adapter_path`
 - `model.system_prompt`
 - `generation.max_tokens`
 - `generation.temperature`
@@ -58,9 +83,35 @@ week3/microservice/config.yaml
 
 说明：
 
-- 服务不会在 `config.yaml` 里写死单个 LoRA adapter 路径
-- 它会读取 `model.runs_root/model.run_id` 下各个 `rank_*/logs/best_adapter_*.json`
-- 然后自动按 `best_score` 选当前最优 LoRA
+- `config_3b.yaml` 当前指向 3B 最优配置：`qwen2.5-3b-lora-r1`
+- `config_7b.yaml` 当前指向 7B 最优配置：`qwen2.5-7b-lora-r2`
+- `model.adapter_path` 会显式指定当前服务加载的 LoRA adapter
+- 如果删除 `model.adapter_path`，服务会按 `model.runs_root/model.run_id` 和 `model.rank` 从 `best_adapter_*.json` 中解析 adapter
+- 如果连 `model.rank` 也不填，服务会从该 run 下所有 rank 的 `best_adapter_*.json` 中按 `best_score` 选择最高分 adapter
+- 默认 `generation.max_tokens` 为 `1536`，适合流程类回答、投诉处理模板和较长解释
+
+## 选择 3B 或 7B
+
+默认启动 3B：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+uvicorn app:app --host 127.0.0.1 --port 18731
+```
+
+启动 7B：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+MICROSERVICE_MODEL_SIZE=7b uvicorn app:app --host 127.0.0.1 --port 18731
+```
+
+也可以显式指定配置文件：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+MICROSERVICE_CONFIG=/Users/bizi/Desktop/邮政实习/week3/microservice/config_7b.yaml uvicorn app:app --host 127.0.0.1 --port 18731
+```
 
 ## 安装依赖
 
@@ -78,7 +129,21 @@ pip install -r requirements.txt
 
 ## 启动服务
 
-在 `week3/microservice` 目录启动：
+启动 3B：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+./scripts/start_3b_lora.sh
+```
+
+启动 7B：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+./scripts/start_7b_lora.sh
+```
+
+也可以直接用 `uvicorn` 启动默认 3B：
 
 ```bash
 cd /Users/bizi/Desktop/邮政实习/week3/microservice
@@ -90,6 +155,12 @@ uvicorn app:app --host 127.0.0.1 --port 18731
 ```bash
 cd /Users/bizi/Desktop/邮政实习/week3/microservice
 python app.py
+```
+
+直接 `python app.py` 时同样支持切换 7B：
+
+```bash
+MICROSERVICE_MODEL_SIZE=7b python app.py
 ```
 
 ## 停止服务
@@ -185,6 +256,64 @@ curl http://127.0.0.1:18731/v1/chat/completions \
 - 服务会先拿到完整生成结果，再按小块用 SSE 返回
 - 对客户端协议兼容，但不是底层 token 级实时生成
 
+## 人工多轮验证
+
+先启动服务，例如默认 3B：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+uvicorn app:app --host 127.0.0.1 --port 18731
+```
+
+另开一个终端启动流式多轮对话客户端：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+python validation/manual_chat.py
+```
+
+客户端启动后会先打印当前服务加载的 `config_path` 和 `adapter_path`，用于确认是否挂到了预期的 3B/7B LoRA。
+
+验证 7B 时先用 7B 配置启动服务：
+
+```bash
+cd /Users/bizi/Desktop/邮政实习/week3/microservice
+MICROSERVICE_MODEL_SIZE=7b uvicorn app:app --host 127.0.0.1 --port 18731
+```
+
+客户端命令不变：
+
+```bash
+python validation/manual_chat.py
+```
+
+常用参数：
+
+```bash
+python validation/manual_chat.py --temperature 0.2 --max-tokens 768
+```
+
+交互命令：
+
+- `/reset`：清空多轮上下文
+- `/exit` 或 `/quit`：退出
+
+## 调用日志
+
+服务会把每次完整调用写入一个单独的 JSON 文件：
+
+```text
+week3/microservice/logs/chat_requests/
+```
+
+文件名按日期时间、毫秒和模型名生成，例如：
+
+```text
+20260703_173012_123_qwen2.5-3b-lora-r1.json
+```
+
+文件名格式为 `YYYYMMDD_HHMMSS_mmm_model.json`。每个文件记录这一次完整调用，并使用 `indent=2` 格式化。多轮对话不会拆成多个日志文件，当前请求里的完整 `messages` 会和完整回答一起写入同一个文件。`stream=true` 和普通请求都会在完整回答生成后写日志。
+
 ## 当前限制
 
 - 目前只实现了 `chat.completions`
@@ -202,8 +331,8 @@ week3/microservice/test/test_app.py
 
 这套测试会：
 
-- 先自动解析 `config.yaml`
-- 再自动从指定 run 里选择 `best_score` 最高的 LoRA
+- 先自动解析默认 `config_3b.yaml`
+- 再确认当前配置里的 LoRA adapter 可以解析
 - 最后做真实的接口调用和真实的 MLX 推理
 
 注意：
