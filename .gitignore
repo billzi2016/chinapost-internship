@@ -30,6 +30,9 @@ db.sqlite3
 # Jupyter
 .ipynb_checkpoints/
 
+# docs site local build outputs
+docs-site/site/
+
 # ----------------------------------------------------------------------
 # week1 outputs
 # ----------------------------------------------------------------------
