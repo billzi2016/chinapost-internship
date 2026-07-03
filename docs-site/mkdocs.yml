@@ -1,0 +1,50 @@
+site_name: ChinaPost Internship Docs
+site_description: Reconstructed documentation site for the China Post internship project
+site_url: https://billzi2016.github.io/chinapost-internship/
+repo_url: https://github.com/billzi2016/chinapost-internship
+repo_name: billzi2016/chinapost-internship
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: zh
+          default: true
+          name: 中文
+          build: true
+          nav:
+            - 首页: index.md
+            - 项目总览: project-overview.md
+            - 重建说明: rebuild-note.md
+            - 模型微调结论: model-training.md
+        - locale: en
+          name: English
+          build: true
+          nav:
+            - Home: index.md
+            - Project Overview: project-overview.md
+            - Rebuild Notes: rebuild-note.md
+            - LoRA Summary: model-training.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true
+
+docs_dir: docs
+
