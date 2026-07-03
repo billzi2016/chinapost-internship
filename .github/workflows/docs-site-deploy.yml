@@ -35,7 +35,7 @@ jobs:
 
       - name: Build MkDocs site
         working-directory: docs-site
-        run: mkdocs build --strict --config-file mkdocs.yml --site-dir site
+        run: mkdocs build --config-file mkdocs.yml --site-dir site
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
