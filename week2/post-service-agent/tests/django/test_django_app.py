@@ -15,14 +15,22 @@ from __future__ import annotations
 import json
 import os
 from io import StringIO
+from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from apps.core.models import Citation, Conversation, Message, PostalDocument, Ticket
-from apps.api.services import normalize_display_text
+from apps.api.services import (
+    LIGHT_RAG_TOP_K,
+    STRONG_RAG_TOP_K,
+    _select_rag_profile,
+    normalize_display_text,
+)
 from post_ai.config import AppConfig
+from post_ai.schemas import PostalDocument as PostalDocumentSchema
+from post_ai.schemas import RetrievalHit
 
 
 @override_settings(POST_SERVICE_FAKE_LLM=True)
@@ -422,6 +430,68 @@ class DjangoSmokeTests(TestCase):
         self.assertIn("event: delta", body)
         self.assertIn("event: done", body)
 
+    def test_select_rag_profile_uses_light_and_strong_top_k(self) -> None:
+        """RAG profile 选择应稳定对应报告中的 3 条和 6 条策略。"""
+        light_profile, light_top_k = _select_rag_profile("包裹什么时候派送")
+        strong_profile, strong_top_k = _select_rag_profile("邮寄危险品需要什么材料和官方依据")
+
+        self.assertEqual(light_profile, "light")
+        self.assertEqual(light_top_k, LIGHT_RAG_TOP_K)
+        self.assertEqual(light_top_k, 3)
+        self.assertEqual(strong_profile, "strong")
+        self.assertEqual(strong_top_k, STRONG_RAG_TOP_K)
+        self.assertEqual(strong_top_k, 6)
+
+    def test_rag_stream_passes_light_top_k_to_vector_search(self) -> None:
+        """普通 RAG 问题应按 Light RAG 传递 top_k=3，并写入 meta/metadata。"""
+        calls = []
+
+        def fake_query(query: str, top_k: int):
+            calls.append((query, top_k))
+            return [_fake_retrieval_hit(rank=1)]
+
+        with patch("apps.api.services.query_configured_vector_store", side_effect=fake_query):
+            response = Client().post(
+                "/api/chat/stream",
+                data=json.dumps({"message": "包裹什么时候派送", "use_rag": True, "use_sft": False}),
+                content_type="application/json",
+            )
+            body = b"".join(response.streaming_content).decode("utf-8")
+
+        assistant = Message.objects.get(role=Message.ROLE_ASSISTANT)
+
+        self.assertEqual(calls, [("包裹什么时候派送", LIGHT_RAG_TOP_K)])
+        self.assertIn('"rag_profile": "light"', body)
+        self.assertIn(f'"rag_top_k": {LIGHT_RAG_TOP_K}', body)
+        self.assertEqual(assistant.metadata["rag_profile"], "light")
+        self.assertEqual(assistant.metadata["rag_top_k"], LIGHT_RAG_TOP_K)
+        self.assertEqual(Citation.objects.count(), 1)
+
+    def test_rag_stream_passes_strong_top_k_to_vector_search(self) -> None:
+        """高规则/高风险问题应按 Strong RAG 传递 top_k=6，并写入 meta/metadata。"""
+        calls = []
+
+        def fake_query(query: str, top_k: int):
+            calls.append((query, top_k))
+            return [_fake_retrieval_hit(rank=1), _fake_retrieval_hit(rank=2)]
+
+        with patch("apps.api.services.query_configured_vector_store", side_effect=fake_query):
+            response = Client().post(
+                "/api/chat/stream",
+                data=json.dumps({"message": "邮寄危险品需要什么材料和官方依据", "use_rag": True, "use_sft": False}),
+                content_type="application/json",
+            )
+            body = b"".join(response.streaming_content).decode("utf-8")
+
+        assistant = Message.objects.get(role=Message.ROLE_ASSISTANT)
+
+        self.assertEqual(calls, [("邮寄危险品需要什么材料和官方依据", STRONG_RAG_TOP_K)])
+        self.assertIn('"rag_profile": "strong"', body)
+        self.assertIn(f'"rag_top_k": {STRONG_RAG_TOP_K}', body)
+        self.assertEqual(assistant.metadata["rag_profile"], "strong")
+        self.assertEqual(assistant.metadata["rag_top_k"], STRONG_RAG_TOP_K)
+        self.assertEqual(Citation.objects.count(), 2)
+
     def test_message_api_returns_saved_citations(self) -> None:
         """历史消息接口应返回已保存的引用，供前端重新打开会话时展示来源。"""
         conversation = Conversation.objects.create(title="测试")
@@ -467,3 +537,20 @@ class DjangoSmokeTests(TestCase):
             normalize_display_text(text),
             "用户[0]: 你好\n客服[1]: 您好\n用户[2]: 查询一下",
         )
+
+
+def _fake_retrieval_hit(rank: int) -> RetrievalHit:
+    """构造无需真实向量库的检索结果，用于验证 Django RAG 编排逻辑。"""
+    return RetrievalHit(
+        document=PostalDocumentSchema(
+            split="train",
+            index=rank,
+            session_id=f"session-{rank}",
+            dialogue_id=rank,
+            source_path="test",
+            content=f"用户[{rank}]: 测试问题\n客服[{rank}]: 测试回答",
+            metadata={"intents": ["测试"]},
+        ),
+        score=0.9 - rank * 0.01,
+        rank=rank,
+    )
