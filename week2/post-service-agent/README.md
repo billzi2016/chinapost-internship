@@ -80,25 +80,89 @@ Ollama          chat model 和 embedding model
 
 当前正式链路是 PostgreSQL + pgvector。
 
-RAG 数据已经全量导入：
+RAG 数据由两部分组成：
 
 ```text
-PostalDocument: 6321
-PostalEmbedding: 6321
+CSDS 邮政对话切片: 6321
+week1 政策/FAQ JSONL: 86
+合计: 6407
 ```
 
-embedding 来源是已有文件：
+week1 政策/FAQ 数据通过 symlink 接入 week2：
+
+```text
+week2/data/dataset.jsonl -> ../../week1-module-Web-Crawler/final-result/dataset.jsonl
+```
+
+旧 CSDS embedding 来源是已有文件：
 
 ```text
 week2/data/embeddings/dialogue_embeddings.h5
 week2/data/embeddings/dialogue_metadata.json
 ```
 
-导入命令：
+重新导入 pgvector：
 
 ```bash
 PYTHONPATH=. /opt/anaconda3/bin/python manage.py ingest_postal_rag
 ```
+
+重新生成 FAISS artifact：
+
+```bash
+PYTHONPATH=. /opt/anaconda3/bin/python -m post_ai.build_faiss
+```
+
+说明：旧 CSDS 数据继续使用历史 H5 向量；`dataset.jsonl` 没有历史 H5 向量，
+导入 pgvector 或重建 FAISS 时会使用当前配置的 embedding provider 动态生成向量。
+
+如果 `week1-module-Web-Crawler/final-result/dataset.jsonl` 更新了，或者首次把 symlink 接入
+week2 后，需要执行下面两条命令让新增数据真正进入检索链路：
+
+```bash
+PYTHONPATH=. /opt/anaconda3/bin/python manage.py ingest_postal_rag
+PYTHONPATH=. /opt/anaconda3/bin/python -m post_ai.build_faiss
+```
+
+第一条会写入/更新 PostgreSQL + pgvector 中的 `PostalDocument` 和 `PostalEmbedding`；
+第二条会重新生成本地 FAISS artifact。只创建 symlink 不会自动更新数据库或 FAISS 文件。
+
+## RAG Trigger Rules
+
+聊天接口里的 RAG 开关只决定是否检索知识库；真正检索多少条，由
+`apps/api/services.py` 中的 `_select_rag_profile()` 决定。
+
+当前规则分两档：
+
+| Profile | 触发条件 | top_k | 用途 |
+| --- | --- | ---: | --- |
+| `light` | 打开 RAG 且没有命中 strong 关键词 | 3 | 普通咨询、状态说明、一般业务问答 |
+| `strong` | 打开 RAG 且命中高规则/高风险关键词 | 6 | 清关、赔付、禁限寄、资费、时效、证明材料等需要更多依据的问题 |
+| `none` | 关闭 RAG | 0 | 不检索知识库，直接走模型回答 |
+
+Strong RAG 当前使用可解释的关键词包含匹配，不是独立分类模型。命中以下任一词时，
+本轮回答会把 `rag_profile` 设为 `strong`，并向向量库召回 6 条结果：
+
+```text
+清关、报关、海关、赔付、赔偿、理赔、投诉、申诉、改单、
+禁寄、限寄、限制品、危险品、资费、费用、时限、时效、
+超时、延误、材料、证明、依据、条款、规则、官方、
+能不能寄、是否可以、需要准备、多久能
+```
+
+接口会在 SSE `meta` 事件和助手消息 `metadata` 中记录本次实际策略：
+
+```json
+{
+  "use_rag": true,
+  "use_sft": false,
+  "rag_profile": "strong",
+  "rag_top_k": 6
+}
+```
+
+维护约定：如果后续要把关键词规则升级成 query classifier，优先替换
+`_select_rag_profile()`，不要把触发逻辑散落到路由、前端或 prompt 里。
 
 ## Features
 

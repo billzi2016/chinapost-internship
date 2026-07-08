@@ -86,3 +86,8 @@ reports/build_reports.py
 
 - Markdown：[站内页面](report-step3-qwen25-7b-rank-sweep.md)（源文件：`week3/reports/qwen2.5-7b_rank_sweep_report.md`）
 - PDF：[Qwen2.5-7B邮政客服LoRA RankSweep实验报告.pdf](https://github.com/billzi2016/chinapost-internship/blob/main/reports/step3_lora%E5%BE%AE%E8%B0%83/Qwen2.5-7B%E9%82%AE%E6%94%BF%E5%AE%A2%E6%9C%8DLoRA%20RankSweep%E5%AE%9E%E9%AA%8C%E6%8A%A5%E5%91%8A.pdf)
+
+### Qwen2.5 邮政客服 SFT 最终对比报告
+
+- Markdown：[站内页面](report-step3-qwen25-final-comparison.md)（源文件：`week3/reports/qwen2.5_final_comparison_report.md`）
+- PDF：[Qwen2.5邮政客服SFT最终对比报告.pdf](https://github.com/billzi2016/chinapost-internship/blob/main/reports/step3_lora%E5%BE%AE%E8%B0%83/Qwen2.5%E9%82%AE%E6%94%BF%E5%AE%A2%E6%9C%8DSFT%E6%9C%80%E7%BB%88%E5%AF%B9%E6%AF%94%E6%8A%A5%E5%91%8A.pdf)

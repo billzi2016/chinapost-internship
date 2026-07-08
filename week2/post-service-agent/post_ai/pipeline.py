@@ -8,11 +8,17 @@ from post_ai.filter_mapping import iter_postal_documents, load_filter_results
 from post_ai.old_embeddings import load_embedding_metadata, load_postal_vectors_from_h5
 from post_ai.providers.registry import build_default_registry
 from post_ai.schemas import PostalDocument, RetrievalHit
-from post_ai.source_loader import load_all_csds
+from post_ai.source_loader import load_all_csds, load_policy_jsonl
 from post_ai.vectorstores import FaissPostalIndex, build_vector_store_registry
 
 
 def load_postal_documents(config: AppConfig | None = None) -> list[PostalDocument]:
+    config = config or AppConfig.from_env()
+    return load_csds_postal_documents(config) + load_policy_documents(config)
+
+
+def load_csds_postal_documents(config: AppConfig | None = None) -> list[PostalDocument]:
+    """加载旧 CSDS + LLM filter 产生的邮政对话文档。"""
     config = config or AppConfig.from_env()
     csds_by_split = load_all_csds(config.data_paths.csds_dir)
     filters_by_split = load_filter_results(config.data_paths.filter_path)
@@ -23,6 +29,12 @@ def load_postal_documents(config: AppConfig | None = None) -> list[PostalDocumen
             csds_dir=config.data_paths.csds_dir,
         )
     )
+
+
+def load_policy_documents(config: AppConfig | None = None) -> list[PostalDocument]:
+    """加载 week1 爬虫产出的政策/FAQ JSONL 文档。"""
+    config = config or AppConfig.from_env()
+    return load_policy_jsonl(config.data_paths.policy_dataset_jsonl_path)
 
 
 def build_faiss_index(
@@ -90,22 +102,39 @@ def save_faiss_index(index: FaissPostalIndex, artifact_dir: Path) -> None:
 
 def build_faiss_index_from_old_h5(config: AppConfig | None = None) -> FaissPostalIndex:
     config = config or AppConfig.from_env()
-    documents = load_postal_documents(config)
+    legacy_documents = load_csds_postal_documents(config)
+    policy_documents = load_policy_documents(config)
     metadata_by_split = load_embedding_metadata(config.data_paths.embedding_metadata_path)
     selected_keys = [
         (document.split, document.index, document.session_id, document.dialogue_id)
-        for document in documents
+        for document in legacy_documents
     ]
-    vectors = load_postal_vectors_from_h5(
+    legacy_vectors = load_postal_vectors_from_h5(
         h5_path=config.data_paths.old_embedding_h5_path,
         metadata_by_split=metadata_by_split,
         selected_keys=selected_keys,
     )
+    documents = legacy_documents + policy_documents
+    vectors = legacy_vectors.tolist()
+    embedding_model = "dialogue_embeddings.h5"
+    provider = "old-h5"
+    if policy_documents:
+        settings = config.provider_settings
+        registry = build_default_registry(settings)
+        embedding_provider = registry.get(settings.default_embedding_provider)
+        policy_result = embed_documents(
+            provider=embedding_provider,
+            texts=[document.content for document in policy_documents],
+            model=settings.default_embedding_model,
+        )
+        vectors.extend(policy_result.vectors)
+        embedding_model = f"{embedding_model}+{policy_result.model}"
+        provider = f"{provider}+{policy_result.provider}"
     return FaissPostalIndex.build(
         documents=documents,
         vectors=vectors,
-        embedding_model="dialogue_embeddings.h5",
-        provider="old-h5",
+        embedding_model=embedding_model,
+        provider=provider,
     )
 
 
