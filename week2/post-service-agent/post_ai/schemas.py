@@ -6,7 +6,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-SplitName = Literal["train", "val", "test"]
+SplitName = Literal["train", "val", "test", "policy"]
 MessageRole = Literal["system", "user", "assistant"]
 
 

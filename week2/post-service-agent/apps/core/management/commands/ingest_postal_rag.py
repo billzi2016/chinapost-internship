@@ -14,8 +14,10 @@ from django.core.management.base import BaseCommand
 
 from apps.core.models import PostalDocument, PostalEmbedding
 from post_ai.config import AppConfig
+from post_ai.embeddings import embed_documents
 from post_ai.old_embeddings import load_embedding_metadata, load_postal_vectors_from_h5
-from post_ai.pipeline import load_postal_documents
+from post_ai.pipeline import load_csds_postal_documents, load_policy_documents
+from post_ai.providers.registry import build_default_registry
 
 
 class Command(BaseCommand):
@@ -47,29 +49,54 @@ class Command(BaseCommand):
         而不是重复插入。embedding 与文档一对一，同样允许重复导入刷新向量。
         """
         config = AppConfig.from_env()
-        documents = load_postal_documents(config)
+        legacy_documents = load_csds_postal_documents(config)
+        policy_documents = load_policy_documents(config)
+        documents = legacy_documents + policy_documents
         if options["limit"] is not None:
             documents = documents[: options["limit"]]
+            legacy_documents = [document for document in documents if document.metadata.get("source_kind") != "policy_jsonl"]
+            policy_documents = [document for document in documents if document.metadata.get("source_kind") == "policy_jsonl"]
 
-        vectors = None
+        vectors_by_key = {}
+        vector_provider_by_key = {}
+        vector_model_by_key = {}
         if not options["skip_embeddings"]:
             # H5 向量文件和 metadata 是历史产物；这里按文档来源 key 精确取对应向量，避免错位写入。
             metadata_by_split = load_embedding_metadata(config.data_paths.embedding_metadata_path)
             selected_keys = [
                 (document.split, document.index, document.session_id, document.dialogue_id)
-                for document in documents
+                for document in legacy_documents
             ]
-            vectors = load_postal_vectors_from_h5(
+            legacy_vectors = load_postal_vectors_from_h5(
                 h5_path=config.data_paths.old_embedding_h5_path,
                 metadata_by_split=metadata_by_split,
                 selected_keys=selected_keys,
             )
+            for offset, document in enumerate(legacy_documents):
+                vectors_by_key[document.source_key] = legacy_vectors[offset].tolist()
+                vector_provider_by_key[document.source_key] = "old-h5"
+                vector_model_by_key[document.source_key] = "dialogue_embeddings.h5"
+
+            if policy_documents:
+                # JSONL 政策数据没有历史 H5 向量；这里用当前 embedding provider 生成向量，让它进入 pgvector。
+                settings = config.provider_settings
+                registry = build_default_registry(settings)
+                embedding_provider = registry.get(settings.default_embedding_provider)
+                policy_result = embed_documents(
+                    provider=embedding_provider,
+                    texts=[document.content for document in policy_documents],
+                    model=settings.default_embedding_model,
+                )
+                for offset, document in enumerate(policy_documents):
+                    vectors_by_key[document.source_key] = policy_result.vectors[offset]
+                    vector_provider_by_key[document.source_key] = policy_result.provider
+                    vector_model_by_key[document.source_key] = policy_result.model
 
         created = 0
         updated = 0
         embeddings_created = 0
         embeddings_updated = 0
-        for offset, document in enumerate(documents):
+        for document in documents:
             # 唯一键和 PostalDocument.Meta 里的 UniqueConstraint 保持一致。
             db_document, was_created = PostalDocument.objects.update_or_create(
                 split=document.split,
@@ -87,14 +114,14 @@ class Command(BaseCommand):
             else:
                 updated += 1
 
-            if vectors is not None:
-                # pgvector 字段接收普通 Python list；numpy array 需要显式转 list。
+            if vectors_by_key:
+                # pgvector 字段接收普通 Python list；旧 numpy array 和新 provider 向量都在上面统一成 list。
                 _, embedding_created = PostalEmbedding.objects.update_or_create(
                     document=db_document,
                     defaults={
-                        "embedding": vectors[offset].tolist(),
-                        "provider": "old-h5",
-                        "model": "dialogue_embeddings.h5",
+                        "embedding": vectors_by_key[document.source_key],
+                        "provider": vector_provider_by_key[document.source_key],
+                        "model": vector_model_by_key[document.source_key],
                     },
                 )
                 if embedding_created:

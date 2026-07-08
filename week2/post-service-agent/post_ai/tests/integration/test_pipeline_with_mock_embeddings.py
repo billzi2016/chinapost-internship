@@ -1,6 +1,7 @@
 from post_ai.schemas import PostalDocument
 from post_ai.config import AppConfig
 from post_ai.pipeline import build_and_save_faiss_from_old_h5, load_postal_documents
+from post_ai.schemas import EmbeddingResult
 from post_ai.vectorstores import FaissPostalIndex
 
 
@@ -61,13 +62,23 @@ def test_real_data_to_faiss_pipeline_with_mock_embeddings() -> None:
     assert all(hit.document.metadata["raw_filter_response"] == "true" for hit in hits)
 
 
-def test_build_real_faiss_artifact_from_old_h5(tmp_path) -> None:
+def test_build_real_faiss_artifact_from_old_h5(tmp_path, monkeypatch) -> None:
     config = AppConfig.from_env()
+
+    def fake_policy_embeddings(provider, texts, model):
+        return EmbeddingResult(
+            vectors=[[0.1] * 4096 for _ in texts],
+            model=model,
+            provider="mock-policy",
+        )
+
+    monkeypatch.setattr("post_ai.pipeline.embed_documents", fake_policy_embeddings)
+
     index = build_and_save_faiss_from_old_h5(artifact_dir=tmp_path, config=config)
     loaded = FaissPostalIndex.load(tmp_path)
 
-    assert len(index.documents) == 6321
-    assert len(loaded.documents) == 6321
+    assert len(index.documents) == 6321 + 86
+    assert len(loaded.documents) == 6321 + 86
     assert (tmp_path / "postal.faiss").stat().st_size > 0
     assert (tmp_path / "postal_metadata.json").stat().st_size > 0
-    assert loaded.provider == "old-h5"
+    assert loaded.provider == "old-h5+mock-policy"

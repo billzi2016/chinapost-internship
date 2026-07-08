@@ -1,6 +1,6 @@
 # ChinaPost Internship
 
-This repository is a reconstructed and organized internship project for China Post customer-service data analysis, postal RAG assistance, local Qwen2.5 SFT experiments on Apple MLX, and automated transcription tooling.
+This repository is a reconstructed and organized internship project for China Post customer-service data analysis, postal RAG assistance, local Qwen2.5 SFT experiments on Apple MLX, Django/FastAPI service integration, documentation, and automated transcription tooling.
 
 > Note: this is a reconstructed historical internship project. Git commit timestamps represent the time when the files were reorganized into this repository, not the original development timeline. The original remote internship machine is no longer available, so this repository was rebuilt from the available materials and requirements.
 >
@@ -13,8 +13,16 @@ Documentation site: <https://billzi2016.github.io/chinapost-internship/>
 ## Repository Structure
 
 - `week1/`: postal customer-service data filtering, statistical analysis, keyword extraction, visualization, model selection notes, and classification boundary-case analysis.
+- `week1-module-Web-Crawler/`: crawler output and structured postal policy / FAQ dataset used by the RAG system.
 - `week2/`: postal intelligent customer-service RAG system, including data organization and the Django application.
-- `week3/`: Apple MLX LoRA fine-tuning workflow for Qwen2.5 3B / 7B Instruct models, with training-time regression evaluation and best-adapter retention.
+- `week3/`: Apple MLX LoRA fine-tuning workflow for Qwen2.5 3B / 7B Instruct models, with training-time regression evaluation, best-adapter retention, and FastAPI serving.
+- `week4/`: staged README for RAG data integration and retrieval enhancement.
+- `week5/`: staged README for Django Agent productization and business workflow closure.
+- `week6/`: staged README for SFT microservice serving, base/LoRA comparison, and manual validation.
+- `week7/`: staged README for experiment evaluation, report generation, and docs-site organization.
+- `week8/`: staged README for final integration, review, and delivery.
+- `reports/`: generated PDF reports and report build script.
+- `docs-site/`: MkDocs documentation site that includes the original Markdown reports instead of duplicating report content.
 - `Whisper-main/`: a batch transcription tool for public meetings and course recordings.
 
 ## Week 1
@@ -33,6 +41,8 @@ Documentation site: <https://billzi2016.github.io/chinapost-internship/>
 - `week2/post-service-agent`: the formal Django project using Django, Django Ninja, SSE, PostgreSQL, pgvector, Ollama, and the standalone `post_ai` toolkit.
 - The application supports conversation history, a ChatGPT-style chat panel, RAG citation display, ticket JSON generation, Markdown rendering, provider health indicators, and PostgreSQL + pgvector retrieval.
 - The AI layer keeps both FAISS/local and PostgreSQL-pgvector/microservice modes for easier local debugging and production-style switching.
+- The RAG corpus now combines 6,321 CSDS postal dialogue slices with 86 policy / FAQ records from `week1-module-Web-Crawler/final-result/dataset.jsonl`.
+- `week2/data/dataset.jsonl` is a symlink to the week1 crawler result. After that source changes, run `manage.py ingest_postal_rag` and `python -m post_ai.build_faiss` to refresh pgvector and FAISS.
 - The formal data path is PostgreSQL + pgvector. Any local `db.sqlite3` file should be read as development residue rather than the intended system database.
 - From an architecture perspective, the Django + PostgreSQL + pgvector layer is already suitable for internal or demo workloads at the scale of hundreds to around a thousand users. The main scaling pressure is model inference: local models need more work around vLLM instances, GPU resources, nginx / Ingress routing, and load balancing; external model APIs need stronger API security, access control, traffic walls, rate limiting, and failure fallback.
 
@@ -68,6 +78,29 @@ The Week 3 workflow includes scripted steps for:
 Main entry point:
 
 - `week3/mlx_qwen_sft/README.md`
+
+## Weeks 4-8
+
+Weeks 4-8 are staged planning and delivery folders that distribute the already-built system into later project phases.
+
+- `week4/README.md`: RAG data integration, policy JSONL symlink, pgvector import, and FAISS rebuild.
+- `week5/README.md`: Django Agent productization, RAG/SFT four-mode behavior, ticket JSON, and maintainability notes.
+- `week6/README.md`: Qwen2.5 3B/7B base and LoRA FastAPI serving, stream validation, and call logging.
+- `week7/README.md`: rank-sweep evaluation, global comparison charts, PDF report rendering, and docs-site organization.
+- `week8/README.md`: final end-to-end integration checklist, demo order, and delivery review.
+
+## Reports And Docs Site
+
+Report sources remain in their original project folders where possible. The documentation site uses Markdown include pages so the same report is not copied into multiple places.
+
+- `reports/build_reports.py`: renders selected Markdown reports into PDF.
+- `reports/`: generated PDF report outputs.
+- `docs-site/`: MkDocs Material site.
+- `docs-site/docs/*/reports-index.md`: bilingual report index.
+
+Documentation site:
+
+- <https://billzi2016.github.io/chinapost-internship/>
 
 ## Whisper-main
 
