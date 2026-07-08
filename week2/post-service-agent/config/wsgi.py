@@ -1,3 +1,8 @@
+"""WSGI 入口。
+
+传统 Django 部署入口；本地 `manage.py runserver` 也会使用同一套 settings。
+"""
+
 from __future__ import annotations
 
 import os

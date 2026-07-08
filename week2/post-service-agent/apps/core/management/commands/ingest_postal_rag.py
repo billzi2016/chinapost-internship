@@ -1,3 +1,13 @@
+"""导入邮政 RAG 数据的 Django 管理命令。
+
+命令职责：
+- 从 `post_ai` 数据加载逻辑读取筛选后的邮政对话切片；
+- 写入 `PostalDocument`；
+- 可选读取旧 H5 embedding，并写入 `PostalEmbedding` 的 pgvector 字段。
+
+这个命令是数据入库入口，不负责模型生成，也不负责在线检索。
+"""
+
 from __future__ import annotations
 
 from django.core.management.base import BaseCommand
@@ -9,9 +19,15 @@ from post_ai.pipeline import load_postal_documents
 
 
 class Command(BaseCommand):
+    """`manage.py ingest_postal_rag` 命令实现。"""
+
     help = "Import postal-related CSDS dialogues into core_postaldocument."
 
     def add_arguments(self, parser) -> None:
+        """注册命令行参数。
+
+        `--limit` 方便冒烟测试；`--skip-embeddings` 方便只检查文档入库流程。
+        """
         parser.add_argument(
             "--limit",
             type=int,
@@ -25,6 +41,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
+        """执行导入流程。
+
+        使用 `update_or_create` 保证命令可重复执行：同一来源文档再次导入会更新内容，
+        而不是重复插入。embedding 与文档一对一，同样允许重复导入刷新向量。
+        """
         config = AppConfig.from_env()
         documents = load_postal_documents(config)
         if options["limit"] is not None:
@@ -32,6 +53,7 @@ class Command(BaseCommand):
 
         vectors = None
         if not options["skip_embeddings"]:
+            # H5 向量文件和 metadata 是历史产物；这里按文档来源 key 精确取对应向量，避免错位写入。
             metadata_by_split = load_embedding_metadata(config.data_paths.embedding_metadata_path)
             selected_keys = [
                 (document.split, document.index, document.session_id, document.dialogue_id)
@@ -48,6 +70,7 @@ class Command(BaseCommand):
         embeddings_created = 0
         embeddings_updated = 0
         for offset, document in enumerate(documents):
+            # 唯一键和 PostalDocument.Meta 里的 UniqueConstraint 保持一致。
             db_document, was_created = PostalDocument.objects.update_or_create(
                 split=document.split,
                 source_index=document.index,
@@ -65,6 +88,7 @@ class Command(BaseCommand):
                 updated += 1
 
             if vectors is not None:
+                # pgvector 字段接收普通 Python list；numpy array 需要显式转 list。
                 _, embedding_created = PostalEmbedding.objects.update_or_create(
                     document=db_document,
                     defaults={

@@ -67,8 +67,8 @@ models:
     provider: ollama
     model: qwen3-embedding:8b
   sft:
-    provider:
-    model:
+    provider: fastapi
+    model: qwen2.5-3b-lora-r1
 
 # -----------------------------------------------------------------------------
 # Model providers
@@ -84,7 +84,7 @@ providers:
     base_url: https://openrouter.ai/api/v1
     api_key:
   fastapi:
-    base_url:
+    base_url: http://127.0.0.1:18731/v1
 
 # -----------------------------------------------------------------------------
 # Vector store provider

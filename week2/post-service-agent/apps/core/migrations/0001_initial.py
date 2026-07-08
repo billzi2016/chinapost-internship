@@ -1,3 +1,9 @@
+"""初始数据库结构迁移。
+
+创建会话、消息、RAG 文档、引用和工单五类基础表。
+这是历史迁移文件，除非需要修复迁移本身，不要把业务逻辑加到这里。
+"""
+
 from __future__ import annotations
 
 import django.db.models.deletion
@@ -5,6 +11,8 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """core 应用的初始迁移。"""
+
     initial = True
 
     dependencies = []

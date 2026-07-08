@@ -11,6 +11,7 @@ const viewTicketButton = document.getElementById("view-ticket");
 const providerHealth = document.getElementById("provider-health");
 const newChatButton = document.getElementById("new-chat");
 let retryDraft = null;
+let sftConfigured = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   if (window.Split) {
@@ -300,6 +301,8 @@ async function loadProviderHealth() {
     const response = await fetch("/api/provider/health");
     if (!response.ok) throw new Error("provider health unavailable");
     const health = await response.json();
+    sftConfigured = Boolean(health.sft_configured);
+    updateSftWarning();
     providerHealth.innerHTML = `
       <span class="health-item">
         <span class="health-dot ok" aria-hidden="true"></span>
@@ -309,8 +312,14 @@ async function loadProviderHealth() {
         <span class="health-dot ok" aria-hidden="true"></span>
         Vector Provider: ${escapeHtml(formatProviderName(health.vector_provider))}
       </span>
+      <span class="health-item">
+        <span class="health-dot ${sftConfigured ? "ok" : "bad"}" aria-hidden="true"></span>
+        SFT: ${sftConfigured ? "Ready" : "Unavailable"}
+      </span>
     `;
   } catch {
+    sftConfigured = false;
+    updateSftWarning();
     providerHealth.innerHTML = `
       <span class="health-item">
         <span class="health-dot bad" aria-hidden="true"></span>
@@ -320,8 +329,17 @@ async function loadProviderHealth() {
         <span class="health-dot bad" aria-hidden="true"></span>
         Vector Provider: Unavailable
       </span>
+      <span class="health-item">
+        <span class="health-dot bad" aria-hidden="true"></span>
+        SFT: Unavailable
+      </span>
     `;
   }
+}
+
+function updateSftWarning() {
+  if (!sftWarning || !sftToggle) return;
+  sftWarning.hidden = !sftToggle.checked || sftConfigured;
 }
 
 function renderTicket(ticket) {
@@ -455,7 +473,7 @@ async function consumeSse(response, assistantNode) {
 }
 
 sftToggle?.addEventListener("change", () => {
-  sftWarning.hidden = !sftToggle.checked;
+  updateSftWarning();
 });
 
 newChatButton?.addEventListener("click", () => {
