@@ -1,3 +1,5 @@
+"""新增 pgvector embedding 表的迁移。"""
+
 from __future__ import annotations
 
 import django.db.models.deletion
@@ -7,12 +9,15 @@ import pgvector.django.vector
 
 
 def create_pgvector_extension(apps, schema_editor) -> None:
+    """PostgreSQL 环境下确保 vector 扩展存在；SQLite 测试环境直接跳过。"""
     if schema_editor.connection.vendor != "postgresql":
         return
     schema_editor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
 
 class Migration(migrations.Migration):
+    """创建 `PostalEmbedding`，与 `PostalDocument` 一对一绑定。"""
+
     dependencies = [
         ("core", "0002_conversation_is_pinned"),
     ]

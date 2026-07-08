@@ -68,6 +68,7 @@ week3/mlx_qwen_sft/logs/
 week3/mlx_qwen_sft/eval_outputs/
 week3/mlx_qwen_sft/plots/
 week3/mlx_qwen_sft/runs/
+week3/microservice/logs/
 # Only keep plots for this specific 3B rank sweep run.
 !week3/mlx_qwen_sft/runs/
 week3/mlx_qwen_sft/runs/*

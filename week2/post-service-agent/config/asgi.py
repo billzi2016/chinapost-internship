@@ -1,3 +1,8 @@
+"""ASGI 入口。
+
+当前项目主要用 Django runserver/WSGI 路径运行；保留 ASGI 入口方便未来接入异步服务器。
+"""
+
 from __future__ import annotations
 
 import os
