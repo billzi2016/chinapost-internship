@@ -23,9 +23,9 @@
 ## 验证方式
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd ../week3/microservice
 ./scripts/start_3b_lora.sh
-./validation/chat_stream.py
+python validation/manual_chat.py
 ```
 
 根据需要也可以启动 7B 或 base 对照脚本，观察同一问题在 base 与 LoRA 下的身份回答、禁限寄回答和 EMS 场景一致性。

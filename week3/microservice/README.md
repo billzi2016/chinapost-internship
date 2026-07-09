@@ -110,22 +110,22 @@ week3/microservice/config_7b_base.yaml
 默认启动 3B：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 uvicorn app:app --host 127.0.0.1 --port 18731
 ```
 
 启动 7B：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 MICROSERVICE_MODEL_SIZE=7b uvicorn app:app --host 127.0.0.1 --port 18731
 ```
 
 也可以显式指定配置文件：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
-MICROSERVICE_CONFIG=/Users/bizi/Desktop/邮政实习/week3/microservice/config_7b.yaml uvicorn app:app --host 127.0.0.1 --port 18731
+cd .
+MICROSERVICE_CONFIG=config_7b.yaml uvicorn app:app --host 127.0.0.1 --port 18731
 ```
 
 ## 安装依赖
@@ -133,7 +133,7 @@ MICROSERVICE_CONFIG=/Users/bizi/Desktop/邮政实习/week3/microservice/config_7
 在可用的 Python 环境里安装：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 pip install -r requirements.txt
 ```
 
@@ -147,42 +147,42 @@ pip install -r requirements.txt
 启动 3B LoRA：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 ./scripts/start_3b_lora.sh
 ```
 
 启动 7B LoRA：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 ./scripts/start_7b_lora.sh
 ```
 
 启动 3B Base 对照：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 ./scripts/start_3b_base.sh
 ```
 
 启动 7B Base 对照：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 ./scripts/start_7b_base.sh
 ```
 
 也可以直接用 `uvicorn` 启动默认 3B：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 uvicorn app:app --host 127.0.0.1 --port 18731
 ```
 
 也可以直接：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 python app.py
 ```
 
@@ -290,14 +290,14 @@ curl http://127.0.0.1:18731/v1/chat/completions \
 先启动服务，例如默认 3B：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 uvicorn app:app --host 127.0.0.1 --port 18731
 ```
 
 另开一个终端启动流式多轮对话客户端：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 python validation/manual_chat.py
 ```
 
@@ -306,7 +306,7 @@ python validation/manual_chat.py
 验证 7B 时先用 7B 配置启动服务：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 MICROSERVICE_MODEL_SIZE=7b uvicorn app:app --host 127.0.0.1 --port 18731
 ```
 
@@ -373,13 +373,13 @@ week3/microservice/test/test_app.py
 执行方式：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 pytest -q test/test_app.py
 ```
 
 如果只想先跑健康检查和模型列表，也可以单独指定测试：
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd .
 pytest -q test/test_app.py -k "health or models"
 ```

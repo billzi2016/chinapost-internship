@@ -25,10 +25,11 @@
 ## 建议演示顺序
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week2/post-service-agent
+cd ..
+cd week2/post-service-agent
 ./start_services.sh
 
-cd /Users/bizi/Desktop/邮政实习/week3/microservice
+cd ../../week3/microservice
 ./scripts/start_3b_lora.sh
 ```
 

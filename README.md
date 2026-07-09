@@ -42,7 +42,7 @@ Documentation site: <https://billzi2016.github.io/chinapost-internship/>
 - The application supports conversation history, a ChatGPT-style chat panel, RAG citation display, ticket JSON generation, Markdown rendering, provider health indicators, and PostgreSQL + pgvector retrieval.
 - The AI layer keeps both FAISS/local and PostgreSQL-pgvector/microservice modes for easier local debugging and production-style switching.
 - The RAG corpus now combines 6,321 CSDS postal dialogue slices with 86 policy / FAQ records from `week1-module-Web-Crawler/final-result/dataset.jsonl`.
-- `week2/data/dataset.jsonl` is a symlink to the week1 crawler result. After that source changes, run `manage.py ingest_postal_rag` and `python -m post_ai.build_faiss` to refresh pgvector and FAISS.
+- `week2/data/dataset.jsonl` is a symlink to the week1 crawler result. After that source changes, generate `policy_embeddings.h5`, then run `manage.py ingest_postal_rag` and `python -m post_ai.build_faiss` to refresh pgvector and FAISS.
 - The formal data path is PostgreSQL + pgvector. Any local `db.sqlite3` file should be read as development residue rather than the intended system database.
 - From an architecture perspective, the Django + PostgreSQL + pgvector layer is already suitable for internal or demo workloads at the scale of hundreds to around a thousand users. The main scaling pressure is model inference: local models need more work around vLLM instances, GPU resources, nginx / Ingress routing, and load balancing; external model APIs need stronger API security, access control, traffic walls, rate limiting, and failure fallback.
 

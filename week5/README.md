@@ -22,7 +22,7 @@
 ## 验证方式
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week2/post-service-agent
+cd ../week2/post-service-agent
 PYTHONPATH=. /opt/anaconda3/bin/python -m pytest post_ai/tests/unit -q
 DJANGO_SETTINGS_MODULE=config.settings PYTHONPATH=. /opt/anaconda3/bin/python -m pytest tests/django/test_django_app.py -q
 PYTHONPATH=. /opt/anaconda3/bin/python manage.py check

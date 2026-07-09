@@ -6,6 +6,7 @@ from post_ai.config import AppConfig
 from post_ai.embeddings import embed_documents, embed_query
 from post_ai.filter_mapping import iter_postal_documents, load_filter_results
 from post_ai.old_embeddings import load_embedding_metadata, load_postal_vectors_from_h5
+from post_ai.policy_embeddings import load_policy_embedding_metadata, load_policy_vectors_from_h5
 from post_ai.providers.registry import build_default_registry
 from post_ai.schemas import PostalDocument, RetrievalHit
 from post_ai.source_loader import load_all_csds, load_policy_jsonl
@@ -119,17 +120,18 @@ def build_faiss_index_from_old_h5(config: AppConfig | None = None) -> FaissPosta
     embedding_model = "dialogue_embeddings.h5"
     provider = "old-h5"
     if policy_documents:
-        settings = config.provider_settings
-        registry = build_default_registry(settings)
-        embedding_provider = registry.get(settings.default_embedding_provider)
-        policy_result = embed_documents(
-            provider=embedding_provider,
-            texts=[document.content for document in policy_documents],
-            model=settings.default_embedding_model,
+        policy_metadata = load_policy_embedding_metadata(config.data_paths.policy_embedding_metadata_path)
+        policy_vectors = load_policy_vectors_from_h5(
+            h5_path=config.data_paths.policy_embedding_h5_path,
+            metadata=policy_metadata,
+            selected_keys=[
+                (document.index, document.session_id, document.dialogue_id)
+                for document in policy_documents
+            ],
         )
-        vectors.extend(policy_result.vectors)
-        embedding_model = f"{embedding_model}+{policy_result.model}"
-        provider = f"{provider}+{policy_result.provider}"
+        vectors.extend(policy_vectors.tolist())
+        embedding_model = f"{embedding_model}+policy_embeddings.h5"
+        provider = f"{provider}+policy-h5"
     return FaissPostalIndex.build(
         documents=documents,
         vectors=vectors,

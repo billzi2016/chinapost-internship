@@ -14,10 +14,9 @@ from django.core.management.base import BaseCommand
 
 from apps.core.models import PostalDocument, PostalEmbedding
 from post_ai.config import AppConfig
-from post_ai.embeddings import embed_documents
 from post_ai.old_embeddings import load_embedding_metadata, load_postal_vectors_from_h5
+from post_ai.policy_embeddings import load_policy_embedding_metadata, load_policy_vectors_from_h5
 from post_ai.pipeline import load_csds_postal_documents, load_policy_documents
-from post_ai.providers.registry import build_default_registry
 
 
 class Command(BaseCommand):
@@ -78,19 +77,20 @@ class Command(BaseCommand):
                 vector_model_by_key[document.source_key] = "dialogue_embeddings.h5"
 
             if policy_documents:
-                # JSONL 政策数据没有历史 H5 向量；这里用当前 embedding provider 生成向量，让它进入 pgvector。
-                settings = config.provider_settings
-                registry = build_default_registry(settings)
-                embedding_provider = registry.get(settings.default_embedding_provider)
-                policy_result = embed_documents(
-                    provider=embedding_provider,
-                    texts=[document.content for document in policy_documents],
-                    model=settings.default_embedding_model,
+                # JSONL 政策数据走离线生成的独立 H5，不在 Django ingest 中临时调用 embedding。
+                policy_metadata = load_policy_embedding_metadata(config.data_paths.policy_embedding_metadata_path)
+                policy_vectors = load_policy_vectors_from_h5(
+                    h5_path=config.data_paths.policy_embedding_h5_path,
+                    metadata=policy_metadata,
+                    selected_keys=[
+                        (document.index, document.session_id, document.dialogue_id)
+                        for document in policy_documents
+                    ],
                 )
                 for offset, document in enumerate(policy_documents):
-                    vectors_by_key[document.source_key] = policy_result.vectors[offset]
-                    vector_provider_by_key[document.source_key] = policy_result.provider
-                    vector_model_by_key[document.source_key] = policy_result.model
+                    vectors_by_key[document.source_key] = policy_vectors[offset].tolist()
+                    vector_provider_by_key[document.source_key] = "policy-h5"
+                    vector_model_by_key[document.source_key] = "policy_embeddings.h5"
 
         created = 0
         updated = 0

@@ -40,7 +40,7 @@
 - 当前系统支持左侧会话历史、右侧聊天窗口、RAG 引用展示、工单 JSON 生成、Markdown 渲染、Provider 健康提示，以及 PostgreSQL + pgvector 向量检索。
 - 设计上保留 FAISS/local 和 PostgreSQL-pgvector/microservice 两种模式，便于本地调试和正式服务切换。
 - 当前 RAG 语料由 6321 条 CSDS 邮政对话切片和 86 条 `week1-module-Web-Crawler/final-result/dataset.jsonl` 政策/FAQ 数据组成。
-- `week2/data/dataset.jsonl` 是指向 week1 爬虫结果的 symlink。该源文件更新后，需要重新执行 `manage.py ingest_postal_rag` 和 `python -m post_ai.build_faiss`，让 pgvector 与 FAISS 都同步更新。
+- `week2/data/dataset.jsonl` 是指向 week1 爬虫结果的 symlink。该源文件更新后，需要先生成 `policy_embeddings.h5`，再执行 `manage.py ingest_postal_rag` 和 `python -m post_ai.build_faiss`，让 pgvector 与 FAISS 都同步更新。
 - 正式数据链路使用 PostgreSQL + pgvector；仓库里如果看到本地 `db.sqlite3`，应理解为开发残留，不是正式系统数据库。
 - 从架构上看，Django + PostgreSQL + pgvector 这一层已经具备百人到千人级内部使用或演示验证的部署基础。主要扩展压力不在数据库层，而在大模型推理层：本地模型需要继续围绕 vLLM 实例、GPU 资源、nginx / Ingress 路由和负载均衡展开；外部模型 API 则需要重点考虑接口安全、访问权限、流量墙、限流和异常降级。
 
