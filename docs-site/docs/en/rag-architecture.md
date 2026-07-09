@@ -16,6 +16,10 @@ The second source is the crawled postal FAQ, agreements, process pages, and poli
 
 These materials are not pasted into one long prompt. They are normalized into document records, embedded, and loaded into PostgreSQL + pgvector for the formal path. FAISS is kept as a local fallback for debugging.
 
+The current implemented RAG corpus contains 6,407 documents: 6,321 CSDS postal-dialogue slices and 86 policy / FAQ records from the week1 crawler JSONL. The legacy dialogue data keeps using `dialogue_embeddings.h5` and `dialogue_metadata.json`. The new policy / FAQ data uses a separate `policy_embeddings.h5` and `policy_metadata.json`, so it does not modify the old H5 and is not generated inside the Django import command.
+
+After import, pgvector and FAISS use the same merged document set. The FAISS metadata marks the provider as `old-h5+policy-h5` and the embedding model as `dialogue_embeddings.h5+policy_embeddings.h5`, making the legacy dialogue vectors and new policy vectors explicit.
+
 ## Why PostgreSQL + pgvector
 
 The formal vector path uses PostgreSQL + pgvector instead of relying only on a local demo store.

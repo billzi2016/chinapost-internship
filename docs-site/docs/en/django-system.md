@@ -234,6 +234,8 @@ Ticket fields include:
 
 The formal path uses PostgreSQL + pgvector. The database stores conversations, messages, citations, tickets, postal documents, and vectors.
 
+The current RAG import result is 6,407 documents and matching vectors: 6,321 legacy CSDS postal-dialogue slices loaded from `dialogue_embeddings.h5`, plus 86 policy / FAQ records from `dataset.jsonl` loaded through the offline `policy_embeddings.h5`. Django `ingest_postal_rag` only reads existing H5 artifacts and writes PostgreSQL rows; it does not call the embedding model during import.
+
 The repository may still contain `db.sqlite3`, but that is local development residue, not the formal database shape for this phase. PostgreSQL is the main path for persistence and vector retrieval.
 
 From an architecture perspective, the Django + PostgreSQL + pgvector setup already meets the basic requirements for a larger deployment. PostgreSQL is mainly responsible for conversations, messages, citations, tickets, and vector-related data management. It is not expected to handle extremely heavy high-frequency writes in this system. For internal use or demonstration workloads at the scale of hundreds to around a thousand users, this database layer is a reasonable fit.
