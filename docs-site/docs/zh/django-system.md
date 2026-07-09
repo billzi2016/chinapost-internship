@@ -234,6 +234,8 @@ flowchart LR
 
 正式链路使用 PostgreSQL + pgvector。数据库里保存会话、消息、引用、工单、邮政文档和向量。
 
+当前 RAG 入库结果是 6407 条文档和对应向量：6321 条旧 CSDS 邮政对话切片复用 `dialogue_embeddings.h5`，86 条 policy/FAQ 记录来自 `dataset.jsonl`，并通过离线生成的 `policy_embeddings.h5` 入库。Django 的 `ingest_postal_rag` 只读取已有 H5 并写 PostgreSQL，不负责现场调用 embedding 模型。
+
 仓库里可能看到 `db.sqlite3`，它是本地开发残留，不是正式链路的数据库形态。PostgreSQL 才是第二阶段系统设计里用于持久化和向量检索的主路径。
 
 从架构上看，这套 Django + PostgreSQL + pgvector 的组织方式已经符合较大规模部署的基本要求。PostgreSQL 在这里主要承担会话、消息、引用、工单和向量检索相关的数据管理，并不需要承受特别重的高频写入压力。对于百人到千人级别的内部使用或演示验证场景，这样的数据库层设计是可以承担的。
