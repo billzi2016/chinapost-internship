@@ -5,7 +5,7 @@
 ## Quickstart
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week2/post-service-agent
+cd .
 cp .env.example .env
 docker compose up -d postgres
 PYTHONPATH=. /opt/anaconda3/bin/python manage.py migrate
@@ -101,6 +101,30 @@ week2/data/embeddings/dialogue_embeddings.h5
 week2/data/embeddings/dialogue_metadata.json
 ```
 
+新 policy/FAQ embedding 离线生成到：
+
+```text
+week2/data/embeddings/policy_embeddings.h5
+week2/data/embeddings/policy_metadata.json
+```
+
+生成旧 CSDS 对话 embedding：
+
+```bash
+cd ../data/embedding_pipeline
+python dialogue_embedding_store.py
+```
+
+生成新 policy/FAQ embedding：
+
+```bash
+cd ../data/embedding_pipeline
+python policy_embedding_store.py
+```
+
+说明：旧 CSDS embedding 已经存在，通常不要重跑；新 `dataset.jsonl` 更新后，只需要重新生成
+`policy_embeddings.h5` 和 `policy_metadata.json`。
+
 重新导入 pgvector：
 
 ```bash
@@ -113,19 +137,23 @@ PYTHONPATH=. /opt/anaconda3/bin/python manage.py ingest_postal_rag
 PYTHONPATH=. /opt/anaconda3/bin/python -m post_ai.build_faiss
 ```
 
-说明：旧 CSDS 数据继续使用历史 H5 向量；`dataset.jsonl` 没有历史 H5 向量，
-导入 pgvector 或重建 FAISS 时会使用当前配置的 embedding provider 动态生成向量。
+说明：旧 CSDS 数据继续使用历史 H5 向量；`dataset.jsonl` 不写入旧 H5，而是单独使用
+`policy_embeddings.h5`。Django 导入和 FAISS 构建只读取已有 H5，不负责现场生成 embedding。
 
 如果 `week1-module-Web-Crawler/final-result/dataset.jsonl` 更新了，或者首次把 symlink 接入
-week2 后，需要执行下面两条命令让新增数据真正进入检索链路：
+week2 后，需要先生成 policy embedding，再让新增数据真正进入检索链路：
 
 ```bash
+cd ../data/embedding_pipeline
+python policy_embedding_store.py
+
+cd ../../post-service-agent
 PYTHONPATH=. /opt/anaconda3/bin/python manage.py ingest_postal_rag
 PYTHONPATH=. /opt/anaconda3/bin/python -m post_ai.build_faiss
 ```
 
 第一条会写入/更新 PostgreSQL + pgvector 中的 `PostalDocument` 和 `PostalEmbedding`；
-第二条会重新生成本地 FAISS artifact。只创建 symlink 不会自动更新数据库或 FAISS 文件。
+第二条会重新生成本地 FAISS artifact。只创建 symlink 不会自动更新 policy H5、数据库或 FAISS 文件。
 
 ## RAG Trigger Rules
 

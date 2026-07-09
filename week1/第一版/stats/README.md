@@ -52,12 +52,12 @@
 ## 安装方式
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week1/stats
+cd .
 pip install -r requirements.txt
 ```
 
 ## 运行方式
 
 ```bash
-python /Users/bizi/Desktop/邮政实习/week1/stats/main.py
+python main.py
 ```

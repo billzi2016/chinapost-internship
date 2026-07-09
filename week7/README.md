@@ -22,7 +22,7 @@
 ## 验证方式
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习
+cd ..
 python3 reports/build_reports.py
 cd docs-site
 mkdocs build --strict

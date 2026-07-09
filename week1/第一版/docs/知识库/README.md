@@ -33,8 +33,8 @@
 
 如需进一步追踪实现细节，可直接对照以下代码文件：
 
-- `/Users/bizi/Desktop/邮政实习/week1/stats/basic_analysis.py`
-- `/Users/bizi/Desktop/邮政实习/week1/stats/tfidf_analysis.py`
-- `/Users/bizi/Desktop/邮政实习/week1/stats/textrank_analysis.py`
-- `/Users/bizi/Desktop/邮政实习/week1/stats/keybert_analysis.py`
-- `/Users/bizi/Desktop/邮政实习/week1/stats/vis.py`
+- `week1/stats/basic_analysis.py`
+- `week1/stats/tfidf_analysis.py`
+- `week1/stats/textrank_analysis.py`
+- `week1/stats/keybert_analysis.py`
+- `week1/stats/vis.py`

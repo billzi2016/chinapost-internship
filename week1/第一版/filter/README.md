@@ -51,7 +51,7 @@
 ## 安装方式
 
 ```bash
-cd /Users/bizi/Desktop/邮政实习/week1/filter
+cd .
 pip install -r requirements.txt
 ```
 
@@ -75,5 +75,5 @@ Text:
 ## 运行方式
 
 ```bash
-python /Users/bizi/Desktop/邮政实习/week1/filter/main.py
+python main.py
 ```

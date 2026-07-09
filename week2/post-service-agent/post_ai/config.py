@@ -68,6 +68,14 @@ class DataPaths:
     def policy_dataset_jsonl_path(self) -> Path:
         return self.data_dir / "dataset.jsonl"
 
+    @property
+    def policy_embedding_metadata_path(self) -> Path:
+        return self.data_dir / "embeddings" / "policy_metadata.json"
+
+    @property
+    def policy_embedding_h5_path(self) -> Path:
+        return self.data_dir / "embeddings" / "policy_embeddings.h5"
+
 
 @dataclass(frozen=True)
 class ProviderSettings:

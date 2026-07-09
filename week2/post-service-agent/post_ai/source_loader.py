@@ -87,6 +87,7 @@ def build_policy_document(raw: dict[str, Any], source_path: Path, index: int) ->
         "index": index,
         "source_kind": "policy_jsonl",
         "source_id": source_id,
+        "turn_count": 1,
         "title": title,
         "company": raw.get("company") or "",
         "url": url,
