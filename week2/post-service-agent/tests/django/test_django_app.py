@@ -26,6 +26,7 @@ from apps.api.services import (
     LIGHT_RAG_TOP_K,
     STRONG_RAG_TOP_K,
     _select_rag_profile,
+    _route_to_rag_profile,
     normalize_display_text,
 )
 from post_ai.config import AppConfig
@@ -441,6 +442,35 @@ class DjangoSmokeTests(TestCase):
         self.assertEqual(strong_profile, "strong")
         self.assertEqual(strong_top_k, STRONG_RAG_TOP_K)
         self.assertEqual(strong_top_k, 6)
+
+    def test_rag_router_direct_and_parse_failure_defaults(self) -> None:
+        """Router 输出 DIRECT 时不检索；无法解析时应保守退到 Strong RAG。"""
+        direct_profile, direct_top_k = _select_rag_profile("你好")
+        fallback_profile, fallback_top_k = _route_to_rag_profile("不是合法枚举")
+
+        self.assertEqual(direct_profile, "direct")
+        self.assertEqual(direct_top_k, 0)
+        self.assertEqual(fallback_profile, "strong")
+        self.assertEqual(fallback_top_k, STRONG_RAG_TOP_K)
+
+    def test_rag_stream_direct_route_skips_vector_search(self) -> None:
+        """DIRECT 路由即使 RAG 开关打开，也不应查询向量库。"""
+        with patch("apps.api.services.query_configured_vector_store") as fake_query:
+            response = Client().post(
+                "/api/chat/stream",
+                data=json.dumps({"message": "你好", "use_rag": True, "use_sft": False}),
+                content_type="application/json",
+            )
+            body = b"".join(response.streaming_content).decode("utf-8")
+
+        assistant = Message.objects.get(role=Message.ROLE_ASSISTANT)
+
+        fake_query.assert_not_called()
+        self.assertIn('"rag_profile": "direct"', body)
+        self.assertIn('"rag_top_k": 0', body)
+        self.assertEqual(assistant.metadata["rag_profile"], "direct")
+        self.assertEqual(assistant.metadata["rag_top_k"], 0)
+        self.assertEqual(Citation.objects.count(), 0)
 
     def test_rag_stream_passes_light_top_k_to_vector_search(self) -> None:
         """普通 RAG 问题应按 Light RAG 传递 top_k=3，并写入 meta/metadata。"""

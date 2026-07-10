@@ -160,23 +160,26 @@ PYTHONPATH=. /opt/anaconda3/bin/python -m post_ai.build_faiss
 聊天接口里的 RAG 开关只决定是否检索知识库；真正检索多少条，由
 `apps/api/services.py` 中的 `_select_rag_profile()` 决定。
 
-当前规则分两档：
+当前规则分三档：
 
 | Profile | 触发条件 | top_k | 用途 |
 | --- | --- | ---: | --- |
-| `light` | 打开 RAG 且没有命中 strong 关键词 | 3 | 普通咨询、状态说明、一般业务问答 |
-| `strong` | 打开 RAG 且命中高规则/高风险关键词 | 6 | 清关、赔付、禁限寄、资费、时效、证明材料等需要更多依据的问题 |
+| `direct` | Router 输出 `DIRECT` | 0 | 寒暄、感谢、改写、总结、纯闲聊、当前时间/日期等不需要知识库的问题 |
+| `light` | Router 输出 `LIGHT_RAG` | 3 | 普通 FAQ、常见流程、一般业务问答 |
+| `strong` | Router 输出 `STRONG_RAG`，或 Router 输出无法解析 | 6 | 清关、赔付、禁限寄、资费、时效、证明材料、官方依据、多轮业务追问等高风险问题 |
 | `none` | 关闭 RAG | 0 | 不检索知识库，直接走模型回答 |
 
-Strong RAG 当前使用可解释的关键词包含匹配，不是独立分类模型。命中以下任一词时，
-本轮回答会把 `rag_profile` 设为 `strong`，并向向量库召回 6 条结果：
+RAG 开启时，后端会先调用一个轻量 LLM Router。Router 只允许输出一个单词：
 
 ```text
-清关、报关、海关、赔付、赔偿、理赔、投诉、申诉、改单、
-禁寄、限寄、限制品、危险品、资费、费用、时限、时效、
-超时、延误、材料、证明、依据、条款、规则、官方、
-能不能寄、是否可以、需要准备、多久能
+DIRECT
+LIGHT_RAG
+STRONG_RAG
 ```
+
+如果 Router 输出为空、拼错、带解释、带 JSON 或其他无法解析内容，后端统一按
+`STRONG_RAG` 处理。关键词和 regex 只作为 Router 不可用时的兜底，以及高风险词的保护栏，
+不再作为主路由。
 
 接口会在 SSE `meta` 事件和助手消息 `metadata` 中记录本次实际策略：
 
@@ -189,8 +192,8 @@ Strong RAG 当前使用可解释的关键词包含匹配，不是独立分类模
 }
 ```
 
-维护约定：如果后续要把关键词规则升级成 query classifier，优先替换
-`_select_rag_profile()`，不要把触发逻辑散落到路由、前端或 prompt 里。
+维护约定：RAG 路由逻辑集中在 `_select_rag_profile()`、`_route_rag_with_llm()` 和
+`_route_to_rag_profile()`。不要把路由规则散落到前端、路由函数或 prompt 拼接处。
 
 ## Features
 

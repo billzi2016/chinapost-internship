@@ -162,11 +162,17 @@ flowchart TD
     A[用户发送问题] --> B{use_rag}
     B -- false --> C[不检索知识库]
     C --> D[Prompt 中可用引用为“无”]
-    B -- true --> E{Light RAG / Strong RAG}
-    E --> F[Prompt 中加入引用片段]
-    D --> G[模型生成]
-    F --> G
-    G --> H[页面显示回答]
+    B -- true --> E[LLM Router]
+    E --> F{DIRECT / LIGHT_RAG / STRONG_RAG}
+    F -- DIRECT --> C
+    F -- LIGHT_RAG --> G[召回约 3 条引用片段]
+    F -- STRONG_RAG --> H[召回约 6 条引用片段]
+    F -- 无法解析 --> H
+    G --> I[Prompt 中加入引用片段]
+    H --> I
+    D --> M[模型生成]
+    I --> M
+    M --> J[页面显示回答]
 ```
 
 关闭 RAG 后，系统仍然会走同一个聊天接口，但 prompt 里没有检索引用。这个模式适合对比“纯模型回答”和“带知识库回答”的差异。
@@ -177,7 +183,9 @@ flowchart TD
 
 系统设计报告里把 RAG 分成 Light RAG 和 Strong RAG，是为了控制上下文长度和链路复杂度。
 
-Light RAG 的意思是：先用关键词或 regex 判断是否需要查知识库，命中后取 3 条高相关片段。它适合常见 FAQ 或明确业务词的问题，比如“保价怎么赔”“清关要多久”“投诉进度怎么查”。
+当前设计不再把关键词或 regex 作为主路由，而是使用一个轻量 LLM Router。Router 只输出一个单词：`DIRECT`、`LIGHT_RAG` 或 `STRONG_RAG`。无法解析时，后端直接按 `STRONG_RAG` 处理，保证不确定时走更保守的检索路径。
+
+Light RAG 的意思是：Router 判断需要轻量检索后取 3 条高相关片段。它适合常见 FAQ 或明确业务词的问题，比如“保价怎么赔”“清关要多久”“投诉进度怎么查”。
 
 Strong RAG 的意思是：如果问题明显涉及规则、时限、赔付、禁寄、清关、申诉等高依赖知识的问题，或者模型判断轻量检索的 3 条材料不够支撑回答，就扩大到 6 条，并优先保留 FAQ、协议、标准条款这类可信来源。
 
@@ -185,16 +193,17 @@ Strong RAG 的意思是：如果问题明显涉及规则、时限、赔付、禁
 
 ```mermaid
 flowchart TD
-    A[用户问题] --> B{是否寒暄/改写/总结}
-    B -- 是 --> C[Direct Answer]
-    B -- 否 --> D{命中业务关键词或意图}
-    D -- 否 --> C
-    D -- 是 --> E[Light RAG: 3 条高相关引用]
-    E --> F{模型判断引用是否够用}
-    F -- 够用 --> G[基于引用生成回答]
-    F -- 不够 --> H[Strong RAG: 6 条引用]
-    H --> G
-    G --> I[回答 + 引用展示]
+    A[用户问题 + 最近多轮上下文] --> B[LLM Router]
+    B --> C{只输出一个单词}
+    C -- DIRECT --> D[不检索知识库]
+    C -- LIGHT_RAG --> E[Light RAG: 3 条高相关引用]
+    C -- STRONG_RAG --> F[Strong RAG: 6 条引用]
+    C -- 无法解析 --> F
+    D --> G[直接生成回答]
+    E --> H[基于引用生成回答]
+    F --> H
+    G --> I[回答]
+    H --> J[回答 + 引用展示]
 ```
 
 这个设计不是“低置信度时回答后再检索一次”。它仍然是在同一轮链路里完成判断和检索切换，避免把系统做成多轮评分、多轮重答的复杂流程。
