@@ -162,11 +162,17 @@ flowchart TD
     A[User submits message] --> B{use_rag}
     B -- false --> C[Skip knowledge retrieval]
     C --> D[Prompt contains no citations]
-    B -- true --> E{Light RAG / Strong RAG}
-    E --> F[Prompt contains retrieved snippets]
-    D --> G[Model generation]
-    F --> G
-    G --> H[Page displays answer]
+    B -- true --> E[LLM Router]
+    E --> F{DIRECT / LIGHT_RAG / STRONG_RAG}
+    F -- DIRECT --> C
+    F -- LIGHT_RAG --> G[Retrieve about 3 citations]
+    F -- STRONG_RAG --> H[Retrieve about 6 citations]
+    F -- Unparseable --> H
+    G --> I[Prompt contains retrieved snippets]
+    H --> I
+    D --> M[Model generation]
+    I --> M
+    M --> J[Page displays answer]
 ```
 
 When RAG is off, the same chat endpoint is still used, but the prompt has no retrieved evidence. This mode is useful for comparing pure model answers against knowledge-grounded answers.
@@ -177,7 +183,9 @@ When RAG is on, the answer can show citation blocks. For business questions, tho
 
 The system design report separates Light RAG and Strong RAG to control context length and implementation complexity.
 
-Light RAG means the system first uses keywords or regex rules to decide whether retrieval is needed, then retrieves 3 highly related snippets. It fits common FAQ questions or clear business terms such as compensation, customs clearance, complaint progress, and prohibited items.
+The current design no longer treats keywords or regex as the main router. It uses a lightweight LLM Router that outputs exactly one token: `DIRECT`, `LIGHT_RAG`, or `STRONG_RAG`. If the output cannot be parsed, the backend falls back to `STRONG_RAG`, so uncertain routing takes the safer retrieval path.
+
+Light RAG means the router decides that lightweight retrieval is enough, then retrieves 3 highly related snippets. It fits common FAQ questions or clear business terms such as compensation, customs clearance, complaint progress, and prohibited items.
 
 Strong RAG means the system expands retrieval to 6 snippets for questions that depend heavily on rules, deadlines, compensation, prohibited items, customs, or appeals, or when the model judges that the 3 Light RAG snippets are not enough. The expanded pass prefers higher-trust sources such as FAQ, agreements, and standard clauses.
 
@@ -185,16 +193,17 @@ The 3/6 split is intentional. Three citations are usually enough for a common FA
 
 ```mermaid
 flowchart TD
-    A[User question] --> B{Greeting / rewrite / summary}
-    B -- yes --> C[Direct Answer]
-    B -- no --> D{Business keyword or intent hit}
-    D -- no --> C
-    D -- yes --> E[Light RAG: 3 related citations]
-    E --> F{Are citations enough?}
-    F -- yes --> G[Generate from citations]
-    F -- no --> H[Strong RAG: 6 citations]
-    H --> G
-    G --> I[Answer + citation display]
+    A[User question + recent context] --> B[LLM Router]
+    B --> C{One-token output}
+    C -- DIRECT --> D[Skip retrieval]
+    C -- LIGHT_RAG --> E[Light RAG: 3 related citations]
+    C -- STRONG_RAG --> F[Strong RAG: 6 citations]
+    C -- Unparseable --> F
+    D --> G[Generate directly]
+    E --> H[Generate from citations]
+    F --> H
+    G --> I[Answer]
+    H --> J[Answer + citation display]
 ```
 
 This is not a “generate an answer, score it, then retrieve again” loop. The check happens inside the same request path, which keeps the system simpler than a multi-stage answer-review-regenerate pipeline.

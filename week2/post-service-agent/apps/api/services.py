@@ -27,12 +27,38 @@ from post_ai.config import AppConfig
 from post_ai.pipeline import query_configured_vector_store
 from post_ai.prompts import build_rag_messages, build_title_messages
 from post_ai.providers import ProviderError, ProviderUnavailableError, build_default_registry
+from post_ai.schemas import ChatMessage
 from post_ai.tickets import TicketJSONError, build_rule_based_ticket, generate_ticket_json_with_provider
 from post_ai.vectorstores import VectorStoreError
 
 
+DIRECT_RAG_TOP_K = 0
 LIGHT_RAG_TOP_K = 3
 STRONG_RAG_TOP_K = 6
+RAG_ROUTE_DIRECT = "DIRECT"
+RAG_ROUTE_LIGHT = "LIGHT_RAG"
+RAG_ROUTE_STRONG = "STRONG_RAG"
+RAG_ROUTE_TO_PROFILE = {
+    RAG_ROUTE_DIRECT: ("direct", DIRECT_RAG_TOP_K),
+    RAG_ROUTE_LIGHT: ("light", LIGHT_RAG_TOP_K),
+    RAG_ROUTE_STRONG: ("strong", STRONG_RAG_TOP_K),
+}
+DIRECT_RAG_PATTERNS = (
+    "你好",
+    "您好",
+    "谢谢",
+    "感谢",
+    "再见",
+    "拜拜",
+    "你是谁",
+    "现在几点",
+    "几点了",
+    "今天几号",
+    "今天日期",
+    "改写",
+    "润色",
+    "总结",
+)
 STRONG_RAG_KEYWORDS = (
     "清关",
     "报关",
@@ -155,7 +181,7 @@ def _stream_reply_for_message(
 
     这里会先产出 meta，再按需产出 citation，然后持续产出 delta，最后产出 done。
     """
-    rag_profile, rag_top_k = _select_rag_profile(message) if use_rag else ("none", 0)
+    rag_profile, rag_top_k = _select_rag_profile(message, conversation) if use_rag else ("none", 0)
 
     yield {
         "event": "meta",
@@ -169,7 +195,7 @@ def _stream_reply_for_message(
     }
 
     hits = []
-    if use_rag:
+    if use_rag and rag_top_k > 0:
         try:
             # 这里对应《邮政客服 LLM 系统设计报告》的核心 RAG 条数设计：
             # - Light RAG：常规业务问题只取 3 条，减少无效上下文和 token 成本。
@@ -259,20 +285,108 @@ def _last_user_message(conversation: Conversation) -> Message | None:
     )
 
 
-def _select_rag_profile(message: str) -> tuple[str, int]:
+def _select_rag_profile(message: str, conversation: Conversation | None = None) -> tuple[str, int]:
     """选择当前问题的 RAG 强度和召回条数。
 
-    这个函数把设计报告中的“Light RAG 约 3 条、Strong RAG 约 6 条”落到代码里。
-    第一版先用可解释的关键词规则，而不是额外引入一个分类模型：
-    - 命中高规则/高风险业务词：Strong RAG，召回 6 条；
-    - 其他业务问题：Light RAG，召回 3 条。
-
-    后续如果要升级 query classifier，应优先替换这里，避免把触发规则散落到路由和前端。
+    正式链路以 LLM Router 为主，Router 只允许输出 `DIRECT`、`LIGHT_RAG` 或
+    `STRONG_RAG`。解析失败、模型不可用或输出异常时，统一按 Strong RAG 处理，避免
+    把规则型问题误判成直接回答。关键词规则只作为 fake 测试模式和异常兜底里的保护栏。
     """
+    if settings.POST_SERVICE_FAKE_LLM:
+        route = _fallback_rag_route(message)
+    else:
+        try:
+            route = _route_rag_with_llm(message, conversation)
+        except ProviderError:
+            route = RAG_ROUTE_STRONG
+    return _route_to_rag_profile(route)
+
+
+def _route_rag_with_llm(message: str, conversation: Conversation | None = None) -> str:
+    """调用默认 chat provider 做轻量 RAG 路由。
+
+    Router 只做分类，不生成最终回答。为了控制 token 和解析复杂度，要求模型只输出一个
+    枚举词；如果模型没有严格遵守，后续 `_route_to_rag_profile` 会按 Strong RAG 兜底。
+    """
+    app_config = AppConfig.from_env()
+    provider_settings = app_config.provider_settings
+    provider = build_default_registry(provider_settings).get(provider_settings.default_chat_provider)
+    result = provider.chat(
+        messages=_build_rag_router_messages(message, conversation),
+        model=provider_settings.default_chat_model,
+        options={"temperature": 0},
+    )
+    return result.content.strip().upper()
+
+
+def _build_rag_router_messages(
+    message: str,
+    conversation: Conversation | None = None,
+) -> list[ChatMessage]:
+    """构造 LLM Router 的极简 prompt，并带上最近多轮上下文。"""
+    recent_context = _recent_router_context(conversation)
+    user_content = "\n".join(
+        [
+            "最近对话:",
+            recent_context or "无",
+            "",
+            "当前用户问题:",
+            message,
+            "",
+            "只输出 DIRECT、LIGHT_RAG 或 STRONG_RAG 之一。",
+        ]
+    )
+    return [
+        ChatMessage(
+            role="system",
+            content=(
+                "你是邮政客服系统的 RAG 路由器。你只判断当前用户问题是否需要检索知识库。\n"
+                "你只能输出下面三个单词之一：DIRECT、LIGHT_RAG、STRONG_RAG。\n"
+                "不要解释，不要输出 JSON，不要输出标点，不要输出其他文字。\n"
+                "如果只是寒暄、感谢、结束语、闲聊、改写、润色、总结、格式调整，输出 DIRECT。\n"
+                "如果只是问当前时间或当前日期，输出 DIRECT。\n"
+                "如果是普通邮政 FAQ、业务流程咨询、常见寄递问题，输出 LIGHT_RAG。\n"
+                "如果涉及清关、报关、海关、赔付、赔偿、理赔、投诉、申诉、改单、禁寄、限寄、"
+                "危险品、资费、时限、时效、超时、延误、材料、证明、官方依据、条款、规则，"
+                "输出 STRONG_RAG。\n"
+                "多轮对话中，如果当前问题依赖上一轮业务上下文，按业务问题处理，不要因为当前"
+                "句子短就输出 DIRECT。\n"
+                "如果不确定，输出 STRONG_RAG。"
+            ),
+        ),
+        ChatMessage(role="user", content=user_content),
+    ]
+
+
+def _recent_router_context(conversation: Conversation | None, limit: int = 6) -> str:
+    """取最近几轮消息给 Router 判断多轮追问语境。"""
+    if conversation is None:
+        return ""
+    messages = list(conversation.messages.order_by("-created_at", "-id")[:limit])
+    messages.reverse()
+    lines = []
+    for item in messages:
+        if item.role == Message.ROLE_SYSTEM:
+            continue
+        content = normalize_display_text(item.content)[:300]
+        lines.append(f"{item.role}: {content}")
+    return "\n".join(lines)
+
+
+def _route_to_rag_profile(route: str) -> tuple[str, int]:
+    """把 Router 输出映射成内部 profile；无法解析时按 Strong RAG。"""
+    normalized = route.strip().upper()
+    return RAG_ROUTE_TO_PROFILE.get(normalized, RAG_ROUTE_TO_PROFILE[RAG_ROUTE_STRONG])
+
+
+def _fallback_rag_route(message: str) -> str:
+    """Router 不可用时的保守兜底，仅用于测试和异常保护。"""
     normalized = message.strip().lower()
+    if any(pattern.lower() in normalized for pattern in DIRECT_RAG_PATTERNS):
+        return RAG_ROUTE_DIRECT
     if any(keyword.lower() in normalized for keyword in STRONG_RAG_KEYWORDS):
-        return "strong", STRONG_RAG_TOP_K
-    return "light", LIGHT_RAG_TOP_K
+        return RAG_ROUTE_STRONG
+    return RAG_ROUTE_LIGHT
 
 
 def encode_sse(event: dict) -> str:
