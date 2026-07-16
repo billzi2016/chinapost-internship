@@ -10,6 +10,14 @@
 week2/post-service-agent/
 ```
 
+## 系统组件视图
+
+![Django 应用层](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/django.png)
+
+![PostgreSQL 与 pgvector 数据层](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/postgresql.png)
+
+![Ollama 本地模型 Provider](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/ollama.png)
+
 ## 系统怎么拆
 
 代码结构可以按职责看：
@@ -195,6 +203,10 @@ quadrantChart
 这一点是系统价值比较集中的地方：页面不是只展示“能聊天”，而是把模型能力和知识库能力拆开给用户看。RAG 负责依据，SFT 负责场景表达，二者组合后再看回答是否更稳、更像邮政客服。这种四象限设计也方便后续做定量评估，不需要每次靠人工感觉判断。
 
 四象限的选型来自实际问题拆分：RAG 和 SFT 解决的不是同一件事。RAG 解决“依据从哪里来”，SFT 解决“模型怎么用邮政客服语气和结构回答”。如果只保留一个总开关，就看不出到底是知识库带来的变化，还是微调模型带来的变化。拆成四种模式后，每次实验都能明确比较变量。
+
+![仅 SFT 响应模式](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/sft-only.png)
+
+![SFT 加 RAG 响应模式](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/sft+rag.png)
 
 ## 工单 JSON
 

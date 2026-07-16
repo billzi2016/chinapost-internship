@@ -10,6 +10,14 @@ Main project directory:
 week2/post-service-agent/
 ```
 
+## System Component Views
+
+![Django application layer](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/django.png)
+
+![PostgreSQL and pgvector data layer](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/postgresql.png)
+
+![Ollama local model provider](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/ollama.png)
+
 ## How the system is split
 
 The code can be read by responsibility:
@@ -195,6 +203,10 @@ The point of these modes is comparison through one page. For the same question, 
 This is where the system shows its value most clearly: the page does not merely prove that the chatbot can talk. It separates model capability from knowledge-base capability. RAG supplies evidence, SFT supplies domain style and response organization, and the combined mode shows how the two behave together. The same quadrant design also makes later quantitative comparison easier because the modes are already separated at the product level.
 
 The quadrant design comes from separating the actual variables. RAG answers “where does the evidence come from,” while SFT answers “how should the model speak and organize responses in this domain.” If there were only one global switch, it would be hard to tell whether a change came from retrieval or fine-tuning. With four modes, each experiment has a clean comparison point.
+
+![SFT-only response mode](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/sft-only.png)
+
+![SFT plus RAG response mode](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/sft+rag.png)
 
 ## Ticket JSON
 

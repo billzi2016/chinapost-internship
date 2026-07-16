@@ -10,6 +10,10 @@ Current retained conclusion:
 Qwen2.5-3B -> rank 2
 ```
 
+![Qwen2.5 3B LoRA adaptation](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/3b-lora.png)
+
+![Qwen2.5 3B FastAPI serving](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/3b-fastapi.png)
+
 ## 7B Model
 
 Current retained conclusion:
@@ -19,4 +23,3 @@ Qwen2.5-7B -> rank 4
 ```
 
 These conclusions are kept as the current documentation baseline. The experiments themselves still contain randomness, so the site keeps one stable wording for later explanation and reconstruction.
-

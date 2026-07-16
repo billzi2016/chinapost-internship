@@ -12,6 +12,10 @@ Qwen2.5-3B -> rank 2
 
 这个结论对应的是当前整理版文档中更适合持续引用的一版结果。
 
+![Qwen2.5 3B LoRA 微调](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/3b-lora.png)
+
+![Qwen2.5 3B FastAPI 推理服务](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/3b-fastapi.png)
+
 ## 7B 模型
 
 当前保留的结论是：
