@@ -10,6 +10,12 @@
 2. 当前仓库为什么会呈现为“重建整理版”。
 3. 模型微调和系统方向里最终保留的结论口径。
 
+## 项目入口效果
+
+![邮政智能客服 Django 页面](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/django_week2.png)
+
+![Swagger API 文档页面](https://raw.githubusercontent.com/billzi2016/chinapost-internship/main/images/127.0.0.1_9999_api_docs_week2.png)
+
 如果只看当前仓库，最重要的理解方式是：
 
 1. `week1`、`week2`、`week3` 这些名称只对应任务阶段，与真实自然周完全不对应；阶段命名已经去掉了人工调参、样本筛选、验证数据集整理、入职培训、会议沟通等非主线开发时间。
