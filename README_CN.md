@@ -49,9 +49,17 @@
 - Postman：用于接口请求调试和 API 验证。
 - DBeaver：用于连接 PostgreSQL，查看会话、消息、工单和向量数据表。
 
+第二周系统关键组件：
+
+![Django 应用层](images/django.png)
+
+![PostgreSQL 与 pgvector 数据层](images/postgresql.png)
+
+![Ollama 本地模型 Provider](images/ollama.png)
+
 ## Week 2 界面截图
 
-![Django Week 2 界面](django_week2.png)
+![Django Week 2 界面](images/django_week2.png)
 
 ## Week 3
 
@@ -77,6 +85,12 @@
 
 - `week3/mlx_qwen_sft/README.md`
 
+第三周与第六周的模型微调和服务视图：
+
+![Qwen2.5 3B LoRA 微调](images/3b-lora.png)
+
+![Qwen2.5 3B FastAPI 推理服务](images/3b-fastapi.png)
+
 ## Week 4 - Week 8
 
 `week4` 到 `week8` 是后续阶段目录，用于把当前已经完成的 RAG、SFT、微服务、报告和文档站工作平均拆分到后续项目阶段中。
@@ -86,6 +100,12 @@
 - `week6/README.md`：Qwen2.5 3B/7B base 与 LoRA FastAPI 服务、stream 人工验证和调用日志。
 - `week7/README.md`：rank sweep 评测、全局对比图、PDF 报告渲染和 docs-site 整理。
 - `week8/README.md`：端到端集成验收、演示顺序和最终交付复盘。
+
+后续阶段的 SFT/RAG 行为对比：
+
+![仅 SFT 响应模式](images/sft-only.png)
+
+![SFT 加 RAG 响应模式](images/sft+rag.png)
 
 ## 报告与文档站
 
@@ -121,4 +141,4 @@ Swagger / API 文档入口在 Django 服务启动后的：
 
 ## Swagger 截图
 
-![Week 2 Swagger API 文档](127.0.0.1_9999_api_docs_week2.png)
+![Week 2 Swagger API 文档](images/127.0.0.1_9999_api_docs_week2.png)

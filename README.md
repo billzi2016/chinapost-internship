@@ -51,9 +51,17 @@ Supporting tools:
 - Postman: API request debugging and validation.
 - DBeaver: PostgreSQL inspection for conversations, messages, tickets, and vector tables.
 
+Key Week 2 system components:
+
+![Django application layer](images/django.png)
+
+![PostgreSQL and pgvector data layer](images/postgresql.png)
+
+![Ollama local model provider](images/ollama.png)
+
 ## Week 2 UI Screenshot
 
-![Django Week 2 UI](django_week2.png)
+![Django Week 2 UI](images/django_week2.png)
 
 ## Week 3
 
@@ -79,6 +87,12 @@ Main entry point:
 
 - `week3/mlx_qwen_sft/README.md`
 
+Week 3 and Week 6 model-serving views:
+
+![Qwen2.5 3B LoRA adaptation](images/3b-lora.png)
+
+![Qwen2.5 3B FastAPI serving](images/3b-fastapi.png)
+
 ## Weeks 4-8
 
 Weeks 4-8 are staged planning and delivery folders that distribute the already-built system into later project phases.
@@ -88,6 +102,12 @@ Weeks 4-8 are staged planning and delivery folders that distribute the already-b
 - `week6/README.md`: Qwen2.5 3B/7B base and LoRA FastAPI serving, stream validation, and call logging.
 - `week7/README.md`: rank-sweep evaluation, global comparison charts, PDF report rendering, and docs-site organization.
 - `week8/README.md`: final end-to-end integration checklist, demo order, and delivery review.
+
+Later-stage behavior comparisons:
+
+![SFT-only response mode](images/sft-only.png)
+
+![SFT plus RAG response mode](images/sft+rag.png)
 
 ## Reports And Docs Site
 
@@ -129,4 +149,4 @@ After the Django service starts, Swagger / API documentation is available at:
 
 ## Swagger Screenshot
 
-![Week 2 Swagger API Docs](127.0.0.1_9999_api_docs_week2.png)
+![Week 2 Swagger API Docs](images/127.0.0.1_9999_api_docs_week2.png)
