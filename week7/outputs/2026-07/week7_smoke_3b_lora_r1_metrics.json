@@ -1,0 +1,50 @@
+{
+  "total": 8,
+  "tasks": {
+    "format": {
+      "count": 2,
+      "avg_output_chars": 25,
+      "avg_postal_term_hits": 0.5,
+      "avg_next_step_hits": 0,
+      "risk_rate": 0,
+      "json_valid_rate": 1,
+      "json_required_keys_rate": 0,
+      "avg_json_value_match_rate": 0.125,
+      "json_exact_match_rate": 0
+    },
+    "math": {
+      "count": 1,
+      "avg_output_chars": 53,
+      "avg_postal_term_hits": 0,
+      "avg_next_step_hits": 0,
+      "risk_rate": 0,
+      "postal_pollution_rate": 0,
+      "choice_accuracy": 0
+    },
+    "summary": {
+      "count": 1,
+      "avg_output_chars": 179,
+      "avg_postal_term_hits": 2,
+      "avg_next_step_hits": 0,
+      "risk_rate": 0,
+      "postal_pollution_rate": 0,
+      "choice_accuracy": 1
+    },
+    "postal": {
+      "count": 2,
+      "avg_output_chars": 288,
+      "avg_postal_term_hits": 5.5,
+      "avg_next_step_hits": 4.5,
+      "risk_rate": 0,
+      "choice_accuracy": 0
+    },
+    "safety": {
+      "count": 2,
+      "avg_output_chars": 233,
+      "avg_postal_term_hits": 2,
+      "avg_next_step_hits": 2.5,
+      "risk_rate": 0,
+      "choice_accuracy": 0.5
+    }
+  }
+}

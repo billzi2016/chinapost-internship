@@ -16,6 +16,7 @@
 - step1：模型选型与数据集分析
 - step2：收集数据集和框架搭建
 - step3：LoRA 微调
+- step4：模型整体评估与测评报告
 
 输出 PDF 会落盘到 reports/step1_模型选型与数据集分析、reports/step2_收集数据集和框架搭建 和 reports/step3_lora微调。
 """
@@ -39,9 +40,11 @@ PROJECT_DIR = REPORTS_DIR.parent
 WEEK1_DIR = PROJECT_DIR / "week1"
 WEB_CRAWLER_DIR = PROJECT_DIR / "week1-module-Web-Crawler"
 WEEK3_DIR = PROJECT_DIR / "week3"
+WEEK7_DIR = PROJECT_DIR / "week7"
 STEP1_DIR = REPORTS_DIR / "step1_模型选型与数据集分析"
 STEP2_DIR = REPORTS_DIR / "step2_收集数据集和框架搭建"
 STEP3_DIR = REPORTS_DIR / "step3_lora微调"
+STEP4_DIR = REPORTS_DIR / "step4_模型整体评估与测评报告"
 
 
 # 这里维护“输入 Markdown -> 输出 PDF”的映射关系。
@@ -118,6 +121,12 @@ REPORT_SPECS = [
         "source": WEEK3_DIR / "reports" / "qwen2.5_final_comparison_report.md",
         "output": STEP3_DIR / "Qwen2.5邮政客服SFT最终对比报告.pdf",
         "title": "Qwen2.5 邮政客服 SFT 最终对比报告",
+    },
+    {
+        "id": "week7-model-overall-eval",
+        "source": WEEK7_DIR / "outputs" / "2026-07" / "模型整体评估与测评报告.md",
+        "output": STEP4_DIR / "模型整体评估与测评报告.pdf",
+        "title": "模型整体评估与测评报告",
     },
 ]
 

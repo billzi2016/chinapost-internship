@@ -7,6 +7,7 @@
 - `step1_模型选型与数据集分析/`
 - `step2_收集数据集和框架搭建/`
 - `step3_lora微调/`
+- `step4_模型整体评估与测评报告/`
 
 ## 1. 当前脚本
 
@@ -18,6 +19,7 @@
 reports/step1_模型选型与数据集分析/
 reports/step2_收集数据集和框架搭建/
 reports/step3_lora微调/
+reports/step4_模型整体评估与测评报告/
 ```
 
 step1 当前包含：
@@ -38,6 +40,11 @@ step3 当前包含：
 1. `week3/reports/qwen2.5_mlx_sft_full_experiment_report.md`
 2. `week3/reports/qwen2.5-3b_rank_sweep_report.md`
 3. `week3/reports/qwen2.5-7b_rank_sweep_report.md`
+4. `week3/reports/qwen2.5_final_comparison_report.md`
+
+step4 当前包含：
+
+1. `week7/outputs/2026-07/模型整体评估与测评报告.md`
 
 ## 2. 导出方式
 
@@ -74,6 +81,7 @@ python reports/build_reports.py --list
 ```bash
 python reports/build_reports.py --only week1-training-samples
 python reports/build_reports.py --only week3-qwen25-7b-rank-sweep
+python reports/build_reports.py --only week7-model-overall-eval
 ```
 
 一次渲染多个指定报告：
@@ -104,6 +112,8 @@ python reports/build_reports.py --only week1-training-samples week3-qwen25-7b-ra
 - `reports/step3_lora微调/基于AppleMLX的Qwen2.5邮政客服模型微调完整实验报告.pdf`
 - `reports/step3_lora微调/Qwen2.5-3B邮政客服LoRA RankSweep实验报告.pdf`
 - `reports/step3_lora微调/Qwen2.5-7B邮政客服LoRA RankSweep实验报告.pdf`
+- `reports/step3_lora微调/Qwen2.5邮政客服SFT最终对比报告.pdf`
+- `reports/step4_模型整体评估与测评报告/模型整体评估与测评报告.pdf`
 
 ## 5. 维护规则
 

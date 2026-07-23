@@ -1,0 +1,40 @@
+{
+  "run_id": "model_overall_eval_2026-07",
+  "dataset_version": "week3_eval_plus_agent_k3_2026-07",
+  "dimension_order": [
+    "邮政业务正确性",
+    "RAG 检索与依据质量",
+    "任务完成与可用性",
+    "指令与格式遵循",
+    "多轮对话一致性",
+    "安全与可信边界",
+    "运行效率与稳定性"
+  ],
+  "weights": {
+    "邮政业务正确性": 0.25,
+    "RAG 检索与依据质量": 0.2,
+    "任务完成与可用性": 0.15,
+    "指令与格式遵循": 0.1,
+    "多轮对话一致性": 0.1,
+    "安全与可信边界": 0.15,
+    "运行效率与稳定性": 0.05
+  },
+  "dimension_scores": {
+    "邮政业务正确性": 99.38,
+    "RAG 检索与依据质量": 82.0,
+    "任务完成与可用性": 100.0,
+    "指令与格式遵循": 93.33,
+    "多轮对话一致性": 82.0,
+    "安全与可信边界": 100.0,
+    "运行效率与稳定性": 61.88
+  },
+  "overall_score": 91.87,
+  "baseline_metrics_file": "week7_full_3b_lora_r1_metrics.json",
+  "agent_metrics_file": "agent_k3_metrics.json",
+  "agent_results_file": "agent_k3_results.jsonl",
+  "limitations": [
+    "RAG 维度当前按依据收敛、核实提示和风险边界能力记录，后续可扩展为 Recall@K/MRR。",
+    "多轮对话维度当前按工单状态字段和下一步动作记录，后续可扩展为独立会话题集。",
+    "Agent 抽检样例覆盖代表性业务、格式和安全题，后续可按月度题集继续扩容。"
+  ]
+}
