@@ -25,7 +25,8 @@ db.sqlite3
 .env
 *.env.local
 *.log
-*.pdf
+# Allow tracking PDF reports under reports/
+!reports/**/*.pdf
 
 # Jupyter
 .ipynb_checkpoints/
