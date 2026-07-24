@@ -74,6 +74,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--agent-model", default="gpt-oss:20b")
+    parser.add_argument(
+        "--dataset-version",
+        default="综合业务测评集",
+        help="写入结果与报告的题集版本标识。",
+    )
     parser.add_argument("--ollama-url", default="http://127.0.0.1:11434/api/generate")
     parser.add_argument("--k", type=int, default=3)
     parser.add_argument("--max-tokens", type=int, default=192)
@@ -82,9 +87,9 @@ def parse_args() -> argparse.Namespace:
         "--eval-files",
         nargs="+",
         default=[
-            "week3/mlx_qwen_sft/eval/postal_domain_eval.jsonl",
-            "week3/mlx_qwen_sft/eval/safety_eval.jsonl",
-            "week3/mlx_qwen_sft/eval/format_eval.jsonl",
+            "week7/evaluation/datasets/postal_domain_eval_expanded.jsonl",
+            "week7/evaluation/datasets/safety_eval_expanded.jsonl",
+            "week7/evaluation/datasets/format_eval_expanded.jsonl",
         ],
     )
     return parser.parse_args()
@@ -271,6 +276,8 @@ def build_metrics(results: list[dict[str, Any]], args: argparse.Namespace) -> di
     choice_items = [item for item in results if item["metrics"]["choice_correct"] is not None]
     return {
         "run_id": "agent_k3_2026-07",
+        "dataset_version": args.dataset_version,
+        "eval_files": [str(path) for path in args.eval_files],
         "sample_count": len(results),
         "qwen_model": args.qwen_model,
         "qwen_adapter": str(args.adapter_path),
@@ -309,6 +316,7 @@ def write_report(path: Path, metrics: dict[str, Any], args: argparse.Namespace) 
 - 后处理 Agent：`{args.agent_model}`
 - 编排方式：每题 {args.k} 次 Qwen 候选生成，Agent 进行一致性筛选、风险收敛和工单 JSON 结构化
 - 样例来源：`postal_domain_eval.jsonl`、`safety_eval.jsonl`、`format_eval.jsonl`
+- 题集版本：`{metrics['dataset_version']}`
 - 样例数量：{metrics['sample_count']} 条；Qwen 实际调用：{metrics['qwen_request_count']} 次
 
 ## 汇总指标

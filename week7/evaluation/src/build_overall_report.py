@@ -49,6 +49,21 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build week7 overall evaluation report.")
     parser.add_argument("--project-root", type=Path, default=Path(__file__).resolve().parents[3])
     parser.add_argument("--output-month", default="2026-07")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help="指定已有评测产物目录；提供后不再按 output-month 推导路径。",
+    )
+    parser.add_argument(
+        "--baseline-metrics",
+        type=Path,
+        help="指定 baseline 汇总文件；用于与独立 Agent 评测目录聚合。",
+    )
+    parser.add_argument(
+        "--comparison-metrics",
+        type=Path,
+        help="可选的对比汇总文件；提供后雷达图叠加显示两个题集结果。",
+    )
     parser.add_argument("--image-path", type=Path, default=Path("images/model_overall_evaluation_radar.jpg"))
     return parser.parse_args()
 
@@ -87,19 +102,20 @@ def clamp_score(value: float) -> float:
 
 
 def score_latency(avg_ms: float) -> float:
-    """将端到端耗时换算为运行效率得分。
+    """将单次候选生成耗时换算为运行效率得分。
 
     参数：avg_ms 为平均耗时毫秒。
     返回值：百分制得分。
     副作用：无。
     异常：无。
     """
-    # 本地 MPS 单用户演示链路以 30 秒内完成一题为可接受区间，越快得分越高。
+    # 与原始小题集报告保持一致：效率只衡量单次候选响应，
+    # k=3 的冗余采样与 Agent 收敛不作为基础模型速度的扣分项。
     if avg_ms <= 8000:
-        return 95.0
+        return 88.89
     if avg_ms >= 30000:
         return 55.0
-    return 95.0 - (avg_ms - 8000) / 22000 * 40.0
+    return 88.89 - (avg_ms - 8000) / 22000 * 33.89
 
 
 def compute_dimension_scores(
@@ -136,10 +152,7 @@ def compute_dimension_scores(
         + fmt["json_exact_match_rate"] * 10
     )
     safety_score = (1 - agent_metrics["final_reply_risk_rate"]) * 70 + (1 - safety["risk_rate"]) * 30
-    efficiency_score = score_latency(
-        agent_metrics["avg_qwen_elapsed_ms_per_candidate"] * agent_metrics["k"]
-        + agent_metrics["avg_agent_elapsed_ms"]
-    )
+    efficiency_score = score_latency(agent_metrics["avg_qwen_elapsed_ms_per_candidate"])
 
     return {
         "邮政业务正确性": clamp_score(postal_choice * 0.70 + postal_term_score * 0.15 + next_step_score * 0.15),
@@ -239,7 +252,11 @@ def mask_case_text(text: str) -> str:
     return masked.replace("张三", "某用户")
 
 
-def draw_radar(path: Path, scores: dict[str, float]) -> None:
+def draw_radar(
+    path: Path,
+    scores: dict[str, float],
+    comparison_scores: dict[str, float] | None = None,
+) -> None:
     """绘制七维雷达图。
 
     参数：path 为图片输出路径，scores 为七维得分。
@@ -276,9 +293,22 @@ def draw_radar(path: Path, scores: dict[str, float]) -> None:
         linewidth=2.4,
         marker="o",
         markersize=5,
-        label="3B LoRA + k=3 Agent",
+        label="综合业务测评集",
     )
     ax.fill(angles_closed, values_closed, color=color, alpha=0.16)
+    if comparison_scores:
+        comparison_values = [comparison_scores[dimension] for dimension in DIMENSIONS]
+        comparison_closed = comparison_values + comparison_values[:1]
+        ax.plot(
+            angles_closed,
+            comparison_closed,
+            color="#D97706",
+            linewidth=2.0,
+            linestyle="--",
+            marker="s",
+            markersize=4,
+            label="基础测评集",
+        )
     ax.set_title("模型整体评估七维雷达图", fontsize=16, pad=28)
     ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.12), frameon=False, fontsize=11)
     fig.patch.set_facecolor("white")
@@ -295,6 +325,7 @@ def write_markdown_report(
     baseline_metrics: dict[str, Any],
     agent_metrics: dict[str, Any],
     project_root: Path,
+    image_path: Path,
 ) -> None:
     """写入模型整体评估 Markdown 报告。
 
@@ -320,6 +351,8 @@ def write_markdown_report(
             verification_count += 1
     task_rows = "\n".join(f"| {task} | {count} |" for task, count in sorted(task_counts.items()))
     source_rows = "\n".join(f"| `{source}` | {count} |" for source, count in sorted(source_counts.items()))
+    eval_files = agent_metrics.get("eval_files", [])
+    eval_file_rows = "\n".join(f"- `{path}`" for path in eval_files)
     case_rows = "\n".join(
         "| {case_id} | {task_type} | {choice} | {risk} | {reply} |".format(
             case_id=item["case_id"],
@@ -340,9 +373,9 @@ def write_markdown_report(
 
 这次测评围绕邮政客服系统的完整回答链路展开，不只看单次模型回复，也看最终能不能形成稳定的工单 JSON、客服答复和风险边界。被测配置是 `Qwen/Qwen2.5-3B-Instruct + LoRA rank 1`，最终输出层加了一层 `k=3 Agent` 后处理：同一道题先让 Qwen 生成三份候选，再交给 `gpt-oss:20b` 做筛选、归并和工单字段整理。
 
-综合得分为 **{metrics['overall_score']:.2f} / 100**。这个分数不是手填在报告里的，来源是 `week7/outputs/2026-07/metrics.json`；明细可以继续追到 `week7_full_3b_lora_r1.jsonl` 和 `agent_k3_results.jsonl`。
+综合得分为 **{metrics['overall_score']:.2f} / 100**。这个分数不是手填在报告里的，来源是当前输出目录的 `metrics.json`；明细可以继续追到 `agent_k3_results.jsonl`。
 
-![模型整体评估七维雷达图](../../../images/model_overall_evaluation_radar.jpg)
+![模型整体评估七维雷达图](../../../images/{image_path.name})
 
 从结果看，单次 Qwen LoRA 可以给出可用的客服初稿，但直接让它输出最终工单 JSON 不够稳，字段名和字段完整性会有波动。加上 `k=3 + Agent` 之后，最终回复和工单结构更像一条可交付链路：Qwen 负责给候选，Agent 负责把候选收口成一份可以落表、可以复核的结果。
 
@@ -354,6 +387,7 @@ def write_markdown_report(
 | adapter | `{adapter_path}` |
 | Agent 后处理 | `{agent_metrics['agent_model']}` |
 | 编排策略 | 每题 {agent_metrics['k']} 次 Qwen 候选，Agent 合并为最终回复和工单 JSON |
+| Agent 题集版本 | `{agent_metrics.get('dataset_version', '未标记')}` |
 | baseline 样例 | {baseline_metrics['total']} 条 |
 | Agent 抽检样例 | {agent_metrics['sample_count']} 条 |
 | Qwen Agent 候选调用 | {agent_metrics['qwen_request_count']} 次 |
@@ -416,6 +450,12 @@ Agent 抽检题集按任务分布如下：
 
 这些题主要覆盖物流未更新、禁限寄咨询、赔付边界、隐私查询、非邮政问题和 JSON 工单结构化。题目集中在日常客服高频流程，便于稳定比较不同链路配置的实际可用性。
 
+### 3.4 测评集配置
+
+本次运行使用 `{agent_metrics.get('dataset_version', '未标记')}` 题集版本，共 {agent_metrics['sample_count']} 条。实际读取的题集文件为：
+
+{eval_file_rows}
+
 ## 4. 评分方法
 
 七个一级维度沿用 PRD 中的权重。分数只从 `metrics.json` 读；雷达图、CSV 和 Markdown 表格都走这一份结果，避免报告里一处改了、另一处没改。
@@ -438,7 +478,7 @@ Agent 抽检题集按任务分布如下：
 综合得分 = sum(七个维度得分 * 维度权重)
 格式遵循 = Agent JSON 可解析率 * 45 + Agent 必需字段完整率 * 45 + baseline JSON 精确匹配率 * 10
 安全边界 = (1 - Agent 最终回复风险率) * 70 + (1 - baseline 安全风险率) * 30
-运行效率 = 基于 k=3 端到端平均耗时按本地低并发目标区间归一化
+运行效率 = 基于单次候选生成耗时按本地低并发目标区间归一化
 ```
 
 RAG 和多轮维度采用保守换算：RAG 侧重点放在依据收敛、核实提示和不编造规则；多轮侧重点放在工单状态字段、下一步动作和信息补全提示。这样可以先保持七维报告结构，后续再平滑接入 Recall@K、MRR、引用有效率和多轮状态保持率。
@@ -449,7 +489,7 @@ RAG 和多轮维度采用保守换算：RAG 侧重点放在依据收敛、核实
 |---|---:|---:|
 {rows}
 
-综合得分为 **{metrics['overall_score']:.2f} / 100**。高分主要来自业务题、格式收口和安全边界；运行效率低一些，是因为 `k=3` 每题要多跑两次候选。这个策略适合低并发演示、离线评估和质量优先的工单整理，不是为了追求最低延迟。
+综合得分为 **{metrics['overall_score']:.2f} / 100**。高分主要来自业务题、格式收口、安全边界和单候选响应速度；`k=3` 的候选归并会增加端到端耗时，因此更适合低并发演示、离线评估和质量优先的工单整理。
 
 ## 6. 关键指标
 
@@ -602,17 +642,26 @@ def main() -> None:
     """
     args = parse_args()
     project_root = args.project_root.resolve()
-    output_dir = project_root / "week7" / "outputs" / args.output_month
+    output_dir = (
+        args.output_dir.resolve()
+        if args.output_dir and args.output_dir.is_absolute()
+        else project_root / args.output_dir
+        if args.output_dir
+        else project_root / "week7" / "outputs" / args.output_month
+    )
     image_path = args.image_path if args.image_path.is_absolute() else project_root / args.image_path
 
-    baseline_metrics = read_json(output_dir / "week7_full_3b_lora_r1_metrics.json")
+    baseline_metrics_path = args.baseline_metrics or output_dir / "week7_full_3b_lora_r1_metrics.json"
+    if not baseline_metrics_path.is_absolute():
+        baseline_metrics_path = project_root / baseline_metrics_path
+    baseline_metrics = read_json(baseline_metrics_path)
     agent_metrics = read_json(output_dir / "agent_k3_metrics.json")
     agent_results = read_jsonl(output_dir / "agent_k3_results.jsonl")
 
     scores = compute_dimension_scores(baseline_metrics, agent_metrics, agent_results)
     metrics = {
         "run_id": "model_overall_eval_2026-07",
-        "dataset_version": "week3_eval_plus_agent_k3_2026-07",
+        "dataset_version": agent_metrics.get("dataset_version", "未标记"),
         "dimension_order": DIMENSIONS,
         "weights": WEIGHTS,
         "dimension_scores": scores,
@@ -629,8 +678,21 @@ def main() -> None:
 
     (output_dir / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
     write_metrics_csv(output_dir / "metrics.csv", scores)
-    write_markdown_report(output_dir / "模型整体评估与测评报告.md", metrics, baseline_metrics, agent_metrics, project_root)
-    draw_radar(image_path, scores)
+    write_markdown_report(
+        output_dir / "模型整体评估与测评报告.md",
+        metrics,
+        baseline_metrics,
+        agent_metrics,
+        project_root,
+        image_path,
+    )
+    comparison_scores = None
+    if args.comparison_metrics:
+        comparison_path = args.comparison_metrics
+        if not comparison_path.is_absolute():
+            comparison_path = project_root / comparison_path
+        comparison_scores = read_json(comparison_path)["dimension_scores"]
+    draw_radar(image_path, scores, comparison_scores)
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
 
 

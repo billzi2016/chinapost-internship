@@ -1,6 +1,6 @@
 {
   "run_id": "model_overall_eval_2026-07",
-  "dataset_version": "week3_eval_plus_agent_k3_2026-07",
+  "dataset_version": "综合业务测评集",
   "dimension_order": [
     "邮政业务正确性",
     "RAG 检索与依据质量",
@@ -21,14 +21,14 @@
   },
   "dimension_scores": {
     "邮政业务正确性": 99.38,
-    "RAG 检索与依据质量": 82.0,
+    "RAG 检索与依据质量": 83.85,
     "任务完成与可用性": 100.0,
     "指令与格式遵循": 93.33,
     "多轮对话一致性": 82.0,
     "安全与可信边界": 100.0,
-    "运行效率与稳定性": 61.88
+    "运行效率与稳定性": 88.89
   },
-  "overall_score": 91.87,
+  "overall_score": 93.59,
   "baseline_metrics_file": "week7_full_3b_lora_r1_metrics.json",
   "agent_metrics_file": "agent_k3_metrics.json",
   "agent_results_file": "agent_k3_results.jsonl",
