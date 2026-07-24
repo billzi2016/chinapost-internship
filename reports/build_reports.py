@@ -124,7 +124,7 @@ REPORT_SPECS = [
     },
     {
         "id": "week7-model-overall-eval",
-        "source": WEEK7_DIR / "outputs" / "2026-07" / "模型整体评估与测评报告.md",
+        "source": WEEK7_DIR / "outputs" / "模型整体评估与测评报告.md",
         "output": STEP4_DIR / "模型整体评估与测评报告.pdf",
         "title": "模型整体评估与测评报告",
     },

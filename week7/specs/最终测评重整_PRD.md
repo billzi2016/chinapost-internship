@@ -46,20 +46,34 @@ week7/
 │   ├── 初步测评/
 │   │   ├── 3B/
 │   │   │   ├── agent_k3_results.jsonl
+│   │   │   ├── agent_k3_metrics.json
 │   │   │   ├── metrics.json
 │   │   │   ├── metrics.csv
 │   │   │   └── 测评记录.md
 │   │   └── 7B/
 │   │       ├── agent_k3_results.jsonl
+│   │       ├── agent_k3_metrics.json
 │   │       ├── metrics.json
 │   │       ├── metrics.csv
 │   │       └── 测评记录.md
 │   └── 最终测评/
 │       ├── 3B/
-│       ├── 7B/
-│       ├── metrics_comparison.json
-│       ├── metrics_comparison.csv
-│       └── 模型整体评估与测评报告.md
+│       │   ├── agent_k3_results.jsonl
+│       │   ├── agent_k3_metrics.json
+│       │   ├── metrics.json
+│       │   ├── metrics.csv
+│       │   └── 测评记录.md
+│       └── 7B/
+│           ├── agent_k3_results.jsonl
+│           ├── agent_k3_metrics.json
+│           ├── metrics.json
+│           ├── metrics.csv
+│           └── 测评记录.md
+│   ├── metrics_comparison.json
+│   ├── metrics_comparison.csv
+│   ├── 模型整体评估与测评报告.md
+│   ├── 初步测评对比雷达图.jpg
+│   └── 最终测评对比雷达图.jpg
 └── specs/
     └── 最终测评重整_PRD.md
 ```
@@ -73,7 +87,7 @@ week7/
 5. 运行 7B 综合业务测评集，输出到 `outputs/最终测评/7B/`。
 6. 每组运行保存 `agent_k3_results.jsonl`、`agent_k3_metrics.json`、`metrics.json`、`metrics.csv`。
 7. 新增最终汇总脚本，读取四组 `metrics.json`，生成 `metrics_comparison.json` 与 `metrics_comparison.csv`。
-8. 最终只生成 `outputs/最终测评/模型整体评估与测评报告.md`。
+8. 最终只生成 `outputs/模型整体评估与测评报告.md`。
 
 ## 初步测评
 
@@ -85,6 +99,10 @@ week7/
 4. 简要测评记录：`测评记录.md`，写明模型、adapter、题集数量、运行时间和指标。
 
 初步测评不单独交付最终报告；其结果作为最终报告中的基础对照组。
+
+## 最终测评
+
+最终测评使用 130 条综合业务测评集，3B 与 7B 分开运行、分开保存。两个模型目录的文件结构与初步测评完全一致：`agent_k3_results.jsonl`、`agent_k3_metrics.json`、`metrics.json`、`metrics.csv`、`测评记录.md`。
 
 ## 最终报告内容
 
