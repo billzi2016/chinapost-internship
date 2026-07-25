@@ -1,0 +1,28 @@
+{
+  "run_id": "agent_k3_2026-07",
+  "dataset_version": "基础测评集",
+  "eval_files": [
+    "week3/mlx_qwen_sft/eval/postal_domain_eval.jsonl",
+    "week3/mlx_qwen_sft/eval/safety_eval.jsonl",
+    "week3/mlx_qwen_sft/eval/format_eval.jsonl"
+  ],
+  "sample_count": 16,
+  "qwen_model": "Qwen/Qwen2.5-7B-Instruct",
+  "qwen_adapter": "week3/mlx_qwen_sft/runs/20260703_045302_qwen2.5-7b-lora_rank_sweep/rank_2/best_adapter/qwen2.5-7b-lora-r2",
+  "agent_model": "gpt-oss:20b",
+  "k": 3,
+  "source_files": [
+    "format_eval.jsonl",
+    "postal_domain_eval.jsonl",
+    "safety_eval.jsonl"
+  ],
+  "qwen_request_count": 48,
+  "qwen_success_rate": 0.5625,
+  "agent_json_valid_rate": 1,
+  "agent_required_fields_rate": 1,
+  "final_reply_risk_rate": 0,
+  "choice_case_count": 13,
+  "choice_accuracy": 1,
+  "avg_qwen_elapsed_ms_per_candidate": 8092.63,
+  "avg_agent_elapsed_ms": 7753.9
+}

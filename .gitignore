@@ -4,6 +4,9 @@
 # datasets
 CSDS/
 
+# local third-party bundles
+third_party/
+
 # Whisper project runtime outputs
 Whisper-main/media/
 Whisper-main/subtitles/

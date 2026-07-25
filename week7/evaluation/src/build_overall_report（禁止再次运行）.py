@@ -1,3 +1,4 @@
+# 已生成最终报告；后续仅允许通过 patch 修改 Markdown 报告，禁止再次运行。
 #!/usr/bin/env python3
 """生成模型整体评估报告、汇总表和雷达图。
 
@@ -63,6 +64,11 @@ def parse_args() -> argparse.Namespace:
         "--comparison-metrics",
         type=Path,
         help="可选的对比汇总文件；提供后雷达图叠加显示两个题集结果。",
+    )
+    parser.add_argument(
+        "--final-comparison",
+        action="store_true",
+        help="汇总 3B/7B 在初步测评和最终测评中的四组已生成结果。",
     )
     parser.add_argument("--image-path", type=Path, default=Path("images/model_overall_evaluation_radar.jpg"))
     return parser.parse_args()
@@ -206,6 +212,154 @@ def write_metrics_csv(path: Path, scores: dict[str, float]) -> None:
         writer.writerow(["dimension", "weight", "score"])
         for dimension in DIMENSIONS:
             writer.writerow([dimension, WEIGHTS[dimension], scores[dimension]])
+
+
+def read_group_metrics(project_root: Path, phase: str, model: str) -> dict[str, Any]:
+    """读取一组模型测评的汇总指标与 Agent 配置。
+
+    参数：project_root 为仓库根目录，phase 为测评阶段，model 为模型规模。
+    返回值：包含统一指标和 Agent 汇总的字典。
+    副作用：读取本地 JSON 文件。
+    异常：结果文件缺失或 JSON 无效时抛出异常。
+    """
+    directory = project_root / "week7" / "outputs" / phase / model
+    return {
+        "phase": phase,
+        "model": model,
+        "metrics": read_json(directory / "metrics.json"),
+        "agent_metrics": read_json(directory / "agent_k3_metrics.json"),
+    }
+
+
+def write_final_comparison_report(project_root: Path) -> None:
+    """生成根目录唯一的 3B/7B 四组结果综合报告。
+
+    参数：project_root 为仓库根目录。
+    返回值：None。
+    副作用：写入对比 JSON、CSV、Markdown 报告和两张雷达图。
+    异常：任一组结果缺失或字段不完整时抛出异常。
+    """
+    groups = [
+        read_group_metrics(project_root, "初步测评", "3B"),
+        read_group_metrics(project_root, "最终测评", "3B"),
+        read_group_metrics(project_root, "初步测评", "7B"),
+        read_group_metrics(project_root, "最终测评", "7B"),
+    ]
+    output_dir = project_root / "week7" / "outputs"
+    payload = {
+        "dimension_order": DIMENSIONS,
+        "weights": WEIGHTS,
+        "groups": [
+            {
+                "phase": group["phase"],
+                "model": group["model"],
+                "dataset_version": group["metrics"]["dataset_version"],
+                "sample_count": group["agent_metrics"]["sample_count"],
+                "overall_score": group["metrics"]["overall_score"],
+                "dimension_scores": group["metrics"]["dimension_scores"],
+                "qwen_model": group["agent_metrics"]["qwen_model"],
+                "qwen_adapter": group["agent_metrics"]["qwen_adapter"],
+                "qwen_request_count": group["agent_metrics"]["qwen_request_count"],
+                "avg_qwen_elapsed_ms_per_candidate": group["agent_metrics"]["avg_qwen_elapsed_ms_per_candidate"],
+                "avg_agent_elapsed_ms": group["agent_metrics"]["avg_agent_elapsed_ms"],
+            }
+            for group in groups
+        ],
+    }
+    (output_dir / "metrics_comparison.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    with (output_dir / "metrics_comparison.csv").open("w", encoding="utf-8", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["阶段", "模型", "题集", "样本数", "综合分", *DIMENSIONS])
+        for group in payload["groups"]:
+            writer.writerow(
+                [
+                    group["phase"],
+                    group["model"],
+                    group["dataset_version"],
+                    group["sample_count"],
+                    group["overall_score"],
+                    *(group["dimension_scores"][dimension] for dimension in DIMENSIONS),
+                ]
+            )
+
+    group_map = {(item["phase"], item["model"]): item for item in groups}
+    draw_radar(
+        project_root / "images" / "model_overall_evaluation_radar_3b_comparison.jpg",
+        group_map[("最终测评", "3B")]["metrics"]["dimension_scores"],
+        group_map[("初步测评", "3B")]["metrics"]["dimension_scores"],
+    )
+    draw_radar(
+        project_root / "images" / "model_overall_evaluation_radar_7b_comparison.jpg",
+        group_map[("最终测评", "7B")]["metrics"]["dimension_scores"],
+        group_map[("初步测评", "7B")]["metrics"]["dimension_scores"],
+    )
+
+    rows = "\n".join(
+        "| {phase} | {model} | {dataset} | {count} | {score:.2f} | {speed:.0f} ms |".format(
+            phase=item["phase"],
+            model=item["model"],
+            dataset=item["dataset_version"],
+            count=item["sample_count"],
+            score=item["overall_score"],
+            speed=item["avg_qwen_elapsed_ms_per_candidate"],
+        )
+        for item in payload["groups"]
+    )
+    config_rows = "\n".join(
+        "| {model} | `{base}` | `{adapter}` |".format(
+            model=item["model"],
+            base=item["qwen_model"],
+            adapter=display_path(item["qwen_adapter"], project_root),
+        )
+        for item in [payload["groups"][0], payload["groups"][2]]
+    )
+    report = f"""# 模型整体评估与测评报告
+
+## 测评范围
+
+本报告汇总 3B 与 7B LoRA 模型在两套测评集上的四组运行结果。基础测评集包含 16 条样例；综合业务测评集包含 130 条样例，其中邮政业务 48 条、安全 43 条、结构化输出 39 条。
+
+| 模型 | 基座模型 | Adapter |
+|---|---|---|
+{config_rows}
+
+## 综合结果
+
+| 阶段 | 模型 | 题集 | 样本数 | 综合分 | 单候选平均耗时 |
+|---|---|---|---:|---:|---:|
+{rows}
+
+所有组均采用 `k=3` 候选生成与 `gpt-oss:20b` 后处理。运行效率按单候选生成耗时计分；端到端耗时单独保留在各组 Agent 汇总文件中。
+
+## 题集对比
+
+| 题集 | 邮政业务 | 安全 | 结构化输出 | 合计 |
+|---|---:|---:|---:|---:|
+| 基础测评集 | 8 | 5 | 3 | 16 |
+| 综合业务测评集 | 48 | 43 | 39 | 130 |
+
+## 3B 对比
+
+![3B 初步与最终测评对比](../../images/model_overall_evaluation_radar_3b_comparison.jpg)
+
+## 7B 对比
+
+![7B 初步与最终测评对比](../../images/model_overall_evaluation_radar_7b_comparison.jpg)
+
+## 产物索引
+
+| 产物 | 路径 |
+|---|---|
+| 四组指标汇总 | `week7/outputs/metrics_comparison.json` |
+| 四组指标表 | `week7/outputs/metrics_comparison.csv` |
+| 3B 初步测评 | `week7/outputs/初步测评/3B/` |
+| 3B 最终测评 | `week7/outputs/最终测评/3B/` |
+| 7B 初步测评 | `week7/outputs/初步测评/7B/` |
+| 7B 最终测评 | `week7/outputs/最终测评/7B/` |
+"""
+    (output_dir / "模型整体评估与测评报告.md").write_text(report, encoding="utf-8")
 
 
 def setup_chinese_font() -> None:
@@ -642,6 +796,9 @@ def main() -> None:
     """
     args = parse_args()
     project_root = args.project_root.resolve()
+    if args.final_comparison:
+        write_final_comparison_report(project_root)
+        return
     output_dir = (
         args.output_dir.resolve()
         if args.output_dir and args.output_dir.is_absolute()
@@ -666,7 +823,7 @@ def main() -> None:
         "weights": WEIGHTS,
         "dimension_scores": scores,
         "overall_score": weighted_total(scores),
-        "baseline_metrics_file": "week7_full_3b_lora_r1_metrics.json",
+        "baseline_metrics_file": baseline_metrics_path.name,
         "agent_metrics_file": "agent_k3_metrics.json",
         "agent_results_file": "agent_k3_results.jsonl",
         "limitations": [

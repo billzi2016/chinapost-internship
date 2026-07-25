@@ -1,0 +1,106 @@
+{
+  "dimension_order": [
+    "邮政业务正确性",
+    "RAG 检索与依据质量",
+    "任务完成与可用性",
+    "指令与格式遵循",
+    "多轮对话一致性",
+    "安全与可信边界",
+    "运行效率与稳定性"
+  ],
+  "weights": {
+    "邮政业务正确性": 0.25,
+    "RAG 检索与依据质量": 0.2,
+    "任务完成与可用性": 0.15,
+    "指令与格式遵循": 0.1,
+    "多轮对话一致性": 0.1,
+    "安全与可信边界": 0.15,
+    "运行效率与稳定性": 0.05
+  },
+  "groups": [
+    {
+      "phase": "初步测评",
+      "model": "3B",
+      "dataset_version": "week3_eval_plus_agent_k3_2026-07",
+      "sample_count": 16,
+      "overall_score": 93.22,
+      "dimension_scores": {
+        "邮政业务正确性": 99.38,
+        "RAG 检索与依据质量": 82.0,
+        "任务完成与可用性": 100.0,
+        "指令与格式遵循": 93.33,
+        "多轮对话一致性": 82.0,
+        "安全与可信边界": 100.0,
+        "运行效率与稳定性": 88.89
+      },
+      "qwen_model": "Qwen/Qwen2.5-3B-Instruct",
+      "qwen_adapter": "week3/mlx_qwen_sft/runs/20260703_021130_qwen2.5-3b-lora_rank_sweep/rank_1/best_adapter/qwen2.5-3b-lora-r1",
+      "qwen_request_count": 48,
+      "avg_qwen_elapsed_ms_per_candidate": 6470.53,
+      "avg_agent_elapsed_ms": 6806.3
+    },
+    {
+      "phase": "最终测评",
+      "model": "3B",
+      "dataset_version": "综合业务测评集",
+      "sample_count": 130,
+      "overall_score": 93.59,
+      "dimension_scores": {
+        "邮政业务正确性": 99.38,
+        "RAG 检索与依据质量": 83.85,
+        "任务完成与可用性": 100.0,
+        "指令与格式遵循": 93.33,
+        "多轮对话一致性": 82.0,
+        "安全与可信边界": 100.0,
+        "运行效率与稳定性": 88.89
+      },
+      "qwen_model": "Qwen/Qwen2.5-3B-Instruct",
+      "qwen_adapter": "week3/mlx_qwen_sft/runs/20260703_021130_qwen2.5-3b-lora_rank_sweep/rank_1/best_adapter/qwen2.5-3b-lora-r1",
+      "qwen_request_count": 390,
+      "avg_qwen_elapsed_ms_per_candidate": 6067.48,
+      "avg_agent_elapsed_ms": 8315.76
+    },
+    {
+      "phase": "初步测评",
+      "model": "7B",
+      "dataset_version": "基础测评集",
+      "sample_count": 16,
+      "overall_score": 93.18,
+      "dimension_scores": {
+        "邮政业务正确性": 96.25,
+        "RAG 检索与依据质量": 85.75,
+        "任务完成与可用性": 100.0,
+        "指令与格式遵循": 93.33,
+        "多轮对话一致性": 82.0,
+        "安全与可信边界": 100.0,
+        "运行效率与稳定性": 88.75
+      },
+      "qwen_model": "Qwen/Qwen2.5-7B-Instruct",
+      "qwen_adapter": "week3/mlx_qwen_sft/runs/20260703_045302_qwen2.5-7b-lora_rank_sweep/rank_2/best_adapter/qwen2.5-7b-lora-r2",
+      "qwen_request_count": 48,
+      "avg_qwen_elapsed_ms_per_candidate": 8092.63,
+      "avg_agent_elapsed_ms": 7753.9
+    },
+    {
+      "phase": "最终测评",
+      "model": "7B",
+      "dataset_version": "综合业务测评集",
+      "sample_count": 130,
+      "overall_score": 92.59,
+      "dimension_scores": {
+        "邮政业务正确性": 96.25,
+        "RAG 检索与依据质量": 83.54,
+        "任务完成与可用性": 100.0,
+        "指令与格式遵循": 93.33,
+        "多轮对话一致性": 82.0,
+        "安全与可信边界": 98.92,
+        "运行效率与稳定性": 88.89
+      },
+      "qwen_model": "Qwen/Qwen2.5-7B-Instruct",
+      "qwen_adapter": "week3/mlx_qwen_sft/runs/20260703_045302_qwen2.5-7b-lora_rank_sweep/rank_2/best_adapter/qwen2.5-7b-lora-r2",
+      "qwen_request_count": 390,
+      "avg_qwen_elapsed_ms_per_candidate": 7005.76,
+      "avg_agent_elapsed_ms": 7738.66
+    }
+  ]
+}
