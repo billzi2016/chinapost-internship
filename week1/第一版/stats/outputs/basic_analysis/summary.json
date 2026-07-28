@@ -1,0 +1,122 @@
+{
+  "train": {
+    "summary": {
+      "对话轮数": {
+        "count": 9101,
+        "mean": 26.0,
+        "median": 24,
+        "min": 7,
+        "max": 79
+      },
+      "整条对话 token 数": {
+        "count": 9101,
+        "mean": 344.73,
+        "median": 316,
+        "min": 65,
+        "max": 2212
+      },
+      "单轮 utterance token 数": {
+        "count": 236590,
+        "mean": 13.26,
+        "median": 10.0,
+        "min": 1,
+        "max": 481
+      },
+      "整条对话词数": {
+        "count": 9101,
+        "mean": 201.56,
+        "median": 184,
+        "min": 40,
+        "max": 1347
+      },
+      "单轮 utterance 词数": {
+        "count": 236590,
+        "mean": 7.75,
+        "median": 6.0,
+        "min": 1,
+        "max": 280
+      }
+    },
+    "sample_count": 9101
+  },
+  "val": {
+    "summary": {
+      "对话轮数": {
+        "count": 800,
+        "mean": 25.9,
+        "median": 24.0,
+        "min": 9,
+        "max": 73
+      },
+      "整条对话 token 数": {
+        "count": 800,
+        "mean": 339.23,
+        "median": 316.0,
+        "min": 92,
+        "max": 1136
+      },
+      "单轮 utterance token 数": {
+        "count": 20721,
+        "mean": 13.1,
+        "median": 10,
+        "min": 1,
+        "max": 205
+      },
+      "整条对话词数": {
+        "count": 800,
+        "mean": 198.46,
+        "median": 184.0,
+        "min": 50,
+        "max": 622
+      },
+      "单轮 utterance 词数": {
+        "count": 20721,
+        "mean": 7.66,
+        "median": 6,
+        "min": 1,
+        "max": 153
+      }
+    },
+    "sample_count": 800
+  },
+  "test": {
+    "summary": {
+      "对话轮数": {
+        "count": 800,
+        "mean": 25.11,
+        "median": 23.0,
+        "min": 8,
+        "max": 78
+      },
+      "整条对话 token 数": {
+        "count": 800,
+        "mean": 332.27,
+        "median": 308.0,
+        "min": 78,
+        "max": 1199
+      },
+      "单轮 utterance token 数": {
+        "count": 20088,
+        "mean": 13.23,
+        "median": 10.0,
+        "min": 1,
+        "max": 211
+      },
+      "整条对话词数": {
+        "count": 800,
+        "mean": 194.3,
+        "median": 180.0,
+        "min": 38,
+        "max": 648
+      },
+      "单轮 utterance 词数": {
+        "count": 20088,
+        "mean": 7.74,
+        "median": 6.0,
+        "min": 1,
+        "max": 143
+      }
+    },
+    "sample_count": 800
+  }
+}
