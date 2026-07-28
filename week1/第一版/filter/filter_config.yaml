@@ -1,0 +1,6 @@
+ollama_url: "http://127.0.0.1:11434"
+embed_model: "qwen3-embedding:8b"
+embed_batch_size: 8
+write_batch_size: 32
+filter_model: "gpt-oss:20b"
+embed_prefix: "Instruct: Represent the following Chinese customer service dialogue for topic filtering, clustering, and semantic analysis.\nText: "
